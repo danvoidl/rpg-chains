@@ -25,6 +25,7 @@ export type RoomStatus = z.infer<typeof RoomStatusSchema>;
 /** Living instance of a campaign version (spec §2.1, §7). */
 export const RoomSchema = z.object({
   id: IdSchema,
+  name: z.string().min(1),
   campaignId: IdSchema,
   /** Current applied published version; advances to newer compatible versions at safe boundaries (decision 5). */
   campaignVersionId: IdSchema,

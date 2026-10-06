@@ -6,6 +6,10 @@ export * from './accounts.js';
 export * from './snapshot.js';
 export * from './graph.js';
 
+// Rooms (REST + lobby realtime)
+export * from './rooms.js';
+export * from './room-realtime.js';
+
 // Authoring (draft + REST write payloads)
 export * from './draft.js';
 export * from './authoring-inputs.js';
