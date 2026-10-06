@@ -70,6 +70,7 @@ Os nós de batalha respeitam um limite de participantes definido pelo criador. S
 
 O capítulo é concluído quando todas as batalhas obrigatórias forem vencidas. O chefe, porém, só é liberado quando o mestre da sala decidir liberá-lo, mesmo que os pré-requisitos já estejam cumpridos.
 
+**Mapa de fundo (fase futura, contrato já preparado).** Um capítulo pode ter uma imagem de fundo — tipicamente um mapa — e cada nó é posicionado num ponto dessa imagem. As posições dos nós são coordenadas absolutas em pixels de um "mundo" com largura × altura lógicas definidas junto com a imagem; a imagem é sempre escalada para esse tamanho, então trocar o mapa por outra resolução não desloca os nós. Trocar ou remover o mapa e renomear nós são edições de arte/texto, permitidas pelo portão de compatibilidade.
 ---
 
 ## 3. Sistema de combate

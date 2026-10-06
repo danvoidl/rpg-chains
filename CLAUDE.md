@@ -120,6 +120,14 @@ columns (`ChapterNode.config`, `Skill.effect`, `Villain.attacks`, `Item.weapon`/
 validated by the discriminated unions in `shared-types/src/{content,effects}.ts`. Adding a new
 effect type is a schema-only change, no migration.
 
+**Chapter graph positions are world coordinates — never normalize them.** A node's `position`
+(`posX/posY`) is an absolute pixel in the chapter's world, origin top-left. A chapter may carry a
+`background` map (`imageUrl` + logical `width`×`height`, schema in `shared-types/src/content.ts`);
+the image is always scaled to that logical size, so a node placed on a map pixel stays there even
+if the author swaps the image for another resolution. The map editor/player view is a future
+phase; the contract is already published, so do not add auto-layout, re-centering or position
+normalization anywhere (editor, server or snapshot). Node `title` is author text, not an id.
+
 **Runtime vs durable state boundary** (spec §3.7): combat-transient state (the active battle,
 its event log) lives **in memory** and is losable — a crash means the group restarts the
 battle. Progression state (level, XP, equipment, the "caído"/downed flag) is durable in
@@ -211,3 +219,15 @@ not duplicate it here; drop notes made obsolete by the current setup.**
   would have run prettier over `pnpm-lock.yaml`. → Pre-commit (`.husky/pre-commit` +
   root `lint-staged`) only runs `prettier --write` on `*.{ts,tsx,js,mjs,json,md}`; linting is
   enforced by `pnpm turbo run lint` (each package's own eslint) and CI, not the hook.
+
+### 2026-10-06 (Fase 1 authoring)
+
+- **Delegating to Antigravity (`agy -p`) headless:** `--dangerously-skip-permissions` is blocked
+  by Claude Code's safety classifier; without it, every shell command needs an allow-rule in
+  `~/.gemini/antigravity-cli/settings.json` (`permissions.allow: ["command(<prefix>)", ...]`),
+  and ONE denied command (e.g. a pipe like `find … | sort`) silently aborts the whole run with
+  "no output produced". Its Gemini quota is also small (exhausted after ~3 tasks, 7-day reset).
+  → Keep delegated tasks small, forbid compound commands at the top of the prompt, and fall back
+  to Sonnet subagents when `agy` fails.
+- **Server `pnpm dev` did not load `.env`** (`config.ts` parses `process.env`; nothing loaded the
+  file). → `tsx watch --env-file=.env`; tests load it via `test/test-database-url.ts`.
