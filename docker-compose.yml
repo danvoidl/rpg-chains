@@ -12,5 +12,41 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  # S3-compatible dev storage (RustFS, MinIO-compatible; MinIO no longer publishes images).
+  # Production points the same S3_* env vars at Cloudflare R2.
+  storage:
+    image: rustfs/rustfs:latest
+    container_name: rpg-chains-storage
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: rpg
+      RUSTFS_SECRET_KEY: rpgminio123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - storage-data:/data
+
+  # One-shot: creates the media bucket, makes its objects publicly readable and allows browser
+  # uploads (CORS) via presigned PUT URLs.
+  storage-init:
+    image: amazon/aws-cli:latest
+    depends_on:
+      - storage
+    environment:
+      AWS_ACCESS_KEY_ID: rpg
+      AWS_SECRET_ACCESS_KEY: rpgminio123
+      AWS_DEFAULT_REGION: us-east-1
+    entrypoint: >
+      /bin/sh -c "
+      until aws --endpoint-url http://storage:9000 s3api list-buckets > /dev/null 2>&1; do sleep 1; done;
+      aws --endpoint-url http://storage:9000 s3api create-bucket --bucket rpg-chains-media || true;
+      aws --endpoint-url http://storage:9000 s3api put-bucket-policy --bucket rpg-chains-media --policy
+      '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":\"*\",\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::rpg-chains-media/*\"]}]}';
+      aws --endpoint-url http://storage:9000 s3api put-bucket-cors --bucket rpg-chains-media --cors-configuration
+      '{\"CORSRules\":[{\"AllowedOrigins\":[\"*\"],\"AllowedMethods\":[\"PUT\",\"GET\"],\"AllowedHeaders\":[\"*\"],\"MaxAgeSeconds\":3000}]}';
+      "
+
 volumes:
   pgdata:
+  storage-data:

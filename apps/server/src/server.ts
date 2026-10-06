@@ -4,7 +4,7 @@ import { config } from './config.js';
 import { registerRealtime } from './realtime/index.js';
 
 // Entrypoint only: build the app, attach Socket.IO, listen, and shut down gracefully.
-const app = await buildApp();
+const app = await buildApp({ logger: true });
 await app.ready();
 
 const io = new IOServer(app.server, {

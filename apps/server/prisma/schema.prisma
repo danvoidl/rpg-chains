@@ -13,7 +13,9 @@ datasource db {
   provider = "postgresql"
 }
 
-/* ------------------------------------------------------------- Better Auth ---- */
+/**
+ * ------------------------------------------------------------- Better Auth ----
+ */
 // The auth User doubles as the domain "user" account (spec §2.1).
 
 model User {
@@ -78,7 +80,9 @@ model Verification {
   @@map("verification")
 }
 
-/* ---------------------------------------------------------------- authoring ---- */
+/**
+ * ---------------------------------------------------------------- authoring ----
+ */
 
 model Campaign {
   id          String            @id @default(cuid())
@@ -113,16 +117,20 @@ model CampaignVersion {
 }
 
 model Chapter {
-  id                String      @id @default(cuid())
-  campaignId        String
-  campaign          Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  name              String
-  underConstruction Boolean     @default(false)
-  order             Int         @default(0)
-  entryNodeId       String?
-  bossNodeId        String?
-  nodes             ChapterNode[]
-  edges             NodeEdge[]
+  id                 String        @id @default(cuid())
+  campaignId         String
+  campaign           Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  name               String
+  underConstruction  Boolean       @default(false)
+  order              Int           @default(0)
+  entryNodeId        String?
+  bossNodeId         String?
+  /// Optional map behind the graph; node posX/posY are pixels of a width×height world.
+  backgroundImageUrl String?
+  backgroundWidth    Int?
+  backgroundHeight   Int?
+  nodes              ChapterNode[]
+  edges              NodeEdge[]
 
   @@index([campaignId])
 }
@@ -133,6 +141,7 @@ model ChapterNode {
   chapterId        String
   chapter          Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   type             String
+  title            String  @default("")
   mandatory        Boolean @default(false)
   recommendedLevel Int?
   participantLimit Int?
@@ -231,21 +240,23 @@ model Item {
   @@index([campaignId])
 }
 
-/* ------------------------------------------------------------------ runtime ---- */
+/**
+ * ------------------------------------------------------------------ runtime ----
+ */
 
 model Room {
-  id                String          @id @default(cuid())
+  id                String            @id @default(cuid())
   campaignId        String
-  campaign          Campaign        @relation(fields: [campaignId], references: [id])
+  campaign          Campaign          @relation(fields: [campaignId], references: [id])
   /// Current applied version; advances to newer compatible versions at safe points (decision 5).
   campaignVersionId String
-  campaignVersion   CampaignVersion @relation(fields: [campaignVersionId], references: [id])
-  isPublic          Boolean         @default(true)
-  accessCode        String?         @unique
+  campaignVersion   CampaignVersion   @relation(fields: [campaignVersionId], references: [id])
+  isPublic          Boolean           @default(true)
+  accessCode        String?           @unique
   masterId          String
-  master            User            @relation(fields: [masterId], references: [id])
-  status            String          @default("open")
-  createdAt         DateTime        @default(now())
+  master            User              @relation(fields: [masterId], references: [id])
+  status            String            @default("open")
+  createdAt         DateTime          @default(now())
   profiles          CampaignProfile[]
   bag               GroupBag?
   history           History[]
