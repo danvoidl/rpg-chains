@@ -3,6 +3,7 @@
 import { useParams, useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import { useRoom } from '@/features/rooms/api';
+import { BattlesSection } from '@/features/battles/battles-section';
 import { AbandonSection } from '@/features/rooms/abandon-section';
 import { ClassPicker } from '@/features/rooms/class-picker';
 import { MasterPanel } from '@/features/rooms/master-panel';
@@ -10,7 +11,7 @@ import { MemberList } from '@/features/rooms/member-list';
 import { roomErrorMessage } from '@/features/rooms/room-error-messages';
 import { useRoomChannel } from '@/features/rooms/use-room-channel';
 
-/** Room page: members, class picker for newcomers, abandon and master controls. */
+/** Room page: members, battles, class picker for newcomers, abandon and master controls. */
 export default function RoomPage() {
   const params = useParams();
   const roomId = params.roomId as string;
@@ -52,6 +53,7 @@ export default function RoomPage() {
         <MemberList members={room.members} onlineUserIds={onlineUserIds} />
       </section>
 
+      {isOpen && session && <BattlesSection room={room} userId={session.user.id} />}
       {isOpen && !room.viewer.hasProfile && (
         <ClassPicker roomId={room.id} classes={room.classes} accessCode={code} />
       )}

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAbandonRoom } from './api';
 import { roomErrorMessage } from './room-error-messages';
 
-/** Placeholder for the adventure plus the abandon-room action. */
+/** The abandon-room action. */
 export function AbandonSection({ roomId }: { roomId: string }) {
   const router = useRouter();
   const abandon = useAbandonRoom(roomId);
@@ -20,7 +20,6 @@ export function AbandonSection({ roomId }: { roomId: string }) {
 
   return (
     <section className="space-y-3">
-      <p className="text-sm text-gray-600">A aventura começa na próxima fase.</p>
       {abandon.isError && (
         <p role="alert" className="text-sm text-red-700">
           {roomErrorMessage(abandon.error, 'Erro ao abandonar a sala.')}

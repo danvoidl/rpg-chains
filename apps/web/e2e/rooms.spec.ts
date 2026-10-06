@@ -40,7 +40,7 @@ test('private room: join by code, pick a class, live updates, master transfer an
   await page2.getByRole('button', { name: 'Entrar' }).click();
   await expect(page2.getByRole('heading', { name: 'Sala dos Correntes' })).toBeVisible();
   await page2.getByRole('button', { name: 'Escolher Guardião' }).click();
-  await expect(page2.getByText('A aventura começa na próxima fase.')).toBeVisible();
+  await expect(page2.getByRole('button', { name: 'Abandonar sala' })).toBeVisible();
 
   // The master sees the player and class without reloading, and the player as online.
   const playerRow = page.getByRole('listitem').filter({ hasText: /E2E Author.*Guardião/ });

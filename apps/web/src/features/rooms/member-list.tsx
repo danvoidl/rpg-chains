@@ -22,6 +22,17 @@ export function MemberList({ members, onlineUserIds }: MemberListProps) {
             <span className="text-sm text-gray-500">
               {member.profile ? member.profile.className : 'escolhendo classe…'}
             </span>
+            {member.profile && (
+              <span className="text-xs text-gray-500">
+                Vida {member.profile.currentHp}/{member.profile.maxHp} · Energia{' '}
+                {member.profile.currentEnergy}/{member.profile.maxEnergy}
+              </span>
+            )}
+            {member.profile?.downed && (
+              <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+                caído
+              </span>
+            )}
             {member.isMaster && (
               <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
                 Mestre

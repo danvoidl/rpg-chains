@@ -16,6 +16,7 @@ export async function createVillain(
   campaignId: string,
   name: string,
   withImage: boolean,
+  hp = 120,
 ) {
   await openTab(page, campaignId, 'villains', 'Vilões');
   await page.getByLabel('Nome', { exact: true }).fill(name);
@@ -23,7 +24,7 @@ export async function createVillain(
     await page.getByLabel('Imagem').setInputFiles(path.join(here, 'assets/villain.png'));
     await expect(page.getByRole('img', { name: 'Imagem' })).toBeVisible();
   }
-  await page.getByLabel('Vida').fill('120');
+  await page.getByLabel('Vida').fill(String(hp));
   await page.getByLabel('Força').fill('5');
   await page.getByLabel('Destreza').fill('3');
   await page.getByLabel('Inteligência').fill('2');
@@ -76,10 +77,11 @@ export async function importDefaultKit(page: Page, campaignId: string) {
 
 /**
  * A publishable campaign body: one villain, one objective question and a chapter graph
- * Narrativa (entry) → Batalha → Chefe, saved. Classes are up to the caller.
+ * Narrativa (entry) → Batalha → Chefe, saved. Classes are up to the caller; `villainHp` makes the
+ * villain quick to beat in battle flows.
  */
-export async function buildPublishableChapter(page: Page, campaignId: string) {
-  await createVillain(page, campaignId, 'Guardião das Correntes', true);
+export async function buildPublishableChapter(page: Page, campaignId: string, villainHp = 120) {
+  await createVillain(page, campaignId, 'Guardião das Correntes', true, villainHp);
   await createObjectiveQuestion(page, campaignId, 'Quanto é 2 + 2?');
 
   await openTab(page, campaignId, 'chapters', 'Capítulos');

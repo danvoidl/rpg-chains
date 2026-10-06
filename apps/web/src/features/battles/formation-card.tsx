@@ -1,0 +1,110 @@
+'use client';
+
+import Link from 'next/link';
+import type { BattleSummary } from '@rpg-chains/shared-types';
+import { useCancelBattle, useJoinFormation, useLeaveFormation, useStartBattle } from './api';
+import { battleErrorMessage } from './battle-error-messages';
+
+interface FormationCardProps {
+  battle: BattleSummary;
+  roomId: string;
+  userId: string;
+  isMaster: boolean;
+  /** The viewer has a profile that could join. */
+  canFight: boolean;
+}
+
+const buttonClass =
+  'rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50';
+
+/** A battle of the room: who is in, and what the viewer can do with it. */
+export function FormationCard({ battle, roomId, userId, isMaster, canFight }: FormationCardProps) {
+  const join = useJoinFormation();
+  const leave = useLeaveFormation();
+  const start = useStartBattle();
+  const cancel = useCancelBattle();
+  const error = [join, leave, start, cancel].find((m) => m.isError)?.error;
+  const busy = [join, leave, start, cancel].some((m) => m.isPending);
+
+  const inIt = battle.participants.some((p) => p.userId === userId);
+  const full =
+    battle.participantLimit !== null && battle.participants.length >= battle.participantLimit;
+  const forming = battle.status === 'forming';
+  const soleParticipant = inIt && battle.participants.length === 1;
+  const title = battle.nodeTitle || (battle.nodeType === 'boss' ? 'Chefe' : 'Batalha');
+
+  return (
+    <li aria-label={title} className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-medium text-gray-900">{title}</span>
+        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+          {forming ? 'em formação' : 'em andamento'}
+        </span>
+      </div>
+      <p className="text-sm text-gray-600">
+        {battle.participants.map((p) => p.name).join(', ')}
+        {battle.participantLimit !== null &&
+          ` (${battle.participants.length}/${battle.participantLimit})`}
+      </p>
+      {error != null && (
+        <p role="alert" className="text-sm text-red-700">
+          {battleErrorMessage(error, 'Erro ao atualizar a batalha.')}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {forming && !inIt && canFight && !full && (
+          <button
+            type="button"
+            className={buttonClass}
+            disabled={busy}
+            onClick={() => join.mutate(battle.battleId)}
+          >
+            Entrar
+          </button>
+        )}
+        {forming && inIt && (
+          <>
+            <button
+              type="button"
+              className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+              disabled={busy}
+              onClick={() => start.mutate(battle.battleId)}
+            >
+              Iniciar batalha
+            </button>
+            <button
+              type="button"
+              className={buttonClass}
+              disabled={busy}
+              onClick={() => leave.mutate(battle.battleId)}
+            >
+              Sair da formação
+            </button>
+          </>
+        )}
+        {!forming && (
+          <Link
+            href={`/rooms/${roomId}/battles/${battle.battleId}`}
+            className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700"
+          >
+            {inIt ? 'Ir para a batalha' : 'Assistir'}
+          </Link>
+        )}
+        {(isMaster || (!forming && soleParticipant)) && (
+          <button
+            type="button"
+            className={buttonClass}
+            disabled={busy}
+            onClick={() => {
+              if (window.confirm('Cancelar a batalha? Nada dela será guardado.')) {
+                cancel.mutate(battle.battleId);
+              }
+            }}
+          >
+            Cancelar
+          </button>
+        )}
+      </div>
+    </li>
+  );
+}

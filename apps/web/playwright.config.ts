@@ -42,6 +42,8 @@ export default defineConfig({
         PORT: String(API_PORT),
         BETTER_AUTH_URL: apiUrl,
         WEB_ORIGIN: webUrl,
+        // Same rolls every run: initiative, enemy targets and the question order are fixed.
+        BATTLE_SEED: '1',
       },
     },
     {
