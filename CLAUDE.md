@@ -110,9 +110,12 @@ does **not** lock forever: it tracks the latest published version and rolls forw
 which keeps replay deterministic), so live rooms get new chapters and fixes without losing
 progress. Treat "publish" as two gates, not a dump: a **validation gate** (an invalid draft must
 fail to publish) and, from the second publish on, a **compatibility gate** — breaking changes
-(deleting referenced content, or changing a class's base stats) are refused; only additive changes
-and non-breaking corrections publish (taxonomy in spec §2.2.1). The battle engine and test
-fixtures read snapshots, never draft tables.
+(deleting referenced content, changing a class's base stats or an item's kind) are refused;
+only additive changes and non-breaking corrections publish (taxonomy in spec §2.2.1). Because
+the gate compares versions **by id**, every draft write must keep ids stable — nested entities
+are upserted by id (e.g. a class `PUT` updates its skills in place), never deleted and
+recreated. Out-of-band balancing values are non-blocking `draftWarnings`; only `validateDraft`
+issues block a publish. The battle engine and test fixtures read snapshots, never draft tables.
 
 **Polymorphism is jsonb + Zod discriminated unions, not table-per-type.** Nodes (battle/shop/
 campfire/narrative/boss) and the 13 effect types carry their type-specific params in `jsonb`
@@ -231,3 +234,10 @@ not duplicate it here; drop notes made obsolete by the current setup.**
   to Sonnet subagents when `agy` fails.
 - **Server `pnpm dev` did not load `.env`** (`config.ts` parses `process.env`; nothing loaded the
   file). → `tsx watch --env-file=.env`; tests load it via `test/test-database-url.ts`.
+
+### 2026-10-06 (Fase 1b classes)
+
+- **react-hook-form `field.onChange(obj)` drops any object with a `target` key** — it treats it as
+  a DOM event and stores `obj.target.value` (an `Effect` has `target: 'self'` → `undefined`).
+  → For object values with a `target` field, write with `setValue(name, obj)` instead (see
+  `item-form.tsx`, `skill-fields.tsx`). Only an e2e that edits the value catches it.
