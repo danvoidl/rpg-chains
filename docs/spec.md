@@ -87,13 +87,19 @@ Existem dois tipos de pergunta. As **objetivas** são de múltipla escolha e val
 
 Como há um só mestre e o grupo pode se dividir em ramos simultâneos, perguntas abertas ficam restritas a batalhas de caminho único e a chefes. Ramos paralelos usam obrigatoriamente perguntas objetivas, de modo que várias batalhas possam correr ao mesmo tempo sem depender da atenção do mestre. O editor de campanha valida essa regra e avisa o criador quando ele configurar uma pergunta aberta num nó que pertence a um ramo paralelo.
 
-Como só o mestre julga perguntas abertas, **uma batalha que tem pergunta aberta só pode começar com o mestre ativo (conectado) na sala**. Batalhas só com perguntas objetivas não dependem dele e podem ser jogadas na sua ausência. O que acontece quando o mestre cai no meio de uma batalha que precisa dele ainda está em aberto (seção 9).
+Como só o mestre julga perguntas abertas, **uma batalha que tem pergunta aberta só pode começar com o mestre ativo (conectado) na sala**. Batalhas só com perguntas objetivas não dependem dele e podem ser jogadas na sua ausência.
+
+**O mestre como jogador.** O mestre pode ter um Perfil de Campanha, mas **não entra como combatente numa batalha que tenha pergunta aberta** — ali ele é o juiz, e não pode julgar a própria resposta. Em batalhas só com perguntas objetivas ele luta como qualquer jogador. Enquanto houver uma batalha com pergunta aberta em andamento, o papel de mestre não pode ser transferido.
+
+**Queda do mestre no meio de uma batalha com pergunta aberta.** A batalha não é perdida: enquanto o mestre estiver ausente, o turno do grupo passa a usar as perguntas objetivas daquele nó, se houver. Se o nó só tiver perguntas abertas, a batalha **pausa** no início do turno do grupo — inimigos também não agem — até o mestre voltar ou a batalha ser cancelada. Uma resposta aberta já enviada continua aguardando o julgamento.
 
 ### 3.3 Rotação da campainha
 
 Um jogador que agiu numa rodada fica bloqueado do sinal na rodada seguinte. Isso garante rotação sem impedir que o grupo escolha quem age em momentos críticos. Jogadores mortos ou desconectados saem da lista de elegíveis; se em algum momento não restar nenhum jogador elegível, o bloqueio é ignorado e todos os vivos voltam a poder responder.
 
-Habilidades que não causam dano — provocar, curar, reerguer, aplicar buff — contam como a ação da rodada da mesma forma que um ataque, e portanto também bloqueiam quem as usou na rodada seguinte.
+Habilidades que não causam dano — provocar, curar, reerguer, aplicar buff — contam como a ação da rodada da mesma forma que um ataque, e portanto também bloqueiam quem as usou na rodada seguinte. Errar a resposta não é agir: quem erra não fica bloqueado.
+
+**Tempo limite.** Cada etapa do turno do grupo tem um prazo, definido na configuração da plataforma: se ninguém tocar no sinal, se quem tocou não responder ou se quem acertou não escolher a ação a tempo, o turno do grupo é perdido e a vez passa ao próximo inimigo. O julgamento do mestre não tem prazo. Isso impede que um jogador ausente congele a batalha.
 
 ### 3.4 Ações disponíveis
 
@@ -103,7 +109,7 @@ Buffs e curas consomem a ação normalmente. Isso é intencional: um buff de dan
 
 ### 3.5 Ataques inimigos
 
-Cada vilão tem uma lista de ataques configurável pelo criador da campanha, contendo dano base, tipo de alvo (único ou área) e frequência ou cooldown. Ataques de alvo único selecionam aleatoriamente entre os jogadores vivos da batalha; ataques em área atingem todos.
+Cada vilão tem uma lista de ataques configurável pelo criador da campanha, contendo dano base, tipo de alvo (único ou área) e frequência ou cooldown. Ataques de alvo único selecionam aleatoriamente entre os jogadores vivos da batalha; ataques em área atingem todos. A cada turno, o vilão sorteia um ataque entre os que estão fora de cooldown (se todos estiverem, usa o de menor cooldown restante); o cooldown de um ataque de vilão é contado nos turnos daquele vilão.
 
 ### 3.6 Provocação
 
@@ -115,7 +121,9 @@ _Parâmetro de ajuste: se em testes a provocação se mostrar fraca diante de fi
 
 Um jogador com HP zerado fica caído: não age, não responde ao sinal e não pode ser alvo. O estado de caído é gravado no Perfil de Campanha, não na sessão — sair e reconectar não ressuscita ninguém.
 
-Habilidades com efeito de reerguer devolvem aliados caídos ao combate, gastando a ação do grupo — cabe ao autor da campanha decidir quais classes têm acesso a elas, e se alguma tem. Fora de combate, nós de fogueira reerguem todos os caídos e restauram HP e energia.
+Habilidades com efeito de reerguer devolvem aliados caídos ao combate, gastando a ação do grupo — cabe ao autor da campanha decidir quais classes têm acesso a elas, e se alguma tem. Fora de combate, nós de fogueira reerguem todos os caídos e restauram HP e energia. Ao cair, o personagem perde todos os efeitos ativos (cooldowns são mantidos); ao ser reerguido, volta com a porcentagem de vida definida pela habilidade. Cura comum não afeta caídos.
+
+HP, energia e o estado de caído **persistem entre batalhas**: ao fim de cada batalha, vitória ou derrota, os valores de cada participante — inclusive de quem saiu por desconexão, no momento da saída — são gravados no Perfil de Campanha. Quem está caído não pode entrar numa batalha.
 
 Se todos os jogadores de uma batalha caírem, a batalha é perdida e o grupo é devolvido automaticamente à última fogueira ativada, sem necessidade de percorrer o caminho. O snapshot da fogueira restaura **apenas o estado de combate**: HP, energia, caídos reerguidos e reset dos nós de batalha do capítulo atual. Nível, experiência, equipamentos e inventário nunca regridem. O custo da derrota é o tempo e uma fração do ouro da bolsa.
 
@@ -127,13 +135,17 @@ Se todos os jogadores de uma batalha caírem, a batalha é perdida e o grupo é 
 
 Os atributos investíveis são três, e a defesa passa a ser um valor derivado — vinda majoritariamente de equipamento, com contribuição menor de Força. Isso evita que investir em defesa seja sempre a escolha ótima.
 
-| Atributo         | Função                                           | Ganho por ponto                                 |
-| ---------------- | ------------------------------------------------ | ----------------------------------------------- |
-| **Força**        | Requisito de armas e armaduras pesadas           | +4 vida, +2 defesa, +1,5 dano com armas pesadas |
-| **Destreza**     | Requisito de armas e armaduras leves             | +2 vida, +1 defesa, +2 dano com armas leves     |
-| **Inteligência** | Requisito de habilidades e capacidade de energia | +3 energia, +2 poder de habilidade              |
+| Atributo         | Função                                           | Ganho por ponto    |
+| ---------------- | ------------------------------------------------ | ------------------ |
+| **Força**        | Requisito de armas e armaduras pesadas           | +4 vida, +2 defesa |
+| **Destreza**     | Requisito de armas e armaduras leves             | +2 vida, +1 defesa |
+| **Inteligência** | Requisito de habilidades e capacidade de energia | +3 energia         |
 
 Cada equipamento exige um valor mínimo de um ou dois atributos para ser equipado, o que direciona a construção do personagem sem travá-la.
+
+O dano que um atributo acrescenta **não é um ganho fixo do atributo**: ele vem da escala declarada em cada arma (seção 4.2) e em cada habilidade de magnitude escalável (seção 5.3). Do mesmo modo, a inteligência não tem um "poder de habilidade" implícito — uma habilidade só cresce com a inteligência se o autor a declarar escalando com ela, o que deixa visível no editor exatamente quanto cada habilidade escala.
+
+A defesa do personagem é `soma da defesa do equipamento + Força × 2 + Destreza × 1`, calculada com os atributos já modificados por buffs e debuffs, e depois ajustada pelos modificadores de defesa. Buffs de atributo afetam dano e defesa, mas **não** vida e energia máximas, que ficam fixas durante a batalha (só a redução de vida máxima mexe nesse teto).
 
 ### 4.2 Fórmula de dano
 
@@ -143,9 +155,11 @@ Redução%  = Defesa / (Defesa + 120)
 DanoFinal = DanoBruto × (1 − Redução%)
 ```
 
+A ordem completa da resolução é: dano bruto → modificadores de dano de quem ataca, `(bruto + saldoFixo) × (1 + saldoPercentual)` (seção 5.5) → redução pela defesa efetiva do alvo → absorção pelo escudo → vida. O resultado é arredondado para baixo, com **mínimo de 1** quando o dano bruto é positivo. Habilidades de dano passam pela mesma cadeia, inclusive pelos buffs de dano. O dano é determinístico: não há crítico nem variação aleatória.
+
 A curva de redução tem retorno decrescente natural e nunca atinge 100%, dispensando teto artificial. Para referência: 60 de defesa reduz cerca de 33% do dano, 120 reduz 50% e 240 reduz 67%.
 
-Vilões usam a mesma fórmula, com atributos próprios definidos pelo criador da campanha.
+Vilões usam a mesma redução por defesa. O dano bruto de um ataque de vilão é o **dano base daquele ataque**; força, destreza e inteligência do vilão não entram no cálculo por enquanto, e só a defesa dele é lida. Se o playtest pedir, ataques de vilão podem ganhar atributo e escala opcionais — uma mudança aditiva e compatível.
 
 ### 4.3 Vida e energia
 
@@ -217,7 +231,7 @@ O percentual é um **multiplicador vivo**, não um valor congelado: `+10% de dan
 | Tipo                       | O que faz                                                            | Parâmetros relevantes                  |
 | -------------------------- | -------------------------------------------------------------------- | -------------------------------------- |
 | **Dano**                   | Causa dano usando a fórmula da seção 4.2                             | Magnitude, atributo de escala, alvo    |
-| **Dano contínuo**          | Aplica dano no início do turno do alvo por N rodadas                 | Magnitude por rodada, duração          |
+| **Dano contínuo**          | Aplica dano ao fim de cada rodada do grupo, por N rodadas            | Magnitude por rodada, duração          |
 | **Cura**                   | Restaura vida                                                        | Magnitude, alvo                        |
 | **Cura contínua**          | Restaura vida por rodada durante N rodadas                           | Magnitude por rodada, duração          |
 | **Reerguer**               | Devolve um aliado caído ao combate                                   | Percentual de vida recuperada          |
@@ -239,6 +253,10 @@ Cada atributo modificável é resolvido em duas camadas, sempre na mesma ordem: 
 O empilhamento tem **duas políticas**, por tipo de efeito. **Modificadores de atributo** (buff e debuff) **coexistem e somam**: cada aplicação é uma entrada independente, com sua própria duração, e o saldo (`netFlat`/`netPct`) é calculado no momento da leitura — três aliados aplicando +10% de dano resultam em +30%. Não há teto imposto pelo sistema; o autor controla o acúmulo pela magnitude, pelo custo de energia, pelo cooldown e pela duração das habilidades. **Todos os demais efeitos persistentes** — atordoar, redução de vida máxima, provocar, escudo, dano contínuo e cura contínua — **não somam**: uma nova aplicação sobre o mesmo alvo substitui a anterior e reinicia a duração.
 
 A assimetria é deliberada. Modificadores de atributo compõem-se de forma aditiva e previsível, e o único abuso possível — empilhar o mesmo buff — é problema de balanceamento que o autor resolve com os custos. Já os efeitos de controle e duração não têm esse freio: somar a duração de dois atordoamentos de aliados diferentes tornaria a batalha impossível (seção 5.6), e esse abuso viria da coordenação de várias fontes, não da magnitude de uma habilidade — algo que o autor não teria como conter. Para esses, o sistema garante o teto substituindo em vez de acumular.
+
+**Relógio dos efeitos.** Toda duração e todo cooldown de habilidade contam em **rodadas do grupo** — uma rodada é um turno do grupo. Ao fim de cada turno do grupo (ação executada, resposta errada ou tempo esgotado), os efeitos contínuos (dano e cura) aplicam um tique em todos os alvos, durações e cooldowns decrementam e os efeitos que chegam a zero expiram. Um relógio só faz a duração valer o mesmo independentemente do tamanho da fila de inimigos: um dano contínuo de 3 rodadas causa 3 tiques mesmo contra 3 vilões. Três efeitos contam outra coisa, por natureza: **atordoar** conta turnos perdidos do próprio alvo, **provocar** conta ataques inimigos redirecionados, e o cooldown dos **ataques de vilão** conta turnos daquele vilão (seção 3.5).
+
+O que `percent` significa em cada tipo de efeito está fixado em `docs/phase-1b-kit-draft.md`; em particular, dano percentual é uma porcentagem do dano bruto do ataque básico de quem lança.
 
 ### 5.6 Validação no editor
 
@@ -300,7 +318,4 @@ Recomendo um protótipo vertical logo após a Fase 0: uma campanha fixa, um cap�
 
 ## 9. Pendências em aberto
 
-As habilidades do kit padrão foram definidas em `docs/phase-1b-kit-draft.md`. Restam em aberto:
-
-- **O mestre joga?** A direção é o mestre controlar a sala, não jogar junto: julgar a própria resposta, ocupar vaga sem poder pegar o sinal e a morte do personagem-mestre são conflitos de um mestre-jogador. Falta decidir o que acontece com o personagem de quem recebe o papel de mestre (proposta: fica em pausa, mantém a vaga e volta se o papel for repassado) e se salas só com perguntas objetivas permitem um mestre-jogador.
-- **Queda do mestre no meio de uma batalha com pergunta aberta** (seção 3.2): pausar a batalha, ou seguir só com as perguntas objetivas do nó.
+As habilidades do kit padrão foram definidas em `docs/phase-1b-kit-draft.md`. O papel do mestre como jogador e a queda do mestre no meio de uma batalha com pergunta aberta foram decididos no plano da Fase 3 (`docs/phase-3-plan.md`) e estão na seção 3.2. Não há pendências de regra em aberto.

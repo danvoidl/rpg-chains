@@ -43,6 +43,7 @@ Prisma 7 (schema in `apps/server/prisma/schema.prisma`; connection URL + config 
 pnpm --filter @rpg-chains/server exec prisma migrate dev --name <name>
 pnpm --filter @rpg-chains/server exec prisma generate
 pnpm --filter @rpg-chains/server db:studio
+pnpm --filter @rpg-chains/server seed:playtest <email>   # Fase 3 playtest campaign for an existing account
 ```
 
 Destructive Prisma CLI actions (`migrate reset`, and `migrate dev` when it needs to reset)
@@ -69,11 +70,19 @@ the engine testable with plain JSON fixtures. Do not break it.
 **The battle engine is a pure fold over an event log.** It exposes two pure functions
 (`packages/battle-engine/src/decide.ts`, `evolve.ts`):
 
-- `decide(state, command) → { ok, events } | { ok: false, reason }` — **all combat rules**.
-- `evolve(state, event) → state` — the fold. `replay(initial, events)` folds a whole log.
+- `decide(state, command, content) → { ok, events } | { ok: false, reason }` — **all combat
+  rules**. `content` (`BattleContent`) is the immutable snapshot slice the battle started on,
+  answer keys included; only `decide` reads it.
+- `evolve(state, event) → state` — the fold. `replay(emptyBattle(id), events)` folds a whole log.
+  **`evolve` never reads content**: every event carries resolved numbers (final damage, the applied
+  effect), so a log replays on its own and the client folds the same events.
 
 The server is dumb transport: it validates a Command, calls `decide`, persists/emits the
-resulting Events, and applies `evolve`. When adding combat logic, put rules in `decide` and
+resulting Events, and applies `evolve`. **Clients only ever get `toPublicState`/`toPublicEvent`
+(`public-view.ts`)**: no PRNG, no question deck, no answer key — the secrets live in
+`BattleState.secret` so the projection is one omit. The socket sends a `ClientIntent` without an
+actor; the server binds `profileId` from the session. The web folds the same events with
+`evolvePublic` (`client-fold.ts`) from a `battle:sync` — never a hand-written client reducer. When adding combat logic, put rules in `decide` and
 state transitions in `evolve`; never in the server.
 
 **Command vs Event is a hard boundary.** A Command is a client _intent_ (may be rejected); an
@@ -82,8 +91,12 @@ Event is a consummated _fact_ (folded, rendered, logged). Both are Zod schemas i
 rejects any whose token ≠ `state.turnToken` (stale/duplicate guard).
 
 **Determinism — IMPORTANT: no `Math.random()` in the engine, ever.** All randomness comes from a seeded PRNG
-(`prng.ts`) whose state (`{ seed, cursor }`) lives **inside** `BattleState` and is threaded
-purely. The seed enters via the `BattleStarted` event. Replaying a log reproduces every roll
+(`prng.ts`) whose state (`{ seed, cursor }`) lives **inside** `BattleState` (`state.secret.prng`)
+and is threaded purely; `decide` records each advance as a `PrngAdvanced` event. Inside one
+`decide` call, rules go through a `DecideContext` (`decide-context.ts`): every emitted event is
+folded at once (later rules see earlier hits) and the PRNG is written back once, at the end. Never
+read `state.secret.prng` mid-call — draw through the context. `replay.test.ts` (200 seeds, a
+deterministic robot) is the guard: replay = live state, same seed = same log, cursor advances. The seed enters via the `BattleStarted` event. Replaying a log reproduces every roll
 exactly — keep it that way.
 
 **Effect stacking has two policies** (`stacking.ts`, spec §5.5). Attribute modifiers
@@ -152,7 +165,15 @@ emits `app.roomEvents.changed(roomId)` after commit; the lobby socket carries pr
 change signal, nothing else (`shared-types/src/room-realtime.ts`). Writes that read-then-write
 room state (class slots, close) run in a transaction that first calls `lockRoom` (`SELECT … FOR
 UPDATE`) — the slot race test fails without it. A room rolls forward to the latest published
-version lazily, in `syncRoomVersion`, guarded by `hasActiveBattle` (Fase 3 fills that in).
+version lazily, in `syncRoomVersion`, guarded by `app.battles.hasActive` (a forming battle counts).
+
+**Battles: REST forms, the socket fights** (Fase 3). Forming/starting/cancelling are REST room
+mutations (`routes/battles.ts`); in-battle intents go over `realtime/battle-channel.ts` with an
+ack. All battle state is in `services/battle-registry.ts` (memory only), whose `apply` runs
+`decide` → append → `evolve` **with no `await` in between** — that is the per-battle lock; keep
+every registry check after a handler's last `await`. Timers, the channel broadcast and the profile
+write-back are registry listeners. The battles plugin must be registered **before** `realtime`: its
+`preClose` drops the battles first, so a shutdown is a crash (spec §3.7), not a mass `PlayerLeft`.
 
 **Auth is Better Auth** (`apps/server/src/auth.ts`) backed by the Prisma adapter; its `User`
 table doubles as the domain user account. Lucia is deprecated — do not reintroduce it. The
@@ -249,3 +270,21 @@ not duplicate it here; drop notes made obsolete by the current setup.**
   a DOM event and stores `obj.target.value` (an `Effect` has `target: 'self'` → `undefined`).
   → For object values with a `target` field, write with `setValue(name, obj)` instead (see
   `item-form.tsx`, `skill-fields.tsx`). Only an e2e that edits the value catches it.
+
+### 2026-10-06 (Fase 3 setup)
+
+- **Clean checkout: `pnpm install` does not generate the Prisma Client**, so the server build
+  fails with "no exported member 'PrismaClient'". → Run
+  `pnpm --filter @rpg-chains/server exec prisma generate` once after install (and after schema edits).
+- **An explicit `Promise<T[]>` return type on a Fastify handler broke Prisma's `findMany`
+  inference** (`row` became implicit `any`, TS7006, in `routes/catalog.ts`). → Leave the handler
+  unannotated and type the mapper instead: `rows.map((row): T => ({ … }))`.
+- **`pnpm add -D @rpg-chains/x@workspace:*` failed in zsh with "no matches found"** — the `*` is
+  globbed. → Quote workspace specs: `'@rpg-chains/x@workspace:*'`.
+
+### 2026-10-06 (Fase 3 M4)
+
+- **vitest and Next transpile without type-checking**, so a type error in a package (a public
+  event passed where `BattleEvent` was expected) passed the engine's tests and the e2e and only
+  failed `tsc` in the full turbo run. → Before calling a package green, run its `build`/`typecheck`,
+  not just its tests.
