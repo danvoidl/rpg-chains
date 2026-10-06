@@ -76,6 +76,12 @@ export default async function campaignsRoutes(app: FastifyInstance): Promise<voi
     '/:campaignId',
     { preHandler: [app.authenticate, app.requireCampaignOwner] },
     async (request, reply) => {
+      // Rooms of other players may be playing it; the author cannot see them (spec §2.2), so
+      // deleting the campaign must never take them down.
+      const rooms = await app.prisma.room.count({
+        where: { campaignId: request.params.campaignId },
+      });
+      if (rooms > 0) return reply.code(409).send({ error: 'campaign_has_rooms' });
       await app.prisma.campaign.delete({
         where: { id: request.params.campaignId },
       });

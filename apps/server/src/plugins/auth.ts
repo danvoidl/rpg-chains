@@ -1,6 +1,7 @@
 import fp from 'fastify-plugin';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { auth } from '../auth.js';
+import { toHeaders } from '../auth-headers.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -10,15 +11,6 @@ declare module 'fastify' {
   interface FastifyRequest {
     user: { id: string } | null;
   }
-}
-
-/** Build a Web `Headers` object from Fastify's raw headers. */
-function toHeaders(raw: FastifyRequest['headers']): Headers {
-  const headers = new Headers();
-  for (const [key, value] of Object.entries(raw)) {
-    if (value) headers.append(key, Array.isArray(value) ? value.join(',') : value.toString());
-  }
-  return headers;
 }
 
 /**
