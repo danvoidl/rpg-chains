@@ -6,6 +6,10 @@ export * from './accounts.js';
 export * from './snapshot.js';
 export * from './graph.js';
 
+// Authoring (draft + REST write payloads)
+export * from './draft.js';
+export * from './authoring-inputs.js';
+
 // Real-time contracts
 export * from './battle-state.js';
 export * from './commands.js';

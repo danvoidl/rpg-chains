@@ -1,5 +1,14 @@
 import type { Chapter } from './content.js';
 
+/**
+ * The structural slice of a chapter that graph analysis needs. Both a snapshot `Chapter` and
+ * a draft chapter (with its nullable entry/boss resolved) satisfy it, so the editor and the
+ * publish gate share one implementation.
+ */
+export type GraphShape = Pick<Chapter, 'entryNodeId' | 'bossNodeId' | 'edges'> & {
+  nodes: ReadonlyArray<{ id: string }>;
+};
+
 /** Lightweight directed-graph view of a chapter for reachability analysis. */
 interface ChapterGraph {
   entryId: string;
@@ -8,7 +17,7 @@ interface ChapterGraph {
   adjacency: Map<string, string[]>;
 }
 
-function toGraph(chapter: Chapter): ChapterGraph {
+function toGraph(chapter: GraphShape): ChapterGraph {
   const nodeIds = new Set(chapter.nodes.map((n) => n.id));
   const adjacency = new Map<string, string[]>();
   for (const id of nodeIds) adjacency.set(id, []);
@@ -18,14 +27,14 @@ function toGraph(chapter: Chapter): ChapterGraph {
   return { entryId: chapter.entryNodeId, bossId: chapter.bossNodeId, nodeIds, adjacency };
 }
 
-/** Whether `boss` is reachable from `entry` while skipping every node in `blocked`. */
-function reachableAvoiding(graph: ChapterGraph, blocked: Set<string>): boolean {
-  if (blocked.has(graph.entryId)) return false;
-  const seen = new Set<string>([graph.entryId]);
+/** Every node reachable from `entry` while skipping every node in `blocked`. */
+function reachableSet(graph: ChapterGraph, blocked: Set<string>): Set<string> {
+  const seen = new Set<string>();
+  if (blocked.has(graph.entryId) || !graph.nodeIds.has(graph.entryId)) return seen;
+  seen.add(graph.entryId);
   const stack = [graph.entryId];
   while (stack.length > 0) {
     const current = stack.pop()!;
-    if (current === graph.bossId) return true;
     for (const next of graph.adjacency.get(current) ?? []) {
       if (!seen.has(next) && !blocked.has(next)) {
         seen.add(next);
@@ -33,7 +42,12 @@ function reachableAvoiding(graph: ChapterGraph, blocked: Set<string>): boolean {
       }
     }
   }
-  return false;
+  return seen;
+}
+
+/** Ids of every node reachable from the chapter's entry (the entry included, if it exists). */
+export function reachableNodeIds(chapter: GraphShape): Set<string> {
+  return reachableSet(toGraph(chapter), new Set());
 }
 
 /**
@@ -41,9 +55,9 @@ function reachableAvoiding(graph: ChapterGraph, blocked: Set<string>): boolean {
  * removing it disconnects the boss from the entry. Only single-path battles (and bosses)
  * may host open questions (spec §3.2); parallel-branch nodes must use objective ones.
  */
-export function isSinglePathNode(chapter: Chapter, nodeId: string): boolean {
+export function isSinglePathNode(chapter: GraphShape, nodeId: string): boolean {
   const graph = toGraph(chapter);
   if (nodeId === graph.entryId || nodeId === graph.bossId) return true;
   if (!graph.nodeIds.has(nodeId)) return false;
-  return !reachableAvoiding(graph, new Set([nodeId]));
+  return !reachableSet(graph, new Set([nodeId])).has(graph.bossId);
 }

@@ -59,20 +59,30 @@ export type Item = z.infer<typeof ItemSchema>;
 /* -------------------------------------------------------------- questions ---- */
 
 /** Combat challenge (spec §3.2). Objective = auto-validated; open = master-judged. */
-export const QuestionSchema = z.discriminatedUnion('type', [
-  z.object({
-    type: z.literal('objective'),
-    id: IdSchema,
-    prompt: z.string().min(1),
-    options: z.array(z.string().min(1)).min(2),
-    correctIndex: z.number().int().nonnegative(),
-  }),
-  z.object({
-    type: z.literal('open'),
-    id: IdSchema,
-    prompt: z.string().min(1),
-  }),
-]);
+export const QuestionSchema = z
+  .discriminatedUnion('type', [
+    z.object({
+      type: z.literal('objective'),
+      id: IdSchema,
+      prompt: z.string().min(1),
+      options: z.array(z.string().min(1)).min(2),
+      correctIndex: z.number().int().nonnegative(),
+    }),
+    z.object({
+      type: z.literal('open'),
+      id: IdSchema,
+      prompt: z.string().min(1),
+    }),
+  ])
+  .superRefine((question, ctx) => {
+    if (question.type === 'objective' && question.correctIndex >= question.options.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'correctIndex must point to one of the options',
+        path: ['correctIndex'],
+      });
+    }
+  });
 export type Question = z.infer<typeof QuestionSchema>;
 
 /* ---------------------------------------------------------------- villain ---- */
@@ -135,13 +145,34 @@ export type CharacterClass = z.infer<typeof CharacterClassSchema>;
 
 /* ------------------------------------------------------------------ nodes ---- */
 
+/**
+ * Node position in chapter "world" coordinates: absolute pixels, origin at the top-left. When a
+ * chapter has a background map, these are pixels of that map (see `ChapterBackgroundSchema`), so
+ * positions must never be normalized or auto-laid-out.
+ */
 const Position = z.object({ x: z.number(), y: z.number() });
+
+/** Author-facing node name, shown in the editor and the player map. Empty = derived label. */
+const NodeTitle = z.string().default('');
+
+/**
+ * Optional map image behind a chapter graph (not rendered yet — prepared contract). `width` and
+ * `height` define the logical world size the image is scaled to, so replacing the image with a
+ * different resolution never moves the nodes placed on it.
+ */
+export const ChapterBackgroundSchema = z.object({
+  imageUrl: z.string().url(),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+});
+export type ChapterBackground = z.infer<typeof ChapterBackgroundSchema>;
 
 /** Graph node in a chapter (spec §2.3). Discriminated by `type`. */
 export const ChapterNodeSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('battle'),
     id: IdSchema,
+    title: NodeTitle,
     prerequisites: z.array(IdSchema).default([]),
     mandatory: z.boolean(),
     recommendedLevel: z.number().int().positive(),
@@ -153,6 +184,7 @@ export const ChapterNodeSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('boss'),
     id: IdSchema,
+    title: NodeTitle,
     prerequisites: z.array(IdSchema).default([]),
     mandatory: z.literal(true),
     recommendedLevel: z.number().int().positive(),
@@ -163,6 +195,7 @@ export const ChapterNodeSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('shop'),
     id: IdSchema,
+    title: NodeTitle,
     prerequisites: z.array(IdSchema).default([]),
     mandatory: z.boolean(),
     position: Position,
@@ -171,6 +204,7 @@ export const ChapterNodeSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('campfire'),
     id: IdSchema,
+    title: NodeTitle,
     prerequisites: z.array(IdSchema).default([]),
     mandatory: z.boolean(),
     position: Position,
@@ -178,6 +212,7 @@ export const ChapterNodeSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('narrative'),
     id: IdSchema,
+    title: NodeTitle,
     prerequisites: z.array(IdSchema).default([]),
     mandatory: z.boolean(),
     position: Position,
@@ -199,6 +234,7 @@ export const ChapterSchema = z.object({
   underConstruction: z.boolean().default(false),
   entryNodeId: IdSchema,
   bossNodeId: IdSchema,
+  background: ChapterBackgroundSchema.optional(),
   nodes: z.array(ChapterNodeSchema),
   edges: z.array(EdgeSchema),
 });
