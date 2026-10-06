@@ -1,0 +1,105 @@
+{
+  "id": "camp-1",
+  "name": "As Sete Correntes",
+  "description": "Example campaign",
+  "chapters": [
+    {
+      "id": "ch-1",
+      "name": "The First Chain",
+      "order": 0,
+      "underConstruction": false,
+      "entryNodeId": "n-entry",
+      "bossNodeId": "n-boss",
+      "nodes": [
+        {
+          "id": "n-entry",
+          "type": "narrative",
+          "mandatory": true,
+          "recommendedLevel": null,
+          "participantLimit": null,
+          "position": { "x": 0, "y": 0 },
+          "prerequisites": [],
+          "config": { "text": "It begins.", "videoUrl": null }
+        },
+        {
+          "id": "n-a",
+          "title": "Gate battle",
+          "type": "battle",
+          "mandatory": true,
+          "recommendedLevel": 1,
+          "participantLimit": 3,
+          "position": { "x": -100, "y": 100 },
+          "prerequisites": ["n-entry"],
+          "config": { "villainIds": ["v-1"], "questionIds": ["q-obj"] }
+        },
+        {
+          "id": "n-b",
+          "type": "campfire",
+          "mandatory": false,
+          "recommendedLevel": null,
+          "participantLimit": null,
+          "position": { "x": 100, "y": 100 },
+          "prerequisites": [],
+          "config": {}
+        },
+        {
+          "id": "n-boss",
+          "type": "boss",
+          "mandatory": true,
+          "recommendedLevel": 2,
+          "participantLimit": null,
+          "position": { "x": 0, "y": 200 },
+          "prerequisites": ["n-a"],
+          "config": { "villainIds": ["v-1"], "questionIds": ["q-open", "q-obj"] }
+        }
+      ],
+      "edges": [
+        { "from": "n-entry", "to": "n-a" },
+        { "from": "n-entry", "to": "n-b" },
+        { "from": "n-a", "to": "n-boss" },
+        { "from": "n-b", "to": "n-boss" }
+      ]
+    },
+    {
+      "id": "ch-2",
+      "name": "Under construction",
+      "order": 1,
+      "underConstruction": true,
+      "entryNodeId": null,
+      "bossNodeId": null,
+      "nodes": [],
+      "edges": []
+    }
+  ],
+  "villains": [
+    {
+      "id": "v-1",
+      "name": "Chain Warden",
+      "imageUrl": null,
+      "hp": 120,
+      "strength": 5,
+      "dexterity": 3,
+      "intelligence": 2,
+      "defense": 4,
+      "attacks": [
+        {
+          "id": "atk-1",
+          "name": "Lash",
+          "baseDamage": 10,
+          "targetType": "single",
+          "cooldownRounds": 0
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q-obj",
+      "type": "objective",
+      "prompt": "2 + 2?",
+      "options": ["3", "4"],
+      "correctIndex": 1
+    },
+    { "id": "q-open", "type": "open", "prompt": "Name a chain." }
+  ]
+}
