@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { IdSchema } from './common.js';
 import { RoomStatusSchema } from './accounts.js';
+import { BattleNodeOptionSchema, BattleSummarySchema } from './battles.js';
 
 /**
  * Room REST contracts (Fase 2, spec §7): write payloads validated by the server and reused by the
@@ -80,6 +81,11 @@ export const RoomMemberSchema = z.object({
       className: z.string(),
       level: z.number().int().positive(),
       downed: z.boolean(),
+      /** Combat resources between battles (written back when a battle ends, spec §3.7). */
+      currentHp: z.number().int().nonnegative(),
+      maxHp: z.number().int().positive(),
+      currentEnergy: z.number().int().nonnegative(),
+      maxEnergy: z.number().int().nonnegative(),
     })
     .nullable(),
 });
@@ -112,6 +118,10 @@ export const RoomDetailSchema = z.object({
   master: PersonSchema,
   members: z.array(RoomMemberSchema),
   classes: z.array(RoomClassSlotSchema),
+  /** Battles forming or running in the room (Fase 3). */
+  battles: z.array(BattleSummarySchema),
+  /** Nodes of the current version a formation can open on (provisional list until the map). */
+  battleNodes: z.array(BattleNodeOptionSchema),
   /** The caller's own standing in the room. */
   viewer: z.object({ isMaster: z.boolean(), hasProfile: z.boolean() }),
 });

@@ -14,7 +14,12 @@ export * from './room-realtime.js';
 export * from './draft.js';
 export * from './authoring-inputs.js';
 
-// Real-time contracts
+// Battles (content, state, commands, events, REST + battle realtime)
+export * from './battle-content.js';
+export * from './battle-effects.js';
+export * from './battle-question.js';
 export * from './battle-state.js';
 export * from './commands.js';
 export * from './events.js';
+export * from './battles.js';
+export * from './battle-realtime.js';

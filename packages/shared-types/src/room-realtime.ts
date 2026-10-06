@@ -16,7 +16,8 @@ export const RoomLeaveMessageSchema = z.object({ roomId: IdSchema });
 export type RoomLeaveMessage = z.infer<typeof RoomLeaveMessageSchema>;
 
 /** Acknowledgement of `room:join`. */
-export type RoomJoinAck = { ok: true } | { ok: false; error: 'invalid_message' | 'not_a_member' };
+export type RoomJoinAck =
+  { ok: true } | { ok: false; error: 'invalid_message' | 'not_a_member' | 'room_closed' };
 
 /** Server → client: who is online in the room right now (several tabs count once). */
 export const RoomPresenceMessageSchema = z.object({
