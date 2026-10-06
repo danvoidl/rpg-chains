@@ -138,13 +138,21 @@ Postgres. There is deliberately no active-battle table. The concurrency unit is 
 keyed by `battleId` — not the room.
 
 **Server structure = Fastify plugins + `buildApp()`.** `server.ts` is entrypoint only (build
-app, attach Socket.IO, listen, graceful shutdown). `app.ts` exports `buildApp()` which
-registers everything and returns the instance _without listening_ — this is what lets contract
-tests drive it via `app.inject()` (spec §6). Cross-cutting concerns are decorators registered
-with `fastify-plugin` (`plugins/prisma.ts` → `app.prisma`; `plugins/auth.ts` → the
-`/api/auth/*` route + an `authenticate` preHandler that sets `req.user`). Feature routes are
-plugins under a prefix in `routes/` (register them in `buildApp`). Socket.IO lives in
+app, listen, graceful shutdown). `app.ts` exports `buildApp()` which registers everything —
+Socket.IO included — and returns the instance _without listening_: contract tests drive REST via
+`app.inject()` (spec §6) and sockets by listening on port 0. Cross-cutting concerns are
+decorators registered with `fastify-plugin` (`plugins/prisma.ts` → `app.prisma`;
+`plugins/auth.ts` → the `/api/auth/*` route + an `authenticate` preHandler that sets `req.user`;
+`plugins/realtime.ts` → `app.io` + `app.roomEvents`, session-checked handshake). Feature routes
+are plugins under a prefix in `routes/` (register them in `buildApp`); socket handlers live in
 `realtime/`. Do not put routes, auth, or handlers in `server.ts`.
+
+**Rooms: REST mutates, the socket only signals** (Fase 2). Every room write is a REST route that
+emits `app.roomEvents.changed(roomId)` after commit; the lobby socket carries presence and that
+change signal, nothing else (`shared-types/src/room-realtime.ts`). Writes that read-then-write
+room state (class slots, close) run in a transaction that first calls `lockRoom` (`SELECT … FOR
+UPDATE`) — the slot race test fails without it. A room rolls forward to the latest published
+version lazily, in `syncRoomVersion`, guarded by `hasActiveBattle` (Fase 3 fills that in).
 
 **Auth is Better Auth** (`apps/server/src/auth.ts`) backed by the Prisma adapter; its `User`
 table doubles as the domain user account. Lucia is deprecated — do not reintroduce it. The

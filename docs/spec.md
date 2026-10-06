@@ -68,7 +68,7 @@ Cada capítulo é um grafo direcionado em forma de árvore invertida: múltiplos
 
 Os nós de batalha respeitam um limite de participantes definido pelo criador. Salas de chefe não têm limite. Os jogadores escolhem livremente de qual nó participar, respeitando a lotação, e uma vez dentro de uma batalha não podem trocar até que ela termine.
 
-O capítulo é concluído quando todas as batalhas obrigatórias forem vencidas. O chefe, porém, só é liberado quando o mestre da sala decidir liberá-lo, mesmo que os pré-requisitos já estejam cumpridos.
+O capítulo é concluído quando todas as batalhas obrigatórias forem vencidas. O chefe é liberado automaticamente quando os nós que o antecedem (seus pré-requisitos) forem vencidos — não há liberação manual pelo mestre nem decisão do grupo.
 
 **Mapa de fundo (fase futura, contrato já preparado).** Um capítulo pode ter uma imagem de fundo — tipicamente um mapa — e cada nó é posicionado num ponto dessa imagem. As posições dos nós são coordenadas absolutas em pixels de um "mundo" com largura × altura lógicas definidas junto com a imagem; a imagem é sempre escalada para esse tamanho, então trocar o mapa por outra resolução não desloca os nós. Trocar ou remover o mapa e renomear nós são edições de arte/texto, permitidas pelo portão de compatibilidade.
 ---
@@ -86,6 +86,8 @@ Quando chega a vez do grupo, um sinal é exibido a todos os participantes da bat
 Existem dois tipos de pergunta. As **objetivas** são de múltipla escolha e validadas automaticamente pelo sistema, dispensando a presença do mestre. As **abertas** exigem que o mestre avalie a resposta e aprove ou reprove manualmente; ele pode cadastrá-las antes da batalha e acrescentar novas durante o combate, e os jogadores veem apenas o que ele exibir.
 
 Como há um só mestre e o grupo pode se dividir em ramos simultâneos, perguntas abertas ficam restritas a batalhas de caminho único e a chefes. Ramos paralelos usam obrigatoriamente perguntas objetivas, de modo que várias batalhas possam correr ao mesmo tempo sem depender da atenção do mestre. O editor de campanha valida essa regra e avisa o criador quando ele configurar uma pergunta aberta num nó que pertence a um ramo paralelo.
+
+Como só o mestre julga perguntas abertas, **uma batalha que tem pergunta aberta só pode começar com o mestre ativo (conectado) na sala**. Batalhas só com perguntas objetivas não dependem dele e podem ser jogadas na sua ausência. O que acontece quando o mestre cai no meio de uma batalha que precisa dele ainda está em aberto (seção 9).
 
 ### 3.3 Rotação da campainha
 
@@ -288,7 +290,7 @@ Em caso de queda de conexão, o jogador é removido da batalha em andamento e n�
 
 **Fase 4 — Progressão e economia.** XP, nível, distribuição de pontos, desbloqueio de habilidades, fator de relevância, loot, bolsa do grupo, votação, loja por lote, inventário e equipamentos.
 
-**Fase 5 — Fluxo de capítulo.** Vídeos de abertura, desbloqueio por conclusão, liberação manual do chefe, fogueiras e snapshot, conclusão de campanha, histórico.
+**Fase 5 — Fluxo de capítulo.** Vídeos de abertura, desbloqueio por conclusão (inclusive do chefe), fogueiras e snapshot, conclusão de campanha, histórico.
 
 **Fase 6 — Robustez ao vivo.** Sincronização em tempo real, tratamento de desconexão, reinício de batalha, garantia de que todo o estado de combate resida no servidor.
 
@@ -298,4 +300,7 @@ Recomendo um protótipo vertical logo após a Fase 0: uma campanha fixa, um cap�
 
 ## 9. Pendências em aberto
 
-As decisões estruturais estão fechadas. Resta um ponto de detalhamento, que é trabalho de balanceamento e não de arquitetura: a montagem concreta das quatro habilidades de cada classe do kit padrão, usando o catálogo da seção 5.4.
+As habilidades do kit padrão foram definidas em `docs/phase-1b-kit-draft.md`. Restam em aberto:
+
+- **O mestre joga?** A direção é o mestre controlar a sala, não jogar junto: julgar a própria resposta, ocupar vaga sem poder pegar o sinal e a morte do personagem-mestre são conflitos de um mestre-jogador. Falta decidir o que acontece com o personagem de quem recebe o papel de mestre (proposta: fica em pausa, mantém a vaga e volta se o papel for repassado) e se salas só com perguntas objetivas permitem um mestre-jogador.
+- **Queda do mestre no meio de uma batalha com pergunta aberta** (seção 3.2): pausar a batalha, ou seguir só com as perguntas objetivas do nó.

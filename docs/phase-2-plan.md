@@ -4,6 +4,12 @@ _Escopo de [spec §8](spec.md): criação pública e privada, código de acesso,
 seleção de classe e controle de vagas, entrada e saída livres, transferência de mestre,
 encerramento. Regras de domínio em spec §2.2 (avanço de versão), §5.2 (vagas) e §7 (ciclo de vida)._
 
+**Status (2026-10-06):** M0–M5 implementados. Diferença do plano: o Socket.IO passou a ser
+montado em `buildApp()` (`plugins/realtime.ts`) em vez de um decorator `app.io` registrado no
+`server.ts`, para os testes de integração escutarem numa porta efêmera. Consequência observada no
+e2e: um mestre sem classe que transfere o papel numa sala privada deixa de ser membro e perde o
+acesso — coerente com a decisão 3.
+
 ## Objetivo e critério de pronto
 
 Um usuário logado consegue: navegar no catálogo de campanhas publicadas → criar uma sala pública
