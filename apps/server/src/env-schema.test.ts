@@ -43,4 +43,10 @@ describe('EnvSchema', () => {
     const { S3_BUCKET: _omitted, ...rest } = valid;
     expect(() => EnvSchema.parse(rest)).toThrow();
   });
+
+  it('leaves BATTLE_SEED unset unless given, and rejects a non-integer', () => {
+    expect(EnvSchema.parse(valid).BATTLE_SEED).toBeUndefined();
+    expect(EnvSchema.parse({ ...valid, BATTLE_SEED: '42' }).BATTLE_SEED).toBe(42);
+    expect(() => EnvSchema.parse({ ...valid, BATTLE_SEED: '4.2' })).toThrow();
+  });
 });

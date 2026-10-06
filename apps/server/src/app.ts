@@ -16,11 +16,22 @@ import campaignVersionRoutes from './routes/campaign-versions.js';
 import itemsRoutes from './routes/items.js';
 import classesRoutes from './routes/classes.js';
 import classKitRoutes from './routes/class-kit.js';
+import { randomInt } from 'node:crypto';
+import { BATTLE_TIMERS } from '@rpg-chains/game-config';
+import battlesPlugin, { type BattlesPluginOptions } from './plugins/battles.js';
 import realtimePlugin from './plugins/realtime.js';
 import catalogRoutes from './routes/catalog.js';
 import roomsRoutes from './routes/rooms.js';
 import roomProfileRoutes from './routes/room-profile.js';
 import roomMasterRoutes from './routes/room-master.js';
+import roomRestRoutes from './routes/room-rest.js';
+import battlesRoutes from './routes/battles.js';
+
+export interface AppOptions {
+  logger: boolean;
+  /** Overrides for tests: short turn timers, a fixed seed. */
+  battles?: Partial<BattlesPluginOptions>;
+}
 
 /**
  * Builds the Fastify app with every plugin and route registered (Socket.IO included), WITHOUT
@@ -28,7 +39,7 @@ import roomMasterRoutes from './routes/room-master.js';
  * separate from `server.ts` so contract tests can drive it via `app.inject()` (spec §6).
  * Feature routes register here under a prefix as they land (Fase 1+).
  */
-export async function buildApp(options: { logger: boolean }): Promise<FastifyInstance> {
+export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: options.logger });
 
   await app.register(cors, {
@@ -40,6 +51,11 @@ export async function buildApp(options: { logger: boolean }): Promise<FastifyIns
   await app.register(prismaPlugin);
   await app.register(authPlugin);
   await app.register(campaignOwnerPlugin);
+  await app.register(battlesPlugin, {
+    timers: BATTLE_TIMERS,
+    seed: () => randomInt(2 ** 31),
+    ...options.battles,
+  });
   await app.register(realtimePlugin);
   await app.register(healthRoutes);
   await app.register(campaignsRoutes, { prefix: '/api/campaigns' });
@@ -56,6 +72,8 @@ export async function buildApp(options: { logger: boolean }): Promise<FastifyIns
   await app.register(roomsRoutes, { prefix: '/api/rooms' });
   await app.register(roomProfileRoutes, { prefix: '/api/rooms/:roomId' });
   await app.register(roomMasterRoutes, { prefix: '/api/rooms/:roomId' });
+  await app.register(roomRestRoutes, { prefix: '/api/rooms/:roomId' });
+  await app.register(battlesRoutes, { prefix: '/api' });
 
   return app;
 }

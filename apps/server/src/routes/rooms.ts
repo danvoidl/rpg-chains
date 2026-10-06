@@ -43,7 +43,7 @@ export default async function roomsRoutes(app: FastifyInstance): Promise<void> {
         },
       });
     const room = body.isPublic ? await create(null) : await withFreshAccessCode(create);
-    return reply.code(201).send(await readRoomDetail(app.prisma, room.id, userId));
+    return reply.code(201).send(await readRoomDetail(app.prisma, app.battles, room.id, userId));
   });
 
   app.get('/', { preHandler }, async () => {
@@ -89,6 +89,6 @@ export default async function roomsRoutes(app: FastifyInstance): Promise<void> {
     if (!room || !canView(room, userId, code)) {
       return reply.code(404).send({ error: 'room_not_found' });
     }
-    return readRoomDetail(app.prisma, room.id, userId);
+    return readRoomDetail(app.prisma, app.battles, room.id, userId);
   });
 }

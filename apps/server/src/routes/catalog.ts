@@ -3,7 +3,7 @@ import type { CatalogCampaign } from '@rpg-chains/shared-types';
 
 /** Published campaigns any signed-in user can open a room for (spec §7). */
 export default async function catalogRoutes(app: FastifyInstance): Promise<void> {
-  app.get('/', { preHandler: [app.authenticate] }, async (): Promise<CatalogCampaign[]> => {
+  app.get('/', { preHandler: [app.authenticate] }, async () => {
     const rows = await app.prisma.campaign.findMany({
       where: { versions: { some: {} } },
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
@@ -12,7 +12,7 @@ export default async function catalogRoutes(app: FastifyInstance): Promise<void>
         versions: { orderBy: { version: 'desc' }, take: 1, select: { version: true } },
       },
     });
-    return rows.map((row) => ({
+    return rows.map((row): CatalogCampaign => ({
       id: row.id,
       name: row.name,
       description: row.description,

@@ -1,5 +1,8 @@
 import type { Room } from '@prisma/client';
+import { deriveStats } from '@rpg-chains/battle-engine';
 import type {
+  BattleNodeOption,
+  BattleSummary,
   CampaignSnapshot,
   RoomDetail,
   RoomStatus,
@@ -32,13 +35,54 @@ function className(snapshot: CampaignSnapshot, classId: string): string {
   return snapshot.classes.find((c) => c.id === classId)?.name ?? classId;
 }
 
+/** Every `battle`/`boss` node of the version, in chapter order. */
+function battleNodes(snapshot: CampaignSnapshot): BattleNodeOption[] {
+  const open = new Set(snapshot.questions.filter((q) => q.type === 'open').map((q) => q.id));
+  return snapshot.chapters.flatMap((chapter) =>
+    chapter.nodes.flatMap((node): BattleNodeOption[] =>
+      node.type === 'battle' || node.type === 'boss'
+        ? [
+            {
+              nodeId: node.id,
+              title: node.title,
+              type: node.type,
+              chapterName: chapter.name,
+              participantLimit: node.type === 'battle' ? node.participantLimit : null,
+              needsMaster: node.questionIds.some((id) => open.has(id)),
+            },
+          ]
+        : [],
+    ),
+  );
+}
+
+/** A profile's resources with the ceilings its class, level and points give. */
+function resources(snapshot: CampaignSnapshot, profile: RoomWithRelations['profiles'][number]) {
+  const cls = snapshot.classes.find((c) => c.id === profile.classId);
+  const { maxHp, maxEnergy } = cls
+    ? deriveStats(cls, profile.level, {
+        strength: profile.strength,
+        dexterity: profile.dexterity,
+        intelligence: profile.intelligence,
+      })
+    : { maxHp: profile.currentHp, maxEnergy: profile.currentEnergy };
+  return {
+    currentHp: profile.currentHp,
+    maxHp: Math.max(maxHp, 1),
+    currentEnergy: profile.currentEnergy,
+    maxEnergy,
+  };
+}
+
 /**
  * The room page read model: members (master first if they have no profile yet), the classes of
- * the current version with slot usage, and the access code for the master only.
+ * the current version with slot usage, the battles forming or running, and the access code for
+ * the master only.
  */
 export function toRoomDetail(
   room: RoomWithRelations,
   { version, snapshot }: RoomVersion,
+  battles: BattleSummary[],
   viewerId: string,
 ): RoomDetail {
   const isMaster = room.masterId === viewerId;
@@ -70,6 +114,7 @@ export function toRoomDetail(
           className: className(snapshot, profile.classId),
           level: profile.level,
           downed: profile.downed,
+          ...resources(snapshot, profile),
         },
       })),
     ],
@@ -83,6 +128,8 @@ export function toRoomDetail(
       maxSlots: cls.maxSlots,
       slotsTaken: taken.get(cls.id) ?? 0,
     })),
+    battles,
+    battleNodes: battleNodes(snapshot),
     viewer: { isMaster, hasProfile: room.profiles.some((p) => p.userId === viewerId) },
   };
 }

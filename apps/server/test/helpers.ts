@@ -1,10 +1,12 @@
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
-import { buildApp } from '../src/app.js';
+import { buildApp, type AppOptions } from '../src/app.js';
 import { config } from '../src/config.js';
 
 /** Builds a ready, non-listening app for `app.inject()` contract tests. */
-export async function createTestApp(): Promise<FastifyInstance> {
-  const app = await buildApp({ logger: false });
+export async function createTestApp(
+  options: Omit<AppOptions, 'logger'> = {},
+): Promise<FastifyInstance> {
+  const app = await buildApp({ logger: false, ...options });
   await app.ready();
   return app;
 }

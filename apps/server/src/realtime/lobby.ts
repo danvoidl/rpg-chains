@@ -7,25 +7,19 @@ import {
   type RoomJoinAck,
   type RoomPresenceMessage,
 } from '@rpg-chains/shared-types';
-import { Presence } from './presence.js';
+import type { Presence } from './presence.js';
+import type { SocketData } from './socket-data.js';
 
 /** Socket.IO channel of a room lobby. */
 export function roomChannel(roomId: string): string {
   return `room:${roomId}`;
 }
 
-/** Data the auth middleware attaches to every socket. */
-export interface LobbySocketData {
-  userId: string;
-  /** Lobbies this socket joined, so a disconnect can leave all of them. */
-  roomIds: Set<string>;
-}
-
 type LobbySocket = Socket<
   Record<string, never>,
   Record<string, never>,
   Record<string, never>,
-  LobbySocketData
+  SocketData
 >;
 
 /**
@@ -33,9 +27,7 @@ type LobbySocket = Socket<
  * anyone for a public one), everyone in it receives the updated online list, and a disconnect
  * leaves every joined lobby. Mutations never travel here — they are REST.
  */
-export function registerLobby(io: Server, app: FastifyInstance): void {
-  const presence = new Presence();
-
+export function registerLobby(io: Server, app: FastifyInstance, presence: Presence): void {
   const broadcast = (roomId: string) => {
     const message: RoomPresenceMessage = { roomId, onlineUserIds: presence.online(roomId) };
     io.to(roomChannel(roomId)).emit(ROOM_EVENTS.presence, message);
@@ -61,6 +53,7 @@ export function registerLobby(io: Server, app: FastifyInstance): void {
       const room = await app.prisma.room.findUnique({
         where: { id: roomId },
         select: {
+          status: true,
           isPublic: true,
           masterId: true,
           profiles: { where: { userId }, select: { id: true } },
@@ -69,6 +62,8 @@ export function registerLobby(io: Server, app: FastifyInstance): void {
       const allowed =
         room && (room.isPublic || room.masterId === userId || room.profiles.length > 0);
       if (!allowed) return reply({ ok: false, error: 'not_a_member' });
+      // A closed room is read-only history; it has no live lobby.
+      if (room.status === 'closed') return reply({ ok: false, error: 'room_closed' });
 
       socket.data.roomIds.add(roomId);
       presence.add(roomId, userId, socket.id);

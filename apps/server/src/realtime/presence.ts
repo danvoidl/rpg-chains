@@ -25,6 +25,16 @@ export class Presence {
     if (users.size === 0) this.rooms.delete(roomId);
   }
 
+  /** Whether `userId` has at least one socket in the room. */
+  has(roomId: string, userId: string): boolean {
+    return this.rooms.get(roomId)?.has(userId) ?? false;
+  }
+
+  /** Forgets a room entirely (a battle that ended). */
+  drop(roomId: string): void {
+    this.rooms.delete(roomId);
+  }
+
   /** Users online in the room. */
   online(roomId: string): string[] {
     return [...(this.rooms.get(roomId)?.keys() ?? [])];

@@ -1,6 +1,5 @@
 import type { Prisma } from '@prisma/client';
 import { CampaignSnapshotSchema, type CampaignSnapshot } from '@rpg-chains/shared-types';
-import { hasActiveBattle } from './active-battles.js';
 
 interface RoomVersionRef {
   id: string;
@@ -10,8 +9,15 @@ interface RoomVersionRef {
 }
 
 export interface RoomVersion {
+  id: string;
   version: number;
   snapshot: CampaignSnapshot;
+}
+
+/** What a room roll-forward needs to know about its battles. */
+export interface RoomBattles {
+  /** A room with a battle forming or running never changes version (spec §2.2). */
+  hasActive(roomId: string): boolean;
 }
 
 /**
@@ -23,11 +29,12 @@ export interface RoomVersion {
 export async function syncRoomVersion(
   tx: Prisma.TransactionClient,
   room: RoomVersionRef,
+  battles: RoomBattles,
 ): Promise<RoomVersion> {
   let current = await tx.campaignVersion.findUniqueOrThrow({
     where: { id: room.campaignVersionId },
   });
-  if (room.status === 'open' && !hasActiveBattle(room.id)) {
+  if (room.status === 'open' && !battles.hasActive(room.id)) {
     const latest = await tx.campaignVersion.findFirstOrThrow({
       where: { campaignId: room.campaignId },
       orderBy: { version: 'desc' },
@@ -37,5 +44,9 @@ export async function syncRoomVersion(
       current = latest;
     }
   }
-  return { version: current.version, snapshot: CampaignSnapshotSchema.parse(current.snapshot) };
+  return {
+    id: current.id,
+    version: current.version,
+    snapshot: CampaignSnapshotSchema.parse(current.snapshot),
+  };
 }

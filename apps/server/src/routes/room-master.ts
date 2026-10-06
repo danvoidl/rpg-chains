@@ -6,7 +6,6 @@ import {
   TransferMasterInputSchema,
 } from '@rpg-chains/shared-types';
 import { withFreshAccessCode } from '../services/access-code.js';
-import { hasActiveBattle } from '../services/active-battles.js';
 import { readRoomDetail } from '../services/room-detail.js';
 import { lockRoom } from '../services/room-lock.js';
 import { findRoom, type RoomWithRelations } from '../services/room-query.js';
@@ -43,7 +42,7 @@ export default async function roomMasterRoutes(app: FastifyInstance): Promise<vo
   /** Replies the updated room and signals its lobby. */
   async function changed(roomId: string, userId: string) {
     app.roomEvents.changed(roomId);
-    return readRoomDetail(app.prisma, roomId, userId);
+    return readRoomDetail(app.prisma, app.battles, roomId, userId);
   }
 
   app.patch<{ Params: { roomId: string } }>('/', { preHandler }, async (request, reply) => {
@@ -105,7 +104,7 @@ export default async function roomMasterRoutes(app: FastifyInstance): Promise<vo
       await lockRoom(tx, roomId);
       const room = (await findRoom(tx, roomId))!;
       if (room.status === 'closed') return { error: 409, code: 'room_closed' } as const;
-      if (hasActiveBattle(roomId)) return { error: 409, code: 'battle_in_progress' } as const;
+      if (app.battles.hasActive(roomId)) return { error: 409, code: 'battle_in_progress' } as const;
 
       const version = await tx.campaignVersion.findUniqueOrThrow({
         where: { id: room.campaignVersionId },

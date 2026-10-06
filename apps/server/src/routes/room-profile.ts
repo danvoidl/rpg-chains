@@ -33,7 +33,7 @@ export default async function roomProfileRoutes(app: FastifyInstance): Promise<v
         return { error: 409, code: 'already_member' } as const;
       }
 
-      const { snapshot } = await syncRoomVersion(tx, room);
+      const { snapshot } = await syncRoomVersion(tx, room, app.battles);
       const cls = snapshot.classes.find((c) => c.id === body.classId);
       if (!cls) return { error: 422, code: 'unknown_class' } as const;
       const taken = room.profiles.filter((p) => p.classId === cls.id).length;
@@ -57,7 +57,7 @@ export default async function roomProfileRoutes(app: FastifyInstance): Promise<v
 
     if (outcome.error !== null) return reply.code(outcome.error).send({ error: outcome.code });
     app.roomEvents.changed(roomId);
-    return reply.code(201).send(await readRoomDetail(app.prisma, roomId, userId));
+    return reply.code(201).send(await readRoomDetail(app.prisma, app.battles, roomId, userId));
   });
 
   app.delete<{ Params: { roomId: string } }>('/profile', { preHandler }, async (request, reply) => {
@@ -75,6 +75,8 @@ export default async function roomProfileRoutes(app: FastifyInstance): Promise<v
       if (room.masterId === userId && othersPlaying) {
         return { error: 409, code: 'master_must_transfer' } as const;
       }
+      // A profile in a battle — even one they left — still gets that battle's write-back.
+      if (app.battles.battleOf(profile.id)) return { error: 409, code: 'in_battle' } as const;
       await tx.campaignProfile.delete({ where: { id: profile.id } });
       return { error: null } as const;
     });
