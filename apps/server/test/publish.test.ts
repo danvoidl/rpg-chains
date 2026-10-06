@@ -1,7 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { CampaignSnapshotSchema, type DraftGraph, type DraftNode } from '@rpg-chains/shared-types';
+import {
+  CampaignSnapshotSchema,
+  type DraftClass,
+  type DraftGraph,
+  type DraftNode,
+} from '@rpg-chains/shared-types';
 import { createTestApp, requestAs, resetDatabase, signUp, type TestUser } from './helpers.js';
 
 let app: FastifyInstance;
@@ -43,6 +48,7 @@ async function authorCampaign(user: TestUser) {
   };
   const campaign = await post('/api/campaigns', { name: 'As Sete Correntes' });
   const base = `/api/campaigns/${campaign.id}`;
+  await post(`${base}/classes/import-kit`, {});
   const villain = await post(`${base}/villains`, {
     name: 'Chain Warden',
     hp: 100,
@@ -185,5 +191,99 @@ describe('publish flow (Fase 1 done criterion)', () => {
     expect(
       (await requestAs(app, other, { method: 'GET', url: `${base}/versions` })).statusCode,
     ).toBe(403);
+  });
+});
+
+describe('publish flow with classes (Fase 1b done criterion)', () => {
+  async function kitClasses(user: TestUser, base: string) {
+    const res = await requestAs(app, user, { method: 'GET', url: `${base}/classes` });
+    return res.json<DraftClass[]>();
+  }
+
+  function putClass(user: TestUser, base: string, cls: DraftClass) {
+    return requestAs(app, user, {
+      method: 'PUT',
+      url: `${base}/classes/${cls.id}`,
+      payload: { ...cls },
+    });
+  }
+
+  it('publishes the kit, accepts a skill rebalance, refuses a removed skill or a base change', async () => {
+    const author = await signUp(app);
+    const { base, chapterId, graph } = await authorCampaign(author);
+    await saveGraph(author, base, chapterId, graph);
+
+    const v1 = await publish(author, base);
+    expect(v1.statusCode, v1.body).toBe(201);
+    expect(v1.json()).toMatchObject({ version: 1, warnings: [] });
+    const stored = await app.prisma.campaignVersion.findFirstOrThrow();
+    const snapshot = CampaignSnapshotSchema.parse(stored.snapshot);
+    expect(snapshot.classes).toHaveLength(4);
+    expect(snapshot.items).toHaveLength(4);
+
+    // v2: rebalance one skill's numbers — the skill id is kept, so it rolls forward.
+    const [guardian] = await kitClasses(author, base);
+    const rebalanced = {
+      ...guardian!,
+      skills: guardian!.skills.map((s, i) => (i === 0 ? { ...s, energyCost: 20 } : s)),
+    };
+    expect((await putClass(author, base, rebalanced)).statusCode).toBe(200);
+    const v2 = await publish(author, base);
+    expect(v2.statusCode, v2.body).toBe(201);
+
+    // v3: drop a skill from the class — refused.
+    const removed = guardian!.skills[3]!;
+    await putClass(author, base, { ...rebalanced, skills: rebalanced.skills.slice(0, 3) });
+    const v3 = await publish(author, base);
+    expect(v3.statusCode).toBe(422);
+    expect(v3.json().violations).toEqual([
+      expect.objectContaining({
+        rule: 'entity_deleted',
+        entityType: 'skill',
+        entityId: removed.id,
+      }),
+    ]);
+
+    // A base-stat change on top is its own violation.
+    const baseChange = await putClass(author, base, {
+      ...rebalanced,
+      skills: rebalanced.skills.slice(0, 3),
+      baseHp: 130,
+    });
+    expect(baseChange.statusCode, baseChange.body).toBe(200);
+    const v4 = await publish(author, base);
+    expect(v4.statusCode).toBe(422);
+    expect(v4.json().violations.map((v: { rule: string }) => v.rule)).toContain(
+      'class_base_changed',
+    );
+  });
+
+  it('refuses a draft without classes', async () => {
+    const author = await signUp(app);
+    const { base, chapterId, graph } = await authorCampaign(author);
+    await saveGraph(author, base, chapterId, graph);
+    await app.prisma.characterClass.deleteMany();
+
+    const res = await publish(author, base);
+    expect(res.statusCode).toBe(422);
+    expect(res.json().issues).toEqual([expect.objectContaining({ code: 'no_classes' })]);
+  });
+
+  it('publishes with balancing warnings and echoes them back', async () => {
+    const author = await signUp(app);
+    const { base, chapterId, graph } = await authorCampaign(author);
+    await saveGraph(author, base, chapterId, graph);
+    const [guardian] = await kitClasses(author, base);
+    await putClass(author, base, { ...guardian!, baseHp: 200 });
+
+    const res = await publish(author, base);
+    expect(res.statusCode, res.body).toBe(201);
+    expect(res.json().warnings).toEqual([
+      expect.objectContaining({
+        code: 'class_base_out_of_band',
+        classId: guardian!.id,
+        value: 200,
+      }),
+    ]);
   });
 });

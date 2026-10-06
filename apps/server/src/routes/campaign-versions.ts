@@ -1,13 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { CampaignSnapshotSchema } from '@rpg-chains/shared-types';
-import { checkCompatibility, draftToSnapshot } from '@rpg-chains/campaign-rules';
+import { checkCompatibility, draftToSnapshot, draftWarnings } from '@rpg-chains/campaign-rules';
 import { loadCampaignDraft } from '../services/campaign-draft.js';
 
 /**
  * Publishing (spec §2.2, Fase 1 plan M5): runs the validation gate and, from the second publish
  * on, the compatibility gate against the latest version, then stores the next immutable
- * snapshot. Both gates are pure (`campaign-rules`); this route only loads, decides, persists.
+ * snapshot, echoing the non-blocking balancing warnings. Both gates are pure (`campaign-rules`); this route only loads, decides, persists.
  */
 export default async function campaignVersionRoutes(app: FastifyInstance): Promise<void> {
   const preHandler = [app.authenticate, app.requireCampaignOwner];
@@ -50,7 +50,7 @@ export default async function campaignVersionRoutes(app: FastifyInstance): Promi
             },
             select: { id: true, version: true, publishedAt: true },
           });
-          return { status: 'published', version: created } as const;
+          return { status: 'published', version: created, warnings: draftWarnings(draft) } as const;
         });
 
         switch (outcome.status) {
@@ -61,7 +61,8 @@ export default async function campaignVersionRoutes(app: FastifyInstance): Promi
               .code(422)
               .send({ error: 'incompatible_changes', violations: outcome.violations });
           case 'published':
-            return reply.code(201).send(outcome.version);
+            // Balancing warnings never block a publish; they are echoed back for the author.
+            return reply.code(201).send({ ...outcome.version, warnings: outcome.warnings });
         }
       } catch (error) {
         // A concurrent publish took the same version number (unique campaignId+version).

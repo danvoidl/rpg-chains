@@ -13,6 +13,9 @@ import chaptersRoutes from './routes/chapters.js';
 import campaignDraftRoutes from './routes/campaign-draft.js';
 import mediaRoutes from './routes/media.js';
 import campaignVersionRoutes from './routes/campaign-versions.js';
+import itemsRoutes from './routes/items.js';
+import classesRoutes from './routes/classes.js';
+import classKitRoutes from './routes/class-kit.js';
 
 /**
  * Builds the Fastify app with every plugin and route registered, WITHOUT listening. Kept
@@ -36,6 +39,9 @@ export async function buildApp(options: { logger: boolean }): Promise<FastifyIns
   await app.register(villainsRoutes, { prefix: '/api/campaigns/:campaignId/villains' });
   await app.register(questionsRoutes, { prefix: '/api/campaigns/:campaignId/questions' });
   await app.register(chaptersRoutes, { prefix: '/api/campaigns/:campaignId/chapters' });
+  await app.register(itemsRoutes, { prefix: '/api/campaigns/:campaignId/items' });
+  await app.register(classesRoutes, { prefix: '/api/campaigns/:campaignId/classes' });
+  await app.register(classKitRoutes, { prefix: '/api/campaigns/:campaignId/classes' });
   await app.register(campaignDraftRoutes, { prefix: '/api/campaigns/:campaignId/draft' });
   await app.register(campaignVersionRoutes, { prefix: '/api/campaigns/:campaignId' });
   await app.register(mediaRoutes, { prefix: '/api/media' });
