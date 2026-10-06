@@ -6,16 +6,24 @@ export const TargetSchema = z.enum(['self', 'ally', 'all_allies', 'enemy', 'all_
 export type Target = z.infer<typeof TargetSchema>;
 
 /**
- * Magnitude of an effect (spec §5.3): a fixed value, a percentage, or a value that
- * scales with one of the character's attributes. `percent` is a live multiplier over
- * base+flat, not frozen at cast; on a stat it feeds the percent channel (spec §5.5).
+ * Magnitude of an effect (spec §5.3): a fixed value, a percentage, or `base + attribute × scale`
+ * (mirrors the weapon formula, so a scaling skill is not worth 0 at level 1). `percent` is a live
+ * multiplier over base+flat, not frozen at cast; on a stat it feeds the percent channel (spec
+ * §5.5). What `percent` is a percentage OF, per effect type, is fixed in
+ * docs/phase-1b-kit-draft.md.
  */
 export const MagnitudeSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('fixed'), value: z.number() }),
   z.object({ mode: z.literal('percent'), percent: z.number() }),
-  z.object({ mode: z.literal('scaling'), attribute: AttributeSchema, scale: z.number() }),
+  z.object({
+    mode: z.literal('scaling'),
+    base: z.number().default(0),
+    attribute: AttributeSchema,
+    scale: z.number(),
+  }),
 ]);
 export type Magnitude = z.infer<typeof MagnitudeSchema>;
+export type MagnitudeMode = Magnitude['mode'];
 
 /** Duration in rounds. `1` for provoke means "the next enemy attack" (spec §3.6). */
 const DurationRounds = z.number().int().positive();

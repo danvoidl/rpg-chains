@@ -3,6 +3,7 @@ import {
   type CampaignSnapshot,
   type Chapter,
   type CharacterClass,
+  type Item,
 } from '@rpg-chains/shared-types';
 
 /** One row of the spec §2.2.1 "forbidden" table. */
@@ -11,6 +12,7 @@ export type CompatibilityRule =
   | 'class_base_changed'
   | 'class_slots_reduced'
   | 'skill_removed'
+  | 'item_kind_changed'
   | 'graph_entry_changed'
   | 'graph_boss_changed'
   | 'graph_reachability_broken';
@@ -104,6 +106,33 @@ function classChanges(prev: CampaignSnapshot, next: CampaignSnapshot): Compatibi
   return violations;
 }
 
+/** What an equipped or carried item IS: category, slot and weapon type (not its numbers). */
+function itemKind(item: Item): string {
+  return item.category === 'equipment'
+    ? `equipment:${item.slot}:${item.weapon?.weaponType ?? ''}`
+    : 'consumable';
+}
+
+/**
+ * An item that changes kind invalidates characters holding it: a weapon turned helmet sits in the
+ * wrong slot. Gap in spec §2.2.1, closed in the Fase 1b plan (decision 8); numbers stay free.
+ */
+function itemChanges(prev: CampaignSnapshot, next: CampaignSnapshot): CompatibilityViolation[] {
+  const nextItems = new Map(next.items.map((i) => [i.id, i]));
+  return prev.items.flatMap((before) => {
+    const after = nextItems.get(before.id);
+    if (!after || itemKind(after) === itemKind(before)) return [];
+    return [
+      {
+        rule: 'item_kind_changed' as const,
+        entityType: 'item' as const,
+        entityId: before.id,
+        message: `Category, slot or weapon type of a published item cannot change`,
+      },
+    ];
+  });
+}
+
 function graphChanges(prev: CampaignSnapshot, next: CampaignSnapshot): CompatibilityViolation[] {
   const nextChapters = new Map<string, Chapter>(next.chapters.map((c) => [c.id, c]));
   const nextNodeIds = referencedIds(next).node;
@@ -152,5 +181,10 @@ export function checkCompatibility(
   prev: CampaignSnapshot,
   next: CampaignSnapshot,
 ): CompatibilityViolation[] {
-  return [...deletedEntities(prev, next), ...classChanges(prev, next), ...graphChanges(prev, next)];
+  return [
+    ...deletedEntities(prev, next),
+    ...classChanges(prev, next),
+    ...itemChanges(prev, next),
+    ...graphChanges(prev, next),
+  ];
 }

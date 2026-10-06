@@ -3,9 +3,11 @@ import { IdSchema } from './common.js';
 import {
   ChapterBackgroundSchema,
   EdgeSchema,
+  ItemSchema,
   QuestionSchema,
   VillainAttackSchema,
 } from './content.js';
+import { EffectSchema } from './effects.js';
 
 /**
  * Editable campaign draft (spec §2.2, Fase 1). Unlike the snapshot, the draft tolerates
@@ -80,6 +82,35 @@ export const DraftVillainSchema = z.object({
 });
 export type DraftVillain = z.infer<typeof DraftVillainSchema>;
 
+/** Skill as stored in the draft, mirroring the `Skill` table. */
+export const DraftSkillSchema = z.object({
+  id: IdSchema,
+  name: z.string(),
+  iconUrl: z.string().url().nullable(),
+  text: z.string(),
+  energyCost: z.number().int(),
+  cooldownRounds: z.number().int(),
+  unlockLevel: z.number().int(),
+  effect: EffectSchema,
+});
+export type DraftSkill = z.infer<typeof DraftSkillSchema>;
+
+/** Class as stored in the draft, mirroring `CharacterClass`; the base weapon may be unset. */
+export const DraftClassSchema = z.object({
+  id: IdSchema,
+  name: z.string(),
+  description: z.string(),
+  artUrl: z.string().url().nullable(),
+  baseHp: z.number().int(),
+  baseEnergy: z.number().int(),
+  hpPerLevel: z.number().int(),
+  energyPerLevel: z.number().int(),
+  maxSlots: z.number().int(),
+  baseWeaponId: IdSchema.nullable(),
+  skills: z.array(DraftSkillSchema),
+});
+export type DraftClass = z.infer<typeof DraftClassSchema>;
+
 /** The whole editable campaign, as served by `GET /api/campaigns/:id/draft`. */
 export const CampaignDraftSchema = z.object({
   id: IdSchema,
@@ -89,5 +120,8 @@ export const CampaignDraftSchema = z.object({
   villains: z.array(DraftVillainSchema),
   /** Questions are fully validated on write, so the draft holds the snapshot shape. */
   questions: z.array(QuestionSchema),
+  classes: z.array(DraftClassSchema),
+  /** Items are fully validated on write, so the draft holds the snapshot shape. */
+  items: z.array(ItemSchema),
 });
 export type CampaignDraft = z.infer<typeof CampaignDraftSchema>;

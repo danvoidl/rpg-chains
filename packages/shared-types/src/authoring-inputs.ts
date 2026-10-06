@@ -1,6 +1,14 @@
 import { z } from 'zod';
+import { MAX_LEVEL, MAX_SKILLS_PER_CLASS } from '@rpg-chains/game-config';
 import { IdSchema } from './common.js';
-import { ChapterBackgroundSchema, VillainAttackSchema } from './content.js';
+import {
+  ChapterBackgroundSchema,
+  ItemConsumableSchema,
+  ItemEquipmentSchema,
+  VillainAttackSchema,
+  refineWeaponStats,
+} from './content.js';
+import { EffectSchema } from './effects.js';
 
 /**
  * Write payloads of the authoring REST API (Fase 1). Server routes validate request bodies
@@ -76,3 +84,47 @@ export const QuestionInputSchema = z
     }
   });
 export type QuestionInput = z.infer<typeof QuestionInputSchema>;
+
+/** Full item write (create and replace); same shape as the snapshot item, without the id. */
+export const ItemInputSchema = z
+  .discriminatedUnion('category', [
+    ItemEquipmentSchema.omit({ id: true }).extend({
+      name: z.string().trim().min(1),
+      defenseBonus: z.number().int().nonnegative().default(0),
+    }),
+    ItemConsumableSchema.omit({ id: true }).extend({ name: z.string().trim().min(1) }),
+  ])
+  .superRefine(refineWeaponStats);
+export type ItemInput = z.infer<typeof ItemInputSchema>;
+
+/**
+ * A skill inside a class write. Existing skills carry their `id` so it stays stable across saves
+ * (the compatibility gate compares by id); new ones omit it. Shape only — balancing rules
+ * (targets, caps, bands) belong to the publish gate, so an unbalanced skill is still saveable.
+ */
+export const SkillInputSchema = z.object({
+  id: IdSchema.optional(),
+  name: z.string().trim().min(1),
+  iconUrl: z.string().url().nullable().optional(),
+  text: z.string().optional(),
+  energyCost: z.number().int().nonnegative(),
+  cooldownRounds: z.number().int().nonnegative(),
+  unlockLevel: z.number().int().positive().max(MAX_LEVEL),
+  effect: EffectSchema,
+});
+export type SkillInput = z.infer<typeof SkillInputSchema>;
+
+/** Full class write (create and replace), skills included. A missing base weapon is saveable. */
+export const ClassInputSchema = z.object({
+  name: z.string().trim().min(1),
+  description: z.string().optional(),
+  artUrl: z.string().url().nullable().optional(),
+  baseHp: z.number().int().positive(),
+  baseEnergy: z.number().int().positive(),
+  hpPerLevel: z.number().int().nonnegative(),
+  energyPerLevel: z.number().int().nonnegative(),
+  maxSlots: z.number().int().positive(),
+  baseWeaponId: IdSchema.nullable().optional(),
+  skills: z.array(SkillInputSchema).max(MAX_SKILLS_PER_CLASS).optional(),
+});
+export type ClassInput = z.infer<typeof ClassInputSchema>;

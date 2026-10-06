@@ -5,7 +5,12 @@ import {
   type CampaignSnapshot,
 } from '@rpg-chains/shared-types';
 import { formatPath, type DraftIssue } from './issues.js';
-import { publishableChapters, toSnapshotChapter, toSnapshotVillain } from './snapshot-mapping.js';
+import {
+  publishableChapters,
+  toSnapshotChapter,
+  toSnapshotClass,
+  toSnapshotVillain,
+} from './snapshot-mapping.js';
 import { validateDraft } from './validate-draft.js';
 
 export type DraftToSnapshotResult =
@@ -14,8 +19,7 @@ export type DraftToSnapshotResult =
 /**
  * Serializes the draft into the immutable snapshot of `version` (spec §2.2). Runs the
  * validation gate first; a final `CampaignSnapshotSchema` parse failure also refuses the
- * publish. Chapters under construction are left out. Classes (Fase 1b) and items (Fase 4)
- * are not authorable yet and publish empty.
+ * publish. Chapters under construction are left out.
  */
 export function draftToSnapshot(draft: CampaignDraft, version: number): DraftToSnapshotResult {
   const issues = validateDraft(draft);
@@ -28,10 +32,10 @@ export function draftToSnapshot(draft: CampaignDraft, version: number): DraftToS
     name: draft.name,
     description: draft.description,
     chapters: publishableChapters(draft.chapters).map(toSnapshotChapter),
-    classes: [],
+    classes: draft.classes.map(toSnapshotClass),
     villains: draft.villains.map(toSnapshotVillain),
     questions: draft.questions,
-    items: [],
+    items: draft.items,
   });
   if (!parsed.success) {
     return {

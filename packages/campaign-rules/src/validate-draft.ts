@@ -10,6 +10,7 @@ import {
 import type { ZodIssue } from 'zod';
 import { formatPath, type DraftIssue } from './issues.js';
 import { publishableChapters, toSnapshotNode, toSnapshotVillain } from './snapshot-mapping.js';
+import { validateClasses } from './validate-classes.js';
 
 /** Campaign-wide content a chapter's nodes may reference by id. */
 export interface ContentPools {
@@ -22,8 +23,7 @@ export function contentPools(draft: CampaignDraft): ContentPools {
   return {
     villainIds: new Set(draft.villains.map((v) => v.id)),
     questions: new Map(draft.questions.map((q) => [q.id, q])),
-    // Items arrive in Fase 4; until then shops must reference none.
-    itemIds: new Set(),
+    itemIds: new Set(draft.items.map((i) => i.id)),
   };
 }
 
@@ -273,5 +273,6 @@ export function validateDraft(draft: CampaignDraft): DraftIssue[] {
     const parsed = VillainSchema.safeParse(toSnapshotVillain(villain));
     if (!parsed.success) issues.push(...schemaIssues(parsed.error.issues, ['villains', index], {}));
   });
+  issues.push(...validateClasses(draft));
   return issues;
 }

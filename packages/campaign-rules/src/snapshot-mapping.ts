@@ -1,4 +1,4 @@
-import type { DraftChapter, DraftNode, DraftVillain } from '@rpg-chains/shared-types';
+import type { DraftChapter, DraftClass, DraftNode, DraftVillain } from '@rpg-chains/shared-types';
 
 /**
  * Pure draft → snapshot field mapping, without validation: `posX/posY` become `position`, the
@@ -67,6 +67,31 @@ export function toSnapshotVillain(villain: DraftVillain): Record<string, unknown
       defense: villain.defense,
     },
     attacks: villain.attacks,
+  };
+}
+
+export function toSnapshotClass(cls: DraftClass): Record<string, unknown> {
+  return {
+    id: cls.id,
+    name: cls.name,
+    description: cls.description,
+    artUrl: cls.artUrl ?? undefined,
+    baseHp: cls.baseHp,
+    baseEnergy: cls.baseEnergy,
+    hpPerLevel: cls.hpPerLevel,
+    energyPerLevel: cls.energyPerLevel,
+    maxSlots: cls.maxSlots,
+    baseWeaponId: cls.baseWeaponId ?? undefined,
+    skills: cls.skills.map((skill) => ({
+      id: skill.id,
+      name: skill.name,
+      iconUrl: skill.iconUrl ?? undefined,
+      text: skill.text,
+      energyCost: skill.energyCost,
+      cooldownRounds: skill.cooldownRounds,
+      unlockLevel: skill.unlockLevel,
+      effect: skill.effect,
+    })),
   };
 }
 

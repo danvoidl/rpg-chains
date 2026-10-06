@@ -17,9 +17,15 @@
           "mandatory": true,
           "recommendedLevel": null,
           "participantLimit": null,
-          "position": { "x": 0, "y": 0 },
+          "position": {
+            "x": 0,
+            "y": 0
+          },
           "prerequisites": [],
-          "config": { "text": "It begins.", "videoUrl": null }
+          "config": {
+            "text": "It begins.",
+            "videoUrl": null
+          }
         },
         {
           "id": "n-a",
@@ -28,9 +34,15 @@
           "mandatory": true,
           "recommendedLevel": 1,
           "participantLimit": 3,
-          "position": { "x": -100, "y": 100 },
+          "position": {
+            "x": -100,
+            "y": 100
+          },
           "prerequisites": ["n-entry"],
-          "config": { "villainIds": ["v-1"], "questionIds": ["q-obj"] }
+          "config": {
+            "villainIds": ["v-1"],
+            "questionIds": ["q-obj"]
+          }
         },
         {
           "id": "n-b",
@@ -38,7 +50,10 @@
           "mandatory": false,
           "recommendedLevel": null,
           "participantLimit": null,
-          "position": { "x": 100, "y": 100 },
+          "position": {
+            "x": 100,
+            "y": 100
+          },
           "prerequisites": [],
           "config": {}
         },
@@ -48,16 +63,34 @@
           "mandatory": true,
           "recommendedLevel": 2,
           "participantLimit": null,
-          "position": { "x": 0, "y": 200 },
+          "position": {
+            "x": 0,
+            "y": 200
+          },
           "prerequisites": ["n-a"],
-          "config": { "villainIds": ["v-1"], "questionIds": ["q-open", "q-obj"] }
+          "config": {
+            "villainIds": ["v-1"],
+            "questionIds": ["q-open", "q-obj"]
+          }
         }
       ],
       "edges": [
-        { "from": "n-entry", "to": "n-a" },
-        { "from": "n-entry", "to": "n-b" },
-        { "from": "n-a", "to": "n-boss" },
-        { "from": "n-b", "to": "n-boss" }
+        {
+          "from": "n-entry",
+          "to": "n-a"
+        },
+        {
+          "from": "n-entry",
+          "to": "n-b"
+        },
+        {
+          "from": "n-a",
+          "to": "n-boss"
+        },
+        {
+          "from": "n-b",
+          "to": "n-boss"
+        }
       ]
     },
     {
@@ -100,6 +133,59 @@
       "options": ["3", "4"],
       "correctIndex": 1
     },
-    { "id": "q-open", "type": "open", "prompt": "Name a chain." }
+    {
+      "id": "q-open",
+      "type": "open",
+      "prompt": "Name a chain."
+    }
+  ],
+  "items": [
+    {
+      "category": "equipment",
+      "id": "it-sword",
+      "name": "Sword",
+      "slot": "weapon",
+      "requirements": {},
+      "defenseBonus": 0,
+      "weapon": {
+        "weaponType": "light",
+        "baseDamage": 10,
+        "scalingAttribute": "dexterity",
+        "scale": 2
+      }
+    }
+  ],
+  "classes": [
+    {
+      "id": "cl-knight",
+      "name": "Knight",
+      "description": "",
+      "artUrl": null,
+      "baseHp": 100,
+      "baseEnergy": 50,
+      "hpPerLevel": 8,
+      "energyPerLevel": 5,
+      "maxSlots": 8,
+      "baseWeaponId": "it-sword",
+      "skills": [
+        {
+          "id": "sk-strike",
+          "name": "Strike",
+          "iconUrl": null,
+          "text": "",
+          "energyCost": 15,
+          "cooldownRounds": 2,
+          "unlockLevel": 1,
+          "effect": {
+            "type": "damage",
+            "target": "enemy",
+            "magnitude": {
+              "mode": "fixed",
+              "value": 20
+            }
+          }
+        }
+      ]
+    }
   ]
 }

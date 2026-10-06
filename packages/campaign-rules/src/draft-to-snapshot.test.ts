@@ -10,8 +10,23 @@ describe('draftToSnapshot', () => {
     expect(CampaignSnapshotSchema.parse(result.snapshot)).toEqual(result.snapshot);
     expect(result.snapshot.version).toBe(3);
     expect(result.snapshot.chapters.map((c) => c.id)).toEqual(['ch-1']);
-    expect(result.snapshot.classes).toEqual([]);
-    expect(result.snapshot.items).toEqual([]);
+    expect(result.snapshot.classes.map((c) => c.id)).toEqual(['cl-knight']);
+    expect(result.snapshot.items.map((i) => i.id)).toEqual(['it-sword']);
+  });
+
+  it('round-trips classes and skills: every draft column survives (drift guard)', () => {
+    const draft = validDraft();
+    draft.classes[0]!.artUrl = 'https://cdn.test/knight.png';
+    draft.classes[0]!.skills[0]!.iconUrl = 'https://cdn.test/strike.png';
+    const result = draftToSnapshot(draft, 1);
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    const { artUrl, baseWeaponId, skills, ...rest } = result.snapshot.classes[0]!;
+    expect({
+      ...rest,
+      artUrl: artUrl ?? null,
+      baseWeaponId: baseWeaponId ?? null,
+      skills: skills.map((s) => ({ ...s, iconUrl: s.iconUrl ?? null })),
+    }).toEqual(draft.classes[0]);
   });
 
   it('maps draft columns onto snapshot fields', () => {

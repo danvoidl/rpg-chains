@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_SKILLS_PER_CLASS } from '@rpg-chains/game-config';
 import { IdSchema, AttributeSchema } from './common.js';
 import { EffectSchema } from './effects.js';
 
@@ -17,7 +18,7 @@ export type Slot = z.infer<typeof SlotSchema>;
 export const WeaponTypeSchema = z.enum(['light', 'heavy']);
 export type WeaponType = z.infer<typeof WeaponTypeSchema>;
 
-const ItemEquipmentSchema = z.object({
+export const ItemEquipmentSchema = z.object({
   category: z.literal('equipment'),
   id: IdSchema,
   name: z.string().min(1),
@@ -34,26 +35,34 @@ const ItemEquipmentSchema = z.object({
     .optional(),
 });
 
-const ItemConsumableSchema = z.object({
+export const ItemConsumableSchema = z.object({
   category: z.literal('consumable'),
   id: IdSchema,
   name: z.string().min(1),
   effect: EffectSchema,
 });
 
-// Weapon stats are required for slot "weapon" and forbidden otherwise. Applied on the union
-// (a refined member cannot sit inside z.discriminatedUnion). All items are "normal" rarity (spec §6).
+/**
+ * Weapon stats are required for slot "weapon" and forbidden otherwise. Applied on the union
+ * (a refined member cannot sit inside z.discriminatedUnion); shared with the item write payload.
+ */
+export function refineWeaponStats(
+  item: { category: 'equipment'; slot: Slot; weapon?: unknown } | { category: 'consumable' },
+  ctx: z.RefinementCtx,
+): void {
+  if (item.category === 'equipment' && (item.slot === 'weapon') !== (item.weapon != null)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Weapon stats are required for slot "weapon" and forbidden otherwise',
+      path: ['weapon'],
+    });
+  }
+}
+
+// All items are "normal" rarity (spec §6).
 export const ItemSchema = z
   .discriminatedUnion('category', [ItemEquipmentSchema, ItemConsumableSchema])
-  .superRefine((item, ctx) => {
-    if (item.category === 'equipment' && (item.slot === 'weapon') !== (item.weapon !== undefined)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Weapon stats are required for slot "weapon" and forbidden otherwise',
-        path: ['weapon'],
-      });
-    }
-  });
+  .superRefine(refineWeaponStats);
 export type Item = z.infer<typeof ItemSchema>;
 
 /* -------------------------------------------------------------- questions ---- */
@@ -139,7 +148,7 @@ export const CharacterClassSchema = z.object({
   maxSlots: z.number().int().positive(),
   /** Base weapon a fresh profile starts with (spec §6). */
   baseWeaponId: IdSchema,
-  skills: z.array(SkillSchema).max(4),
+  skills: z.array(SkillSchema).max(MAX_SKILLS_PER_CLASS),
 });
 export type CharacterClass = z.infer<typeof CharacterClassSchema>;
 

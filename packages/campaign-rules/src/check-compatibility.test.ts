@@ -227,3 +227,38 @@ describe('checkCompatibility — forbidden (spec §2.2.1), one fixture per rule'
     ]);
   });
 });
+
+describe('checkCompatibility — item kind (Fase 1b plan, decision 8)', () => {
+  function withSword(patch: Record<string, unknown>): CampaignSnapshot {
+    const next = { ...published(), version: 2 };
+    next.items = next.items.map((item) =>
+      item.id === 'item-sword' ? ({ ...item, ...patch } as typeof item) : item,
+    );
+    return next;
+  }
+
+  it('allows rebalancing an item’s numbers and renaming it', () => {
+    const sword = published().items[0]!;
+    if (sword.category !== 'equipment' || !sword.weapon) throw new Error('fixture');
+    expect(
+      rules(published(), withSword({ name: 'Blade', weapon: { ...sword.weapon, baseDamage: 9 } })),
+    ).toEqual([]);
+  });
+
+  it('refuses changing slot, weapon type or category', () => {
+    const sword = published().items[0]!;
+    if (sword.category !== 'equipment' || !sword.weapon) throw new Error('fixture');
+    expect(rules(published(), withSword({ slot: 'helmet', weapon: undefined }))).toEqual([
+      'item_kind_changed:item-sword',
+    ]);
+    expect(
+      rules(published(), withSword({ weapon: { ...sword.weapon, weaponType: 'heavy' } })),
+    ).toEqual(['item_kind_changed:item-sword']);
+    expect(
+      rules(
+        published(),
+        withSword({ category: 'consumable', effect: { type: 'provoke', duration: 1 } }),
+      ),
+    ).toEqual(['item_kind_changed:item-sword']);
+  });
+});
