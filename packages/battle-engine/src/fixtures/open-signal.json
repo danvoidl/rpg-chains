@@ -1,0 +1,58 @@
+{
+  "battleId": "b1",
+  "prng": { "seed": 12345, "cursor": 0 },
+  "round": 1,
+  "activeSide": { "side": "group" },
+  "enemyQueue": ["e1"],
+  "turnToken": 5,
+  "combatants": [
+    {
+      "profileId": "p1",
+      "currentHp": 100,
+      "maxHp": 100,
+      "currentEnergy": 40,
+      "maxEnergy": 40,
+      "defense": 20,
+      "downed": false,
+      "blockedFromSignal": false,
+      "effects": [],
+      "cooldowns": {}
+    },
+    {
+      "profileId": "p2",
+      "currentHp": 80,
+      "maxHp": 90,
+      "currentEnergy": 50,
+      "maxEnergy": 50,
+      "defense": 10,
+      "downed": false,
+      "blockedFromSignal": true,
+      "effects": [],
+      "cooldowns": {}
+    },
+    {
+      "profileId": "p3",
+      "currentHp": 0,
+      "maxHp": 85,
+      "currentEnergy": 0,
+      "maxEnergy": 65,
+      "defense": 5,
+      "downed": true,
+      "blockedFromSignal": false,
+      "effects": [],
+      "cooldowns": {}
+    }
+  ],
+  "enemies": [
+    {
+      "instanceId": "e1",
+      "villainId": "v1",
+      "currentHp": 200,
+      "maxHp": 200,
+      "effects": [],
+      "attackCooldowns": {}
+    }
+  ],
+  "signal": { "questionId": "q1", "winnerId": null },
+  "result": null
+}

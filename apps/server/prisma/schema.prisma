@@ -1,0 +1,300 @@
+// As Sete Correntes — data model (Fase 0).
+// Relational tables carry FK/queryable fields; polymorphic payloads live in jsonb
+// validated by Zod at the app boundary (decision 6). "Active battle" has no table — it
+// lives in memory (decision 4). Published content is frozen in CampaignVersion.snapshot
+// (decision 5). Connection URL and driver adapter come from prisma.config.ts / the client
+// constructor (Prisma 7 direction), not from this datasource block.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/* ------------------------------------------------------------- Better Auth ---- */
+// The auth User doubles as the domain "user" account (spec §2.1).
+
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions  Session[]
+  accounts  Account[]
+  campaigns Campaign[]
+  rooms     Room[]
+  profiles  CampaignProfile[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verification")
+}
+
+/* ---------------------------------------------------------------- authoring ---- */
+
+model Campaign {
+  id          String            @id @default(cuid())
+  authorId    String
+  author      User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  name        String
+  description String            @default("")
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  chapters    Chapter[]
+  classes     CharacterClass[]
+  villains    Villain[]
+  questions   Question[]
+  items       Item[]
+  versions    CampaignVersion[]
+  rooms       Room[]
+
+  @@index([authorId])
+}
+
+/// Immutable published snapshot of a campaign version (decision 5).
+model CampaignVersion {
+  id          String   @id @default(cuid())
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  version     Int
+  snapshot    Json
+  publishedAt DateTime @default(now())
+  rooms       Room[]
+
+  @@unique([campaignId, version])
+}
+
+model Chapter {
+  id                String      @id @default(cuid())
+  campaignId        String
+  campaign          Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  name              String
+  underConstruction Boolean     @default(false)
+  order             Int         @default(0)
+  entryNodeId       String?
+  bossNodeId        String?
+  nodes             ChapterNode[]
+  edges             NodeEdge[]
+
+  @@index([campaignId])
+}
+
+/// Draft graph node; polymorphic config in jsonb (decision 6).
+model ChapterNode {
+  id               String  @id @default(cuid())
+  chapterId        String
+  chapter          Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  type             String
+  mandatory        Boolean @default(false)
+  recommendedLevel Int?
+  participantLimit Int?
+  posX             Float   @default(0)
+  posY             Float   @default(0)
+  prerequisites    Json    @default("[]")
+  config           Json    @default("{}")
+
+  @@index([chapterId])
+}
+
+model NodeEdge {
+  id        String  @id @default(cuid())
+  chapterId String
+  chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  fromId    String
+  toId      String
+
+  @@index([chapterId])
+}
+
+model CharacterClass {
+  id             String   @id @default(cuid())
+  campaignId     String
+  campaign       Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  name           String
+  description    String   @default("")
+  artUrl         String?
+  baseHp         Int
+  baseEnergy     Int
+  hpPerLevel     Int
+  energyPerLevel Int
+  maxSlots       Int
+  baseWeaponId   String?
+  skills         Skill[]
+
+  @@index([campaignId])
+}
+
+/// Draft skill; the generic effect payload lives in jsonb (decision 6).
+model Skill {
+  id             String         @id @default(cuid())
+  classId        String
+  class          CharacterClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  name           String
+  iconUrl        String?
+  text           String         @default("")
+  energyCost     Int
+  cooldownRounds Int
+  unlockLevel    Int
+  effect         Json
+
+  @@index([classId])
+}
+
+model Villain {
+  id           String   @id @default(cuid())
+  campaignId   String
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  name         String
+  imageUrl     String?
+  hp           Int
+  strength     Int
+  dexterity    Int
+  intelligence Int
+  defense      Int
+  attacks      Json     @default("[]")
+
+  @@index([campaignId])
+}
+
+model Question {
+  id           String   @id @default(cuid())
+  campaignId   String
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  type         String
+  prompt       String
+  options      Json?
+  correctIndex Int?
+
+  @@index([campaignId])
+}
+
+model Item {
+  id           String   @id @default(cuid())
+  campaignId   String
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  category     String
+  name         String
+  slot         String?
+  requirements Json     @default("{}")
+  defenseBonus Int      @default(0)
+  weapon       Json?
+  effect       Json?
+
+  @@index([campaignId])
+}
+
+/* ------------------------------------------------------------------ runtime ---- */
+
+model Room {
+  id                String          @id @default(cuid())
+  campaignId        String
+  campaign          Campaign        @relation(fields: [campaignId], references: [id])
+  /// Current applied version; advances to newer compatible versions at safe points (decision 5).
+  campaignVersionId String
+  campaignVersion   CampaignVersion @relation(fields: [campaignVersionId], references: [id])
+  isPublic          Boolean         @default(true)
+  accessCode        String?         @unique
+  masterId          String
+  master            User            @relation(fields: [masterId], references: [id])
+  status            String          @default("open")
+  createdAt         DateTime        @default(now())
+  profiles          CampaignProfile[]
+  bag               GroupBag?
+  history           History[]
+
+  @@index([campaignId])
+}
+
+/// A player's durable character in a room (spec §2.1, §3.7). classId references into the
+/// room's current snapshot — validated at creation, not an FK; the publish compatibility gate
+/// keeps it valid as the room rolls forward to newer versions (decision 5).
+model CampaignProfile {
+  id              String  @id @default(cuid())
+  roomId          String
+  room            Room    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classId         String
+  level           Int     @default(1)
+  xp              Int     @default(0)
+  availablePoints Int     @default(0)
+  strength        Int     @default(0)
+  dexterity       Int     @default(0)
+  intelligence    Int     @default(0)
+  currentHp       Int
+  currentEnergy   Int
+  downed          Boolean @default(false)
+  equipment       Json    @default("{}")
+  inventory       Json    @default("[]")
+
+  @@unique([roomId, userId])
+  @@index([roomId])
+}
+
+model GroupBag {
+  id     String @id @default(cuid())
+  roomId String @unique
+  room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  gold   Int    @default(0)
+  items  Json   @default("[]")
+}
+
+model History {
+  id           String   @id @default(cuid())
+  roomId       String
+  room         Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId       String
+  campaignName String
+  finalData    Json
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}

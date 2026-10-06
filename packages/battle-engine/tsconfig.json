@@ -1,0 +1,11 @@
+{
+  "extends": "@rpg-chains/tsconfig/base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "references": [{ "path": "../shared-types" }, { "path": "../game-config" }],
+  "include": ["src/**/*.ts"],
+  "exclude": ["dist", "node_modules", "**/*.test.ts"]
+}
