@@ -22,3 +22,7 @@ apps/server/prisma/*.db
 # editor / os
 .DS_Store
 *.log
+
+# playwright
+apps/web/test-results/
+apps/web/playwright-report/
