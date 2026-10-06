@@ -39,6 +39,16 @@ export default function CampaignLayout({ children }: CampaignLayoutProps) {
       isActive: pathname.startsWith(`/campaigns/${campaignId}/questions`),
     },
     {
+      name: 'Classes',
+      href: `/campaigns/${campaignId}/classes`,
+      isActive: pathname.startsWith(`/campaigns/${campaignId}/classes`),
+    },
+    {
+      name: 'Itens',
+      href: `/campaigns/${campaignId}/items`,
+      isActive: pathname.startsWith(`/campaigns/${campaignId}/items`),
+    },
+    {
       name: 'Publicar',
       href: `/campaigns/${campaignId}/publish`,
       isActive: pathname.startsWith(`/campaigns/${campaignId}/publish`),

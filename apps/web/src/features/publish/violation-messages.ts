@@ -20,6 +20,8 @@ export function violationMessage(v: CompatibilityViolation): string {
       return 'Vagas da classe não podem diminuir.';
     case 'skill_removed':
       return 'Habilidade não pode ser removida da classe.';
+    case 'item_kind_changed':
+      return 'Categoria, slot ou tipo de arma de um item publicado não podem mudar.';
     case 'graph_entry_changed':
       return 'O nó de entrada do capítulo não pode mudar.';
     case 'graph_boss_changed':

@@ -42,6 +42,18 @@ export function issueMessage(issue: DraftIssue): string {
       return `Campo inválido (${issue.path}).`;
     case 'open_question_on_branch':
       return 'Pergunta aberta só é permitida em nó de caminho único, não em ramificações paralelas.';
+    case 'no_classes':
+      return 'A campanha precisa de pelo menos uma classe.';
+    case 'base_weapon_invalid':
+      return 'A classe precisa de uma arma base (um item no slot de arma).';
+    case 'skill_free':
+      return 'Habilidade sem custo de energia e sem recarga não é permitida.';
+    case 'invalid_target':
+      return 'O alvo escolhido não serve para este tipo de efeito.';
+    case 'duration_over_cap':
+      return 'Duração acima do limite para este efeito (atordoar: 1 rodada; redução de vida máxima: 3).';
+    case 'revive_over_cap':
+      return 'Reerguer devolve no máximo 100% da vida.';
     case 'schema':
       if (field === 'attacks') return 'O vilão precisa de pelo menos um ataque.';
       if (field === 'mandatory') return 'O chefe precisa ser obrigatório.';

@@ -15,6 +15,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
     "@rpg-chains/campaign-rules": "workspace:*",
+    "@rpg-chains/game-config": "workspace:*",
     "@rpg-chains/shared-types": "workspace:*",
     "@tanstack/react-query": "^5.104.1",
     "@xyflow/react": "^12.12.0",

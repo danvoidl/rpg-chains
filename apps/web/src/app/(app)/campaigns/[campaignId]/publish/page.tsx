@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
+  draftWarnings,
   validateDraft,
   type CompatibilityViolation,
   type DraftIssue,
@@ -13,6 +14,7 @@ import { usePublish, useVersions } from '@/features/publish/api';
 import { issueMessage } from '@/features/chapters/issue-messages';
 import { IssuesList } from '@/features/publish/issues-list';
 import { ViolationsList } from '@/features/publish/violations-list';
+import { WarningsList } from '@/features/publish/warnings-list';
 
 interface PublishErrorBody {
   error?: string;
@@ -33,6 +35,7 @@ export default function PublishPage() {
   const [publishedVersion, setPublishedVersion] = useState<number | null>(null);
 
   const liveIssues = useMemo(() => (draft ? validateDraft(draft) : []), [draft]);
+  const liveWarnings = useMemo(() => (draft ? draftWarnings(draft) : []), [draft]);
 
   if (draftLoading || versionsLoading) {
     return <p className="text-sm text-gray-500">Carregando…</p>;
@@ -73,6 +76,13 @@ export default function PublishPage() {
           </ul>
         )}
       </section>
+
+      {liveWarnings.length > 0 && (
+        <WarningsList
+          title="Fora das faixas recomendadas (não bloqueia a publicação)"
+          warnings={liveWarnings}
+        />
+      )}
 
       <section className="space-y-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
         {!hasVersions && (
