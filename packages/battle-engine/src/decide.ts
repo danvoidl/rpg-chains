@@ -1,42 +1,53 @@
-import type { BattleState, Command, BattleEvent, Rejection } from '@rpg-chains/shared-types';
+import type {
+  BattleContent,
+  BattleEvent,
+  BattleState,
+  Command,
+  Rejection,
+} from '@rpg-chains/shared-types';
+import { createContext, finish } from './decide-context.js';
+import { chooseAction, submitObjectiveAnswer, tapSignal } from './player-turn.js';
+import { playerLeft, timeOut } from './system-commands.js';
 
 export type DecideResult = { ok: true; events: BattleEvent[] } | Rejection;
 
-/** Alive players eligible for the signal, honoring bell rotation (spec §3.3). */
-function eligibleForSignal(state: BattleState): Set<string> {
-  const alive = state.combatants.filter((c) => !c.downed);
-  const notBlocked = alive.filter((c) => !c.blockedFromSignal);
-  // If rotation would leave nobody, the block is ignored (spec §3.3).
-  const pool = notBlocked.length > 0 ? notBlocked : alive;
-  return new Set(pool.map((c) => c.profileId));
-}
-
-function decideTapSignal(state: BattleState, profileId: string): DecideResult {
-  if (!state.signal) return { ok: false, reason: 'signal_not_open' };
-  if (state.signal.winnerId) return { ok: false, reason: 'signal_already_won' };
-  const player = state.combatants.find((c) => c.profileId === profileId);
-  if (!player) return { ok: false, reason: 'unknown_player' };
-  if (player.downed) return { ok: false, reason: 'player_downed' };
-  if (!eligibleForSignal(state).has(profileId)) return { ok: false, reason: 'blocked_this_round' };
-  return { ok: true, events: [{ type: 'SignalWonBy', profileId }] };
-}
-
 /**
- * Pure command → events | rejection (decision 1). All combat rules live here; the server
- * only transports. Phase 3 fills in answering, actions and enemy turns.
+ * Pure command → events | rejection: all combat rules live here (CLAUDE.md "battle engine").
+ * `content` is the immutable campaign slice the battle started on (Fase 3 plan decision 3); only
+ * `decide` reads it. One accepted command may run several turns — an action, the enemy's reply,
+ * the next signal — so the result always stops where a person must act again.
  */
-export function decide(state: BattleState, command: Command): DecideResult {
-  // Reject stale/duplicate commands from a past turn (decision 2).
-  if (command.turnToken !== state.turnToken) return { ok: false, reason: 'stale_turn_token' };
+export function decide(state: BattleState, command: Command, content: BattleContent): DecideResult {
+  if (state.result !== null) return { ok: false, reason: 'battle_ended' };
+  // Turn-bound commands answer one stage; a different token is stale or a duplicate.
+  if ('turnToken' in command && command.turnToken !== state.turnToken) {
+    return { ok: false, reason: 'stale_turn_token' };
+  }
 
+  const ctx = createContext(state, content);
+  const rejected = run(ctx, command);
+  return rejected ?? { ok: true, events: finish(ctx) };
+}
+
+function run(ctx: ReturnType<typeof createContext>, command: Command): Rejection | null {
   switch (command.type) {
     case 'TapSignal':
-      return decideTapSignal(state, command.profileId);
+      return tapSignal(ctx, command.profileId);
     case 'SubmitObjectiveAnswer':
-    case 'SubmitOpenAnswer':
-    case 'JudgeOpenAnswer':
+      return submitObjectiveAnswer(ctx, command.profileId, command.index);
     case 'ChooseAction':
-      // TODO(Phase 3): answering, judging and action resolution.
+      return chooseAction(ctx, command.profileId, command.action);
+    case 'SignalExpired':
+    case 'AnswerTimedOut':
+    case 'ActionTimedOut':
+      return timeOut(ctx, command.type);
+    case 'PlayerLeft':
+      return playerLeft(ctx, command.profileId);
+    case 'SubmitOpenAnswer':
+    case 'PresentQuestion':
+    case 'JudgeOpenAnswer':
+    case 'MasterPresenceChanged':
+      // TODO(Phase 3 M7): open questions and the master's presence.
       return { ok: false, reason: 'not_implemented' };
     default: {
       const _exhaustive: never = command;

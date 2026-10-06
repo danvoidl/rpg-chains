@@ -1,44 +1,144 @@
 {
   "battleId": "b1",
-  "prng": { "seed": 12345, "cursor": 0 },
+  "nodeId": "n-battle",
   "round": 1,
-  "activeSide": { "side": "group" },
-  "enemyQueue": ["e1"],
   "turnToken": 5,
+  "turn": {
+    "stage": "awaiting_signal",
+    "question": {
+      "type": "objective",
+      "questionId": "q-obj-1",
+      "prompt": "2 + 2 = ?",
+      "options": ["3", "4", "5"]
+    }
+  },
+  "enemyQueue": ["e1"],
   "combatants": [
     {
       "profileId": "p1",
-      "currentHp": 100,
-      "maxHp": 100,
-      "currentEnergy": 40,
-      "maxEnergy": 40,
-      "defense": 20,
+      "userId": "u-p1",
+      "name": "Player p1",
+      "classId": "cl-fencer",
+      "level": 1,
+      "attributes": {
+        "strength": 0,
+        "dexterity": 0,
+        "intelligence": 0
+      },
+      "weapon": {
+        "itemId": "it-rapier",
+        "name": "Rapier",
+        "weaponType": "light",
+        "baseDamage": 12,
+        "scalingAttribute": "dexterity",
+        "scale": 2
+      },
+      "equipmentDefense": 0,
+      "currentHp": 90,
+      "maxHp": 90,
+      "currentEnergy": 50,
+      "maxEnergy": 50,
       "downed": false,
+      "left": false,
       "blockedFromSignal": false,
+      "skillIds": [],
+      "consumables": [],
       "effects": [],
       "cooldowns": {}
     },
     {
       "profileId": "p2",
+      "userId": "u-p2",
+      "name": "Player p2",
+      "classId": "cl-fencer",
+      "level": 1,
+      "attributes": {
+        "strength": 0,
+        "dexterity": 0,
+        "intelligence": 0
+      },
+      "weapon": {
+        "itemId": "it-rapier",
+        "name": "Rapier",
+        "weaponType": "light",
+        "baseDamage": 12,
+        "scalingAttribute": "dexterity",
+        "scale": 2
+      },
+      "equipmentDefense": 0,
       "currentHp": 80,
       "maxHp": 90,
       "currentEnergy": 50,
       "maxEnergy": 50,
-      "defense": 10,
       "downed": false,
+      "left": false,
       "blockedFromSignal": true,
+      "skillIds": [],
+      "consumables": [],
       "effects": [],
       "cooldowns": {}
     },
     {
       "profileId": "p3",
+      "userId": "u-p3",
+      "name": "Player p3",
+      "classId": "cl-fencer",
+      "level": 1,
+      "attributes": {
+        "strength": 0,
+        "dexterity": 0,
+        "intelligence": 0
+      },
+      "weapon": {
+        "itemId": "it-rapier",
+        "name": "Rapier",
+        "weaponType": "light",
+        "baseDamage": 12,
+        "scalingAttribute": "dexterity",
+        "scale": 2
+      },
+      "equipmentDefense": 0,
       "currentHp": 0,
-      "maxHp": 85,
+      "maxHp": 90,
       "currentEnergy": 0,
-      "maxEnergy": 65,
-      "defense": 5,
+      "maxEnergy": 50,
       "downed": true,
+      "left": false,
       "blockedFromSignal": false,
+      "skillIds": [],
+      "consumables": [],
+      "effects": [],
+      "cooldowns": {}
+    },
+    {
+      "profileId": "p4",
+      "userId": "u-p4",
+      "name": "Player p4",
+      "classId": "cl-fencer",
+      "level": 1,
+      "attributes": {
+        "strength": 0,
+        "dexterity": 0,
+        "intelligence": 0
+      },
+      "weapon": {
+        "itemId": "it-rapier",
+        "name": "Rapier",
+        "weaponType": "light",
+        "baseDamage": 12,
+        "scalingAttribute": "dexterity",
+        "scale": 2
+      },
+      "equipmentDefense": 0,
+      "currentHp": 90,
+      "maxHp": 90,
+      "currentEnergy": 50,
+      "maxEnergy": 50,
+      "downed": false,
+      "left": true,
+      "blockedFromSignal": false,
+      "skillIds": [],
+      "consumables": [],
       "effects": [],
       "cooldowns": {}
     }
@@ -46,13 +146,23 @@
   "enemies": [
     {
       "instanceId": "e1",
-      "villainId": "v1",
-      "currentHp": 200,
-      "maxHp": 200,
+      "villainId": "v-rat",
+      "name": "Giant rat",
+      "currentHp": 30,
+      "maxHp": 30,
+      "defense": 10,
       "effects": [],
       "attackCooldowns": {}
     }
   ],
-  "signal": { "questionId": "q1", "winnerId": null },
-  "result": null
+  "needsMaster": false,
+  "masterOnline": true,
+  "result": null,
+  "secret": {
+    "prng": {
+      "seed": 12345,
+      "cursor": 3
+    },
+    "questionDeck": ["q-obj-2", "q-obj-3"]
+  }
 }

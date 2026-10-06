@@ -1,47 +1,77 @@
 import { describe, expect, it } from 'vitest';
-import type { ActiveEffect } from '@rpg-chains/shared-types';
-import { upsertEffect, netAttributeModifier } from './stacking.js';
+import type { ActiveEffect, StatModifierEffect } from '@rpg-chains/shared-types';
+import { applyModifiers, netModifiers, upsertEffect } from './stacking.js';
 
-const buff = (attribute: 'damage', value: number, dur: number): ActiveEffect => ({
-  type: 'buff_attribute',
-  attribute,
+let nextId = 0;
+const modifier = (
+  polarity: 'buff' | 'debuff',
+  channel: 'flat' | 'percent',
+  value: number,
+  stat: StatModifierEffect['stat'] = 'damage',
+): ActiveEffect => ({
+  id: `e${nextId++}`,
+  sourceId: 'p1',
+  kind: 'stat_modifier',
+  polarity,
+  stat,
+  channel,
   value,
-  roundsRemaining: dur,
+  rounds: 2,
 });
-const debuff = (attribute: 'damage', value: number, dur: number): ActiveEffect => ({
-  type: 'debuff_attribute',
-  attribute,
-  value,
-  roundsRemaining: dur,
+const stun = (turns: number): ActiveEffect => ({
+  id: `e${nextId++}`,
+  sourceId: 'p1',
+  kind: 'stun',
+  turns,
 });
 
-describe('upsertEffect (decision 7, spec §5.5)', () => {
-  it('replaces same (type, attribute) instead of adding', () => {
-    const after = upsertEffect([buff('damage', 20, 2)], buff('damage', 30, 3));
-    expect(after).toHaveLength(1);
-    expect(after[0]).toEqual(buff('damage', 30, 3));
-  });
-
-  it('keeps a buff and a debuff of the same attribute as separate entries', () => {
-    const after = upsertEffect([buff('damage', 20, 2)], debuff('damage', 10, 2));
+describe('upsertEffect (spec §5.5)', () => {
+  it('keeps every stat modifier, even identical ones', () => {
+    const after = upsertEffect([modifier('buff', 'percent', 10)], modifier('buff', 'percent', 10));
     expect(after).toHaveLength(2);
   });
 
-  it('replaces a non-attribute effect by type', () => {
-    const stun1: ActiveEffect = { type: 'stun', value: 0, roundsRemaining: 1 };
-    const stun2: ActiveEffect = { type: 'stun', value: 0, roundsRemaining: 2 };
-    const after = upsertEffect([stun1], stun2);
-    expect(after).toEqual([stun2]);
+  it('replaces any other effect of the same kind, resetting its duration', () => {
+    const second = stun(1);
+    expect(upsertEffect([stun(1)], second)).toEqual([second]);
+  });
+
+  it('leaves effects of other kinds alone', () => {
+    const buff = modifier('buff', 'flat', 5);
+    expect(upsertEffect([buff], stun(1))).toHaveLength(2);
   });
 });
 
-describe('netAttributeModifier (spec §5.5)', () => {
-  it('nets buff against debuff by signed sum', () => {
-    const effects = [buff('damage', 20, 2), debuff('damage', 10, 2)];
-    expect(netAttributeModifier(effects, 'damage')).toBe(10);
+describe('netModifiers (spec §5.5)', () => {
+  it('sums each channel with sign: three +10% buffs net +30%', () => {
+    const effects = [10, 10, 10].map((v) => modifier('buff', 'percent', v));
+    expect(netModifiers(effects, 'damage')).toEqual({ flat: 0, percent: 30 });
   });
 
-  it('ignores other attributes', () => {
-    expect(netAttributeModifier([buff('damage', 20, 2)], 'defense')).toBe(0);
+  it('nets a buff against a debuff: +20% and −10% leave +10%', () => {
+    const effects = [modifier('buff', 'percent', 20), modifier('debuff', 'percent', 10)];
+    expect(netModifiers(effects, 'damage')).toEqual({ flat: 0, percent: 10 });
+  });
+
+  it('keeps flat and percent apart and ignores other stats', () => {
+    const effects = [
+      modifier('buff', 'flat', 5),
+      modifier('buff', 'percent', 20),
+      modifier('buff', 'flat', 99, 'defense'),
+      stun(1),
+    ];
+    expect(netModifiers(effects, 'damage')).toEqual({ flat: 5, percent: 20 });
+  });
+});
+
+describe('applyModifiers (spec §5.3, §5.5)', () => {
+  it('multiplies base + flat by the summed percents, not by each in turn', () => {
+    // (50 + 10) × (1 + 0.20 + 0.10) = 78, not (60 × 1.2 × 1.1 = 79.2).
+    expect(applyModifiers(50, { flat: 10, percent: 30 })).toBe(78);
+  });
+
+  it('floors and never goes below zero', () => {
+    expect(applyModifiers(10, { flat: 0, percent: 15 })).toBe(11);
+    expect(applyModifiers(10, { flat: -20, percent: 0 })).toBe(0);
   });
 });
