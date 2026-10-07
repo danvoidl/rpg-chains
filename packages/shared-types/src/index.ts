@@ -20,6 +20,7 @@ export * from './authoring-inputs.js';
 export * from './battle-content.js';
 export * from './battle-effects.js';
 export * from './battle-question.js';
+export * from './battle-rewards.js';
 export * from './battle-state.js';
 export * from './commands.js';
 export * from './events.js';

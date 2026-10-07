@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { AttributeSchema, IdSchema } from './common.js';
 import { InvestedAttributesSchema } from './accounts.js';
 import { ActiveEffectSchema } from './battle-effects.js';
+import { BattleRewardSchema } from './battle-rewards.js';
 import { SkillSchema, WeaponTypeSchema } from './content.js';
 import { EffectSchema } from './effects.js';
 import { PublicQuestionSchema } from './battle-question.js';
@@ -132,6 +133,8 @@ export const PublicBattleStateSchema = z.object({
   needsMaster: z.boolean(),
   masterOnline: z.boolean(),
   result: z.enum(['victory', 'defeat']).nullable(),
+  /** What each participant earned; filled by `RewardsGranted` on a victory, else empty. */
+  rewards: z.array(BattleRewardSchema),
 });
 export type PublicBattleState = z.infer<typeof PublicBattleStateSchema>;
 

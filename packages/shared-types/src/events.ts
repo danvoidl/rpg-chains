@@ -3,6 +3,7 @@ import { IdSchema } from './common.js';
 import { ActionSchema } from './commands.js';
 import { ActiveEffectSchema } from './battle-effects.js';
 import { PublicQuestionSchema } from './battle-question.js';
+import { BattleRewardSchema } from './battle-rewards.js';
 import { CombatantSchema, EnemySchema } from './battle-state.js';
 
 /**
@@ -157,6 +158,8 @@ const publicEvents = [
   z.object({ type: z.literal('PlayerLeft'), profileId: IdSchema }),
   z.object({ type: z.literal('MasterPresenceChanged'), online: z.boolean() }),
   z.object({ type: z.literal('BattlePaused'), turnToken, reason: z.literal('master_absent') }),
+  /** A victory's rewards, one entry per participant still in the battle (spec §6). */
+  z.object({ type: z.literal('RewardsGranted'), rewards: z.array(BattleRewardSchema) }),
   z.object({ type: z.literal('BattleResolved'), result: z.enum(['victory', 'defeat']) }),
 ] as const;
 
