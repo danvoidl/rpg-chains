@@ -56,6 +56,12 @@ export function roomSnapshot(
         defenseBonus: 0,
         weapon: { weaponType: 'light', baseDamage: 10, scalingAttribute: 'dexterity', scale: 2 },
       },
+      {
+        category: 'consumable',
+        id: 'it-potion',
+        name: 'Potion',
+        effect: { type: 'heal', target: 'self', magnitude: { mode: 'fixed', value: 5 } },
+      },
     ],
   };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { BattleState } from '@rpg-chains/shared-types';
-import { profileOutcomes } from './battle-outcome.js';
+import type { BattleEvent, BattleState } from '@rpg-chains/shared-types';
+import { consumedItems, profileOutcomes } from './battle-outcome.js';
 import { basicContent, fencers, startWith } from './fixtures/battle-setup.js';
 import { restoreAtCampfire } from './restore.js';
 
@@ -40,6 +40,21 @@ describe('profileOutcomes (plan decision 11)', () => {
   it('refuses a battle still running', () => {
     const { state } = startWith(basicContent(), fencers(1), 'group');
     expect(() => profileOutcomes(state)).toThrow('not resolved');
+  });
+});
+
+describe('consumedItems', () => {
+  it('lists every unit each participant used, repeats included', () => {
+    const log: BattleEvent[] = [
+      { type: 'ConsumableUsed', profileId: 'p-1', itemId: 'it-potion' },
+      { type: 'ConsumableUsed', profileId: 'p-2', itemId: 'it-ether' },
+      { type: 'ConsumableUsed', profileId: 'p-1', itemId: 'it-potion' },
+      { type: 'BattleResolved', result: 'victory' },
+    ];
+    expect(Object.fromEntries(consumedItems(log))).toEqual({
+      'p-1': ['it-potion', 'it-potion'],
+      'p-2': ['it-ether'],
+    });
   });
 });
 

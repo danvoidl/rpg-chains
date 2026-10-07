@@ -109,6 +109,19 @@ function nextMove(state: BattleState): { userId: string; intent: ClientIntent } 
       };
     }
     case 'awaiting_action': {
+      // A combatant holding a potion drinks it before attacking.
+      const actor = state.combatants.find((c) => c.profileId === turn.profileId)!;
+      const potion = actor.consumables.find((slot) => slot.itemId === 'it-potion');
+      if (potion) {
+        return {
+          userId: userOf(turn.profileId),
+          intent: {
+            type: 'ChooseAction',
+            turnToken,
+            action: { type: 'consumable', itemId: potion.itemId },
+          },
+        };
+      }
       const target = state.enemies.find((e) => e.currentHp > 0)!.instanceId;
       return {
         userId: userOf(turn.profileId),
@@ -177,6 +190,37 @@ describe('a battle over the socket', () => {
     // The bite landed at least once and attacking earned energy, so the write-back is visible.
     expect(final.combatants.some((c) => c.currentHp < 100 || c.currentEnergy !== 50)).toBe(true);
     expect((await roomOf(f)).battles).toEqual([]);
+  });
+
+  it('takes the consumables used in battle out of the inventory, and only those', async () => {
+    const master = await signUp(app, 'Master');
+    const ana = await signUp(app, 'Ana');
+    const campaignId = await battleCampaign(app, master);
+    const { id: roomId } = await createRoom(app, master, campaignId);
+    await chooseClass(app, ana, roomId, 'cl-duo');
+    // Two potions: the perfect group drinks both on its first action turns, then attacks.
+    await app.prisma.campaignProfile.updateMany({
+      where: { userId: ana.id },
+      data: { inventory: ['it-potion', 'it-sword', 'it-potion'] },
+    });
+    const { battleId } = (await openBattle(app, ana, roomId, 'n-rat')).json<BattleSummary>();
+    expect((await battleAction(app, ana, battleId, 'start')).statusCode).toBe(200);
+    const socket = await watcher(ana, battleId);
+
+    const final = await playToEnd(battleId, { [ana.id]: socket });
+    expect(final.result).toBe('victory');
+    const held = final.combatants[0]!.consumables.find((slot) => slot.itemId === 'it-potion');
+    const drunk = 2 - (held?.quantity ?? 0);
+
+    await app.battleResolution.settled();
+    const profile = await app.prisma.campaignProfile.findFirstOrThrow({
+      where: { userId: ana.id },
+    });
+    const potionsLeft = (profile.inventory as string[]).filter((id) => id === 'it-potion').length;
+    expect(drunk).toBeGreaterThan(0);
+    expect(potionsLeft).toBe(2 - drunk);
+    // Items not used in battle stay.
+    expect(profile.inventory).toContain('it-sword');
   });
 
   it('never sends a seed, the question deck or an answer key', async () => {

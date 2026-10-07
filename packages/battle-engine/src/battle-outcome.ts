@@ -1,4 +1,4 @@
-import type { BattleState } from '@rpg-chains/shared-types';
+import type { BattleEvent, BattleState } from '@rpg-chains/shared-types';
 import type { CombatResources } from './restore.js';
 
 export interface ProfileOutcome extends CombatResources {
@@ -22,4 +22,17 @@ export function profileOutcomes(state: BattleState): ProfileOutcome[] {
           downed: c.downed,
         },
   );
+}
+
+/**
+ * The consumables each participant used, one item id per unit (spec §6), read from the log. The
+ * write-back removes them from the inventory as a delta rather than overwriting it.
+ */
+export function consumedItems(log: readonly BattleEvent[]): Map<string, string[]> {
+  const used = new Map<string, string[]>();
+  for (const event of log) {
+    if (event.type !== 'ConsumableUsed') continue;
+    used.set(event.profileId, [...(used.get(event.profileId) ?? []), event.itemId]);
+  }
+  return used;
 }
