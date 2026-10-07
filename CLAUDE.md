@@ -99,6 +99,12 @@ read `state.secret.prng` mid-call — draw through the context. `replay.test.ts`
 deterministic robot) is the guard: replay = live state, same seed = same log, cursor advances. The seed enters via the `BattleStarted` event. Replaying a log reproduces every roll
 exactly — keep it that way.
 
+**Effect time skips the round it starts in** (spec §5.5): every `ActiveEffect` carries
+`appliedRound`, and that round's `RoundEnded` neither counts it down nor ticks it; a skill cooldown
+is stored as the round it is back (`skill-ready.ts`), never ticked. The 13 effect types resolve in
+`effects/resolve-effect.ts`; target rules (`ALLOWED_TARGETS`) live in `shared-types` so the editor,
+the publish gate and the engine share them.
+
 **Effect stacking has two policies** (`stacking.ts`, spec §5.5). Attribute modifiers
 (buff/debuff) **coexist and sum**: each application is an independent entry, and the signed
 totals are computed **at read time** in two channels — flat and percent — resolved as
@@ -174,6 +180,8 @@ ack. All battle state is in `services/battle-registry.ts` (memory only), whose `
 every registry check after a handler's last `await`. Timers, the channel broadcast and the profile
 write-back are registry listeners. The battles plugin must be registered **before** `realtime`: its
 `preClose` drops the battles first, so a shutdown is a crash (spec §3.7), not a mass `PlayerLeft`.
+The master's **lobby** presence drives `MasterPresenceChanged` (`realtime/master-presence.ts`), so
+the web keeps the lobby socket in the `/rooms/[roomId]` layout, alive across room ↔ battle pages.
 
 **Auth is Better Auth** (`apps/server/src/auth.ts`) backed by the Prisma adapter; its `User`
 table doubles as the domain user account. Lucia is deprecated — do not reintroduce it. The

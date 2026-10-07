@@ -419,6 +419,29 @@ de referência em [`phase-3-playtest.md`](phase-3-playtest.md).
 
 ### M6 — Habilidades e catálogo de efeitos (Etapa B)
 
+**Decisões tomadas antes de começar (2026-10-06, gravadas na spec §3.2, §3.3, §5.5):** a rodada de
+aplicação de um efeito e a de uso de uma habilidade não contam (duração N = as N rodadas
+seguintes; cooldown 3 usado na rodada 5 volta na 9); com o mestre presente, ele escolhe a pergunta
+de cada turno (aberta do nó, escrita na hora ou objetiva sorteada), sem prazo; a resposta aberta
+tem prazo próprio de 120 s (`BATTLE_TIMERS.openAnswerMs`).
+
+**Status (2026-10-06): feito.** Motor: `effects/` (`magnitude.ts`, `targets.ts`,
+`resolve-effect.ts` — os 13 tipos —, `dispel.ts`, `over-time.ts`), `actions/skill.ts`,
+`actions/consumable.ts`, `skill-ready.ts`. Contrato: todo `ActiveEffect` guarda `appliedRound` (o
+fim dessa rodada não conta nem tica); `Combatant.cooldowns` guarda a **rodada em que a habilidade
+volta** (sem contagem regressiva); o combatente leva `skills` e `consumables` completos, para o
+cliente exibir. A regra de alvos (`ALLOWED_TARGETS`) saiu do `campaign-rules` para o
+`shared-types`, e o motor deixou de depender do `campaign-rules`. Ids de efeito seguem
+`fx-<token>-<índice>`: só `ChooseAction` aplica efeito, e ele sempre muda o estágio, então o par é
+único. Testes: `effects.test.ts` (um caso por tipo, números exatos, cooldown 2 usado na rodada 1
+volta na 4, duração 3 cobre as 3 rodadas seguintes), `kit-scenarios.test.ts` (Golpe 19, Juízo
+Final 75 → 97 com Fervor, Muralha 25% da vida) e a propriedade de replay com um robô que usa
+habilidades (`skilledRobot`; o teste exige que as 13 do catálogo apareçam e os dois desfechos).
+Web: escolha de habilidade/item com custo, recarga ("volta na rodada N") e alvo em segundo passo
+(`action-targets.ts`, espelho do motor), selos de efeito com duração nos cartões, feed com
+habilidades, efeitos e tiques. E2E: o Guardião usa Corrente de Ferro, atrai o ataque e a
+habilidade aparece em recarga.
+
 - [eu] `stacking.ts` refeito: modificadores de atributo coexistem (sem dedup), `netFlat`/`netPct`
   por stat; demais efeitos substituem por `kind` e reiniciam duração.
 - [eu] `effects/resolve-effect.ts` + `effects/targets.ts`: um resolvedor por tipo dos 13, cada um
@@ -436,6 +459,23 @@ de referência em [`phase-3-playtest.md`](phase-3-playtest.md).
   alvo por tipo, ícones de efeitos ativos com duração.
 
 ### M7 — Mestre e perguntas abertas (Etapa C)
+
+**Status (2026-10-06): feito.** Motor: `master-turn.ts` (`PresentQuestion` — pergunta do nó,
+escrita na hora ou `{ draw: 'objective' }` —, `JudgeOpenAnswer`, `MasterPresenceChanged`),
+`SubmitOpenAnswer` em `player-turn.ts`, e `openGroupQuestion` em `turn-cycle.ts` (mestre presente
+→ `QuestionRequested`; ausente → objetivas do nó ou `BattlePaused`, sem inimigos agindo). Testes:
+`master-turn.test.ts` e duas variantes novas da propriedade de replay com um mestre-robô que
+escolhe, julga, sai e volta (uma delas só com abertas, para pausar). Servidor: mestre não entra em
+formação com aberta (`409 master_cannot_fight`), precisa estar no lobby para iniciar
+(`409 master_offline`), não pode transferir o papel (`409 battle_needs_master`); a presença do
+lobby vira `MasterPresenceChanged` (`realtime/master-presence.ts`); `GET
+/api/battles/:id/questions` dá ao mestre o banco do nó sem gabarito; resposta aberta usa
+`openAnswerMs`. Web: painel do mestre (escolher/escrever/sortear, aprovar/reprovar), resposta
+escrita do jogador, mestre levado à batalha que conduz. O canal da sala subiu para o layout de
+`/rooms/[roomId]`, para o mestre não "cair" ao navegar da sala para a batalha. E2E
+`battle-master.spec.ts`: mestre exibe a aberta, jogador responde, mestre aprova, jogador ataca.
+Fica para depois: recarregar a página do mestre ainda o tira por um instante (cai para objetiva);
+uma tolerância de reconexão é da Fase 6.
 
 - [eu] `PresentQuestion`, `SubmitOpenAnswer`, `JudgeOpenAnswer` em `decide`; `needsMaster` no
   início; `MasterPresenceChanged` → fallback/pausa (decisão 2).
