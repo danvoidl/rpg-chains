@@ -272,6 +272,15 @@ export function validateDraft(draft: CampaignDraft): DraftIssue[] {
   draft.villains.forEach((villain, index) => {
     const parsed = VillainSchema.safeParse(toSnapshotVillain(villain));
     if (!parsed.success) issues.push(...schemaIssues(parsed.error.issues, ['villains', index], {}));
+    villain.drops.forEach((drop, d) => {
+      if (!pools.itemIds.has(drop.itemId)) {
+        issues.push({
+          code: 'missing_reference',
+          path: formatPath(['villains', index, 'drops', d, 'itemId']),
+          message: `Unknown item "${drop.itemId}"`,
+        });
+      }
+    });
   });
   issues.push(...validateClasses(draft));
   return issues;

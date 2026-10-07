@@ -122,6 +122,14 @@
           "targetType": "single",
           "cooldownRounds": 0
         }
+      ],
+      "xpReward": 30,
+      "goldReward": 15,
+      "drops": [
+        {
+          "itemId": "it-sword",
+          "chance": 0.12
+        }
       ]
     }
   ],

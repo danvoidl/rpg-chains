@@ -111,6 +111,18 @@ describe('validateDraft (publish validation gate)', () => {
     ]);
   });
 
+  it('requires known items in villain drops and caps their chance (spec §6)', () => {
+    const draft = validDraft();
+    draft.villains[0]!.drops = [
+      { itemId: 'it-ghost', chance: 0.1 },
+      { itemId: 'it-sword', chance: 1 },
+    ];
+    expect(validateDraft(draft)).toEqual([
+      expect.objectContaining({ code: 'schema', path: 'villains[0].drops[1].chance' }),
+      expect.objectContaining({ code: 'missing_reference', path: 'villains[0].drops[0].itemId' }),
+    ]);
+  });
+
   it('reports a boss that is not mandatory via the snapshot schema', () => {
     const draft = validDraft();
     node(draft, 'n-boss').mandatory = false;

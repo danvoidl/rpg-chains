@@ -67,6 +67,9 @@ export function toSnapshotVillain(villain: DraftVillain): Record<string, unknown
       defense: villain.defense,
     },
     attacks: villain.attacks,
+    xpReward: villain.xpReward,
+    goldReward: villain.goldReward,
+    drops: villain.drops,
   };
 }
 

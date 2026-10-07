@@ -44,7 +44,11 @@ export type DraftWarningCode =
   | 'skill_cooldown_out_of_band'
   | 'magnitude_out_of_band'
   | 'duration_out_of_band'
-  | 'total_slots_low';
+  | 'total_slots_low'
+  | 'battle_xp_out_of_band'
+  | 'battle_gold_out_of_band'
+  | 'drop_chance_high'
+  | 'item_price_missing';
 
 /**
  * A non-blocking balancing warning: publishing is allowed, the editor asks the author to confirm.

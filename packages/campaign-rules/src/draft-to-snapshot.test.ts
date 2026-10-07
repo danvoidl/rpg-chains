@@ -52,6 +52,9 @@ describe('draftToSnapshot', () => {
       hp: 120,
       attributes: { strength: 5, dexterity: 3, intelligence: 2, defense: 4 },
       attacks: validDraft().villains[0]!.attacks,
+      xpReward: 30,
+      goldReward: 15,
+      drops: [{ itemId: 'it-sword', chance: 0.12 }],
     });
   });
 

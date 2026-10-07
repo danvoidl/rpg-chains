@@ -12,6 +12,8 @@ function draftWithKit(): CampaignDraft {
   draft.items = kit.map(
     ({ key, weapon }) => ({ ...weapon, id: `it-${key}` }) as CampaignDraft['items'][number],
   );
+  // The fixture's drop points at an item the kit replaced.
+  for (const villain of draft.villains) villain.drops = [];
   draft.classes = kit.map(({ key, class: cls }) => ({
     id: `cl-${key}`,
     name: cls.name,
