@@ -11,6 +11,8 @@ export * from './public-view.js';
 export * from './derive-stats.js';
 export * from './restore.js';
 export * from './progression.js';
+export * from './equipment.js';
+export * from './out-of-battle.js';
 export * from './battle-outcome.js';
 export * from './battle-settlement.js';
 export * from './client-fold.js';
