@@ -6,6 +6,7 @@ import {
   ItemSchema,
   QuestionSchema,
   VillainAttackSchema,
+  VillainDropSchema,
 } from './content.js';
 import { EffectSchema } from './effects.js';
 
@@ -79,6 +80,9 @@ export const DraftVillainSchema = z.object({
   intelligence: z.number().int(),
   defense: z.number().int(),
   attacks: z.array(VillainAttackSchema),
+  xpReward: z.number().int(),
+  goldReward: z.number().int(),
+  drops: z.array(VillainDropSchema),
 });
 export type DraftVillain = z.infer<typeof DraftVillainSchema>;
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MAX_SKILLS_PER_CLASS } from '@rpg-chains/game-config';
+import { MAX_DROP_CHANCE, MAX_SKILLS_PER_CLASS } from '@rpg-chains/game-config';
 import { IdSchema, AttributeSchema } from './common.js';
 import { EffectSchema } from './effects.js';
 
@@ -12,6 +12,9 @@ const RequirementsSchema = z.object({
 
 /* ------------------------------------------------------------------ items ---- */
 
+/** Shop price in gold (spec §6). Additive with a default, so older snapshots stay valid. */
+const Price = z.number().int().nonnegative().default(0);
+
 export const SlotSchema = z.enum(['weapon', 'helmet', 'chest', 'boots', 'bracers', 'rings']);
 export type Slot = z.infer<typeof SlotSchema>;
 
@@ -23,6 +26,7 @@ export const ItemEquipmentSchema = z.object({
   id: IdSchema,
   name: z.string().min(1),
   slot: SlotSchema,
+  price: Price,
   requirements: RequirementsSchema.default({}),
   defenseBonus: z.number().nonnegative().default(0),
   weapon: z
@@ -39,6 +43,7 @@ export const ItemConsumableSchema = z.object({
   category: z.literal('consumable'),
   id: IdSchema,
   name: z.string().min(1),
+  price: Price,
   effect: EffectSchema,
 });
 
@@ -105,6 +110,16 @@ export const VillainAttackSchema = z.object({
 });
 export type VillainAttack = z.infer<typeof VillainAttackSchema>;
 
+/**
+ * An item a villain may drop, with its chance as a fraction of 1 (spec §6). Never certain: capped
+ * at `MAX_DROP_CHANCE`, which also holds after the relevance multiplier (spec §4.5).
+ */
+export const VillainDropSchema = z.object({
+  itemId: IdSchema,
+  chance: z.number().positive().max(MAX_DROP_CHANCE),
+});
+export type VillainDrop = z.infer<typeof VillainDropSchema>;
+
 export const VillainSchema = z.object({
   id: IdSchema,
   name: z.string().min(1),
@@ -117,6 +132,13 @@ export const VillainSchema = z.object({
     defense: z.number().nonnegative(),
   }),
   attacks: z.array(VillainAttackSchema).min(1),
+  /**
+   * What defeating one instance is worth to each participant before the relevance multiplier
+   * (spec §6). Additive with defaults, so older snapshots stay valid and give no reward.
+   */
+  xpReward: z.number().int().nonnegative().default(0),
+  goldReward: z.number().int().nonnegative().default(0),
+  drops: z.array(VillainDropSchema).default([]),
 });
 export type Villain = z.infer<typeof VillainSchema>;
 

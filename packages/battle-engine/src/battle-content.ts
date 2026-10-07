@@ -18,6 +18,7 @@ export function buildBattleContent(
   const questionIds = new Set(node.questionIds);
   return {
     nodeId,
+    recommendedLevel: node.recommendedLevel,
     lineup: node.villainIds,
     villains: snapshot.villains.filter((v) => villainIds.has(v.id)),
     questions: snapshot.questions.filter((q) => questionIds.has(q.id)),

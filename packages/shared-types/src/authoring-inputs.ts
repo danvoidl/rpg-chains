@@ -6,6 +6,7 @@ import {
   ItemConsumableSchema,
   ItemEquipmentSchema,
   VillainAttackSchema,
+  VillainDropSchema,
   refineWeaponStats,
 } from './content.js';
 import { EffectSchema } from './effects.js';
@@ -57,6 +58,9 @@ export const VillainInputSchema = z.object({
   intelligence: z.number().int().nonnegative(),
   defense: z.number().int().nonnegative(),
   attacks: z.array(VillainAttackInputSchema).optional(),
+  xpReward: z.number().int().nonnegative().optional(),
+  goldReward: z.number().int().nonnegative().optional(),
+  drops: z.array(VillainDropSchema).optional(),
 });
 export type VillainInput = z.infer<typeof VillainInputSchema>;
 

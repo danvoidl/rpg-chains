@@ -9,6 +9,8 @@ import { CharacterClassSchema, ItemSchema, QuestionSchema, VillainSchema } from 
  */
 export const BattleContentSchema = z.object({
   nodeId: IdSchema,
+  /** The node's recommended level, which scales each participant's rewards (spec §4.5). */
+  recommendedLevel: z.number().int().positive(),
   /** The node's villain ids in order, repeats included: one enemy instance per entry. */
   lineup: z.array(IdSchema).min(1),
   /** Villains of the node, each once. */
