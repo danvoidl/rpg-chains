@@ -197,6 +197,18 @@ Spec reescrita: §2.1 (sai a Bolsa do Grupo, o perfil tem ouro), §3.7, §4.4, �
 
 ### M1 — Contratos e conteúdo (Etapa A)
 
+**Status (2026-10-07): feito.** `game-config/economy.ts` (`DROP_CHANCE_TIERS`, `MAX_DROP_CHANCE`,
+`REWARD_GUIDE`, `DEFEAT_GOLD_LOSS_FRACTION`, `TRADE_OFFER_TIMEOUT_MS`). Vilão com `xpReward`,
+`goldReward` e `drops` (`VillainDropSchema`, chance ≤ teto), item com `price`, perfil com `gold`,
+`BattleContent.recommendedLevel`; todos aditivos com padrão, e um teste prova que um snapshot de
+antes continua válido. Migration `phase4_economy` (colunas novas, sai `GroupBag`). Publicação:
+drop para item inexistente é `missing_reference`; avisos novos em `economy-warnings.ts`
+(`battle_xp_out_of_band`, `battle_gold_out_of_band`, `drop_chance_high`, `item_price_missing`).
+Editor: preço no item e `villain-rewards-fields.tsx` (XP, ouro, drops por raridade com ajuste
+fino). Ajustes ao plano: o `RewardsGranted` fica para o M2, junto da regra que o emite; o aviso
+"item caro em faixa comum" virou "drop acima da faixa comum" (`drop_chance_high`), que não depende
+de comparar preços.
+
 - [eu] Campos novos em `content.ts`, `battle-content.ts`, `events.ts`, `accounts.ts` e
   `game-config`, com padrões; teste de que os snapshots das fixtures ainda passam no schema.
 - [eu] Migration (vilão, item, `gold` no perfil, sai `GroupBag`) e mapeamento rascunho →
