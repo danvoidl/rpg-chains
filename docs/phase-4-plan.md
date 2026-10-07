@@ -219,6 +219,16 @@ de comparar preços.
 
 ### M2 — Motor: recompensas e progressão (Etapa A)
 
+**Status (2026-10-07): feito.** `RewardsGranted { rewards: [{ profileId, xp, gold, items }] }`
+(`battle-rewards.ts`, público) sai de `rewards.ts` quando `resolveIfOver` vê a vitória, logo antes
+do `BattleResolved`; `evolve` o guarda em `state.rewards` (vazio até lá), então quem entra depois
+também vê. Sorteios pelo `DecideContext` na ordem participante → inimigo → drop; sem drop, nenhum
+sorteio. `progression.ts`: `gainXp`, `applyXp`, `spendPoints` (recusas `invalid_points` e
+`not_enough_points`), com o ajuste de vida e energia atuais da decisão 6. Testes: `rewards.test.ts`
+(fator por nível, caído recebe, quem saiu não, ordem fixa, teto de drop em 2000 seeds),
+`progression.test.ts`, e a propriedade de replay agora vence com XP, ouro e drops — vitória sempre
+com `RewardsGranted` imediatamente antes do fim, derrota nunca, e drops variando por seed.
+
 - [eu] `RewardsGranted` em `decide` na vitória: XP, ouro e drops por participante com o fator de
   cada um, sorteios pelo `DecideContext` (decisões 1–4). `evolve` só guarda o evento no estado.
 - [eu] `progression.ts`: `gainXp`, `spendPoints`, ajuste de vida e energia atuais quando o teto
