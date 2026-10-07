@@ -6,6 +6,7 @@ import { useRoom } from '@/features/rooms/api';
 import { BattlesSection } from '@/features/battles/battles-section';
 import { CharacterSheet } from '@/features/profile/character-sheet';
 import { ShopsSection } from '@/features/shops/shops-section';
+import { TradesSection } from '@/features/trades/trades-section';
 import { AbandonSection } from '@/features/rooms/abandon-section';
 import { ClassPicker } from '@/features/rooms/class-picker';
 import { MasterPanel } from '@/features/rooms/master-panel';
@@ -62,6 +63,9 @@ export default function RoomPage() {
 
       {isOpen && session && <BattlesSection room={room} userId={session.user.id} />}
       {isOpen && room.viewer.hasProfile && <ShopsSection room={room} />}
+      {isOpen && room.viewer.hasProfile && session && (
+        <TradesSection room={room} userId={session.user.id} />
+      )}
       {isOpen && !room.viewer.hasProfile && (
         <ClassPicker roomId={room.id} classes={room.classes} accessCode={code} />
       )}

@@ -23,7 +23,7 @@ const messages: Record<string, string> = {
   slot_empty: 'Não há nada nesse espaço.',
   not_in_inventory: 'Esse item não está no seu inventário.',
   not_consumable: 'Esse item não é consumível.',
-  invalid_target: 'Escolha quem reerguer.',
+  invalid_target: 'Escolha um jogador válido.',
   target_in_battle: 'Esse jogador está numa batalha.',
   target_downed: 'Você está caído: só reerguer funciona agora.',
   target_not_downed: 'Esse jogador não está caído.',
@@ -32,6 +32,11 @@ const messages: Record<string, string> = {
   insufficient_gold: 'Ouro insuficiente.',
   not_sold_here: 'Essa loja não vende esse item.',
   shop_not_found: 'Loja não encontrada.',
+  trade_pending: 'Já há uma oferta pendente entre vocês dois.',
+  trade_not_found: 'Essa oferta não existe mais.',
+  offer_not_covered: 'Você não tem tudo o que está oferecendo (itens equipados não entram).',
+  offer_no_longer_covered: 'Quem ofereceu já não tem o que prometeu. Nada foi trocado.',
+  ask_not_covered: 'Você não tem tudo o que foi pedido. Nada foi trocado.',
 };
 
 /** Maps a failed request to a Portuguese message, falling back to the given text. */

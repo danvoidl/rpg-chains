@@ -17,6 +17,7 @@ export async function createVillain(
   name: string,
   withImage: boolean,
   hp = 120,
+  goldReward = 0,
 ) {
   await openTab(page, campaignId, 'villains', 'Vilões');
   await page.getByLabel('Nome', { exact: true }).fill(name);
@@ -35,6 +36,7 @@ export async function createVillain(
   await page.getByLabel('Nome do ataque').fill('Chicotada');
   await page.getByLabel('Dano base').fill('10');
   await page.getByLabel('Recarga (rodadas)').fill('0');
+  if (goldReward > 0) await page.getByLabel('Ouro', { exact: true }).fill(String(goldReward));
   await page.getByRole('button', { name: 'Criar vilão' }).click();
   await expect(page.getByText(name).first()).toBeVisible();
 }
@@ -86,15 +88,22 @@ export async function importDefaultKit(page: Page, campaignId: string) {
 /**
  * A publishable campaign body: one villain, one objective question and a chapter graph
  * Narrativa (entry) → Batalha → Chefe, saved. Classes are up to the caller. `villainHp` makes the
- * villain quick to beat in battle flows; `openQuestion` adds an open question to the battle node
- * (a single-path node, so the publish gate allows it).
+ * villain quick to beat in battle flows; `goldReward` makes it pay out; `openQuestion` adds an
+ * open question to the battle node (a single-path node, so the publish gate allows it).
  */
 export async function buildPublishableChapter(
   page: Page,
   campaignId: string,
-  options: { villainHp?: number; openQuestion?: string } = {},
+  options: { villainHp?: number; goldReward?: number; openQuestion?: string } = {},
 ) {
-  await createVillain(page, campaignId, 'Guardião das Correntes', true, options.villainHp ?? 120);
+  await createVillain(
+    page,
+    campaignId,
+    'Guardião das Correntes',
+    true,
+    options.villainHp ?? 120,
+    options.goldReward ?? 0,
+  );
   await createObjectiveQuestion(page, campaignId, 'Quanto é 2 + 2?');
   if (options.openQuestion) await createOpenQuestion(page, campaignId, options.openQuestion);
 
