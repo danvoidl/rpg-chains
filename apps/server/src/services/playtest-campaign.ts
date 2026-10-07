@@ -1,18 +1,72 @@
 import type { Prisma } from '@prisma/client';
+import { DROP_CHANCE_TIERS } from '@rpg-chains/game-config';
+import type { Effect } from '@rpg-chains/shared-types';
 import { importDefaultKit } from './default-kit.js';
 import { publishCampaign } from './publish-campaign.js';
 
 /**
- * The Fase 3 playtest campaign (plan M5): the default kit and one chapter — a narrative opening,
- * three battles and a boss — with objective questions only, for groups of 2–4 at level 1. The
- * numbers are a first guess for the playtest to correct, and they are campaign content (what an
- * author would type), not system balancing, so they live here rather than in `game-config`.
+ * The playtest campaign (Fase 3 plan M5, Fase 4 plan M3): the default kit and one chapter — a
+ * narrative opening, three battles, a shop and a boss — with objective questions only, for groups
+ * of 2–4 at level 1. Villains give XP, gold and drops (the whole chapter is about one level-up);
+ * the shop sells potions and armor. The numbers are a first guess for the playtest to correct,
+ * and they are campaign content (what an author would type), not system balancing, so they live
+ * here rather than in `game-config`.
  */
+
+type ItemKey = keyof typeof ITEMS;
+
+interface ItemSpec {
+  name: string;
+  price: number;
+  /** A consumable's effect, or an armor piece's slot and defense. */
+  kind:
+    | { category: 'consumable'; effect: Effect }
+    | {
+        category: 'equipment';
+        slot: 'helmet' | 'chest';
+        defenseBonus: number;
+        requirements: { strength?: number };
+      };
+}
+
+const ITEMS = {
+  potion: {
+    name: 'Poção de Vida',
+    price: 15,
+    kind: {
+      category: 'consumable',
+      effect: { type: 'heal', target: 'self', magnitude: { mode: 'fixed', value: 30 } },
+    },
+  },
+  tonic: {
+    name: 'Tônico de Energia',
+    price: 12,
+    kind: {
+      category: 'consumable',
+      effect: { type: 'restore_energy', target: 'self', magnitude: { mode: 'fixed', value: 20 } },
+    },
+  },
+  helmet: {
+    name: 'Elmo de Couro',
+    price: 30,
+    kind: { category: 'equipment', slot: 'helmet', defenseBonus: 4, requirements: {} },
+  },
+  chestplate: {
+    name: 'Peitoral de Ferro',
+    price: 60,
+    kind: { category: 'equipment', slot: 'chest', defenseBonus: 8, requirements: { strength: 2 } },
+  },
+} satisfies Record<string, ItemSpec>;
+
+const { common, uncommon, rare } = DROP_CHANCE_TIERS;
 
 interface VillainSpec {
   name: string;
   hp: number;
   defense: number;
+  xpReward: number;
+  goldReward: number;
+  drops: { item: ItemKey; chance: number }[];
   attacks: {
     name: string;
     baseDamage: number;
@@ -26,12 +80,21 @@ const VILLAINS = {
     name: 'Rato do Porão',
     hp: 25,
     defense: 0,
+    xpReward: 8,
+    goldReward: 3,
+    drops: [{ item: 'potion', chance: common }],
     attacks: [{ name: 'Mordida', baseDamage: 5, targetType: 'single', cooldownRounds: 0 }],
   },
   bandit: {
     name: 'Bandido da Estrada',
     hp: 50,
     defense: 5,
+    xpReward: 25,
+    goldReward: 12,
+    drops: [
+      { item: 'potion', chance: common },
+      { item: 'helmet', chance: uncommon },
+    ],
     attacks: [
       { name: 'Corte', baseDamage: 8, targetType: 'single', cooldownRounds: 0 },
       { name: 'Areia nos Olhos', baseDamage: 5, targetType: 'area', cooldownRounds: 2 },
@@ -41,12 +104,21 @@ const VILLAINS = {
     name: 'Lobo Cinzento',
     hp: 20,
     defense: 0,
+    xpReward: 6,
+    goldReward: 2,
+    drops: [{ item: 'tonic', chance: common }],
     attacks: [{ name: 'Dentada', baseDamage: 5, targetType: 'single', cooldownRounds: 0 }],
   },
   warden: {
     name: 'Carcereiro da Corrente',
     hp: 90,
     defense: 10,
+    xpReward: 45,
+    goldReward: 20,
+    drops: [
+      { item: 'helmet', chance: uncommon },
+      { item: 'chestplate', chance: rare },
+    ],
     attacks: [
       { name: 'Golpe de Corrente', baseDamage: 10, targetType: 'single', cooldownRounds: 0 },
       { name: 'Tremor', baseDamage: 6, targetType: 'area', cooldownRounds: 3 },
@@ -78,6 +150,8 @@ const PARTICIPANT_LIMIT = 4;
 export interface PlaytestCampaign {
   campaignId: string;
   version: number;
+  /** Balancing warnings of the publish; the seed aims for none. */
+  warnings: unknown[];
 }
 
 /** Creates and publishes the playtest campaign for `authorId`. Throws if the gate refuses it. */
@@ -91,11 +165,32 @@ export async function createPlaytestCampaign(
       name,
       authorId,
       description:
-        'Campanha de playtest da Fase 3: três batalhas e um chefe, só perguntas objetivas.',
+        'Campanha de playtest: três batalhas, uma loja e um chefe, só perguntas objetivas.',
     },
   });
   const campaignId = campaign.id;
   await importDefaultKit(tx, campaignId);
+
+  const itemIds: Record<ItemKey, string> = {} as never;
+  for (const [key, spec] of Object.entries(ITEMS) as [ItemKey, ItemSpec][]) {
+    const { kind } = spec;
+    const item = await tx.item.create({
+      data: {
+        campaignId,
+        name: spec.name,
+        price: spec.price,
+        category: kind.category,
+        ...(kind.category === 'consumable'
+          ? { effect: kind.effect }
+          : {
+              slot: kind.slot,
+              defenseBonus: kind.defenseBonus,
+              requirements: kind.requirements,
+            }),
+      },
+    });
+    itemIds[key] = item.id;
+  }
 
   const villainIds: Record<keyof typeof VILLAINS, string> = {} as never;
   for (const [key, spec] of Object.entries(VILLAINS) as [keyof typeof VILLAINS, VillainSpec][]) {
@@ -109,6 +204,9 @@ export async function createPlaytestCampaign(
         intelligence: 0,
         defense: spec.defense,
         attacks: spec.attacks.map((attack, i) => ({ id: `${key}-attack-${i + 1}`, ...attack })),
+        xpReward: spec.xpReward,
+        goldReward: spec.goldReward,
+        drops: spec.drops.map(({ item, chance }) => ({ itemId: itemIds[item], chance })),
       },
     });
     villainIds[key] = villain.id;
@@ -151,13 +249,20 @@ export async function createPlaytestCampaign(
     opening,
     await battle('Ratos no porão', 300, [villainIds.rat, villainIds.rat]),
     await battle('O bandido', 500, [villainIds.bandit]),
-    await battle('A matilha', 700, [villainIds.wolf, villainIds.wolf, villainIds.wolf]),
+    await node({
+      type: 'shop',
+      title: 'O mercador',
+      mandatory: false,
+      posX: 700,
+      config: { itemIds: Object.values(itemIds) },
+    }),
+    await battle('A matilha', 900, [villainIds.wolf, villainIds.wolf, villainIds.wolf]),
     await node({
       type: 'boss',
       title: 'O Carcereiro',
       mandatory: true,
       recommendedLevel: 1,
-      posX: 900,
+      posX: 1100,
       config: { villainIds: [villainIds.warden], questionIds },
     }),
   ];
@@ -175,5 +280,5 @@ export async function createPlaytestCampaign(
   if (published.status !== 'published') {
     throw new Error(`playtest campaign refused by the publish gate: ${JSON.stringify(published)}`);
   }
-  return { campaignId, version: published.version.version };
+  return { campaignId, version: published.version.version, warnings: published.warnings };
 }

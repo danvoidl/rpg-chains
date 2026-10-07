@@ -25,6 +25,7 @@ import roomsRoutes from './routes/rooms.js';
 import roomProfileRoutes from './routes/room-profile.js';
 import roomMasterRoutes from './routes/room-master.js';
 import roomRestRoutes from './routes/room-rest.js';
+import profileProgressRoutes from './routes/profile-progress.js';
 import battlesRoutes from './routes/battles.js';
 
 export interface AppOptions {
@@ -73,6 +74,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   await app.register(roomProfileRoutes, { prefix: '/api/rooms/:roomId' });
   await app.register(roomMasterRoutes, { prefix: '/api/rooms/:roomId' });
   await app.register(roomRestRoutes, { prefix: '/api/rooms/:roomId' });
+  await app.register(profileProgressRoutes, { prefix: '/api/rooms/:roomId' });
   await app.register(battlesRoutes, { prefix: '/api' });
 
   return app;

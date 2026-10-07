@@ -20,12 +20,14 @@ afterAll(async () => {
 });
 
 describe('the playtest campaign (Fase 3 plan M5)', () => {
-  it('passes the publish gate with the kit, three battles and a boss', async () => {
+  it('passes the publish gate with the kit, three battles, a shop and a boss', async () => {
     const author = await signUp(app, 'Mestre');
-    const { campaignId, version } = await app.prisma.$transaction((tx) =>
+    const { campaignId, version, warnings } = await app.prisma.$transaction((tx) =>
       createPlaytestCampaign(tx, author.id, 'Playtest'),
     );
     expect(version).toBe(1);
+    // Rewards inside the guide and every shop item priced (Fase 4 plan M3).
+    expect(warnings).toEqual([]);
 
     const row = await app.prisma.campaignVersion.findFirstOrThrow({ where: { campaignId } });
     const snapshot = CampaignSnapshotSchema.parse(row.snapshot);
@@ -36,7 +38,15 @@ describe('the playtest campaign (Fase 3 plan M5)', () => {
       'Sacerdote',
     ]);
     const nodes = snapshot.chapters[0]!.nodes;
-    expect(nodes.map((n) => n.type)).toEqual(['narrative', 'battle', 'battle', 'battle', 'boss']);
+    expect(nodes.map((n) => n.type)).toEqual([
+      'narrative',
+      'battle',
+      'battle',
+      'shop',
+      'battle',
+      'boss',
+    ]);
+    expect(snapshot.villains.every((v) => v.xpReward > 0 && v.drops.length > 0)).toBe(true);
   });
 
   it('every battle of it can be formed and started from a room', async () => {

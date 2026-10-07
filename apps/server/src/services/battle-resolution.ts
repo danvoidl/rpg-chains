@@ -1,14 +1,19 @@
-import type { Prisma, PrismaClient } from '@prisma/client';
-import { consumedItems, profileOutcomes } from '@rpg-chains/battle-engine';
+import type { CampaignProfile, PrismaClient } from '@prisma/client';
+import {
+  consumedItems,
+  profileOutcomes,
+  settleProfile,
+  type SettledProfile,
+} from '@rpg-chains/battle-engine';
 import { CampaignProfileSchema } from '@rpg-chains/shared-types';
 import type { BattleListener, BattleRegistry, RunningBattle } from './battle-registry.js';
 import { lockRoom } from './room-lock.js';
 
 /**
- * The end of a battle (Fase 3 plan decision 11): once `BattleResolved` is folded, each
- * participant's HP, energy and downed flag go back to their profile, and the consumables they used
- * leave their inventory (as a delta, Fase 4 plan decision 12), in one transaction under the
- * room lock, and only then does the battle leave the registry — so the room cannot roll forward
+ * The end of a battle (Fase 3 plan decision 11, Fase 4 plan M3): once `BattleResolved` is
+ * folded, each participant's profile is settled — HP, energy and downed flag as the battle ended,
+ * used consumables out, and the victory's XP, gold and drops in (or a defeat's gold loss) — as a
+ * delta on the profile read under the room lock, in one transaction, and only then does the battle leave the registry — so the room cannot roll forward
  * to a newer version, or close, before the profiles are written.
  */
 export class BattleResolution implements BattleListener {
@@ -41,37 +46,59 @@ export class BattleResolution implements BattleListener {
   }
 
   private async writeBack(battle: RunningBattle): Promise<void> {
-    const outcomes = profileOutcomes(battle.state);
+    const { state, content } = battle;
+    const outcomes = profileOutcomes(state);
     const consumed = consumedItems(battle.log);
+    const defeat = state.result === 'defeat';
     await this.prisma.$transaction(async (tx) => {
       await lockRoom(tx, battle.roomId);
-      for (const { profileId, ...resources } of outcomes) {
-        const used = consumed.get(profileId) ?? [];
-        const inventory = used.length > 0 ? await this.spend(tx, profileId, used) : undefined;
-        await tx.campaignProfile.updateMany({
-          where: { id: profileId },
-          data: { ...resources, ...(inventory ? { inventory } : {}) },
+      // Read under the lock: the settlement is a delta on the profile as it is now.
+      const rows = await tx.campaignProfile.findMany({
+        where: { id: { in: outcomes.map((o) => o.profileId) } },
+      });
+      for (const outcome of outcomes) {
+        const row = rows.find((r) => r.id === outcome.profileId);
+        const cls = row && content.classes.find((c) => c.id === row.classId);
+        if (!row || !cls) continue;
+        const settled = settleProfile(cls, toSettledProfile(row), {
+          outcome,
+          consumed: consumed.get(row.id) ?? [],
+          reward: state.rewards.find((r) => r.profileId === row.id),
+          defeat,
+        });
+        await tx.campaignProfile.update({
+          where: { id: row.id },
+          data: {
+            level: settled.level,
+            xp: settled.xp,
+            availablePoints: settled.availablePoints,
+            currentHp: settled.currentHp,
+            currentEnergy: settled.currentEnergy,
+            downed: settled.downed,
+            gold: settled.gold,
+            inventory: settled.inventory,
+          },
         });
       }
     });
   }
+}
 
-  /** The profile's inventory minus the units used in battle, one occurrence per unit. */
-  private async spend(
-    tx: Prisma.TransactionClient,
-    profileId: string,
-    used: string[],
-  ): Promise<string[] | undefined> {
-    const row = await tx.campaignProfile.findUnique({
-      where: { id: profileId },
-      select: { inventory: true },
-    });
-    if (!row) return undefined;
-    const inventory = CampaignProfileSchema.shape.inventory.parse(row.inventory);
-    for (const itemId of used) {
-      const index = inventory.indexOf(itemId);
-      if (index !== -1) inventory.splice(index, 1);
-    }
-    return inventory;
-  }
+/** A profile row as the settlement reads it. */
+function toSettledProfile(row: CampaignProfile): SettledProfile {
+  return {
+    level: row.level,
+    xp: row.xp,
+    availablePoints: row.availablePoints,
+    attributes: {
+      strength: row.strength,
+      dexterity: row.dexterity,
+      intelligence: row.intelligence,
+    },
+    currentHp: row.currentHp,
+    currentEnergy: row.currentEnergy,
+    downed: row.downed,
+    gold: row.gold,
+    inventory: CampaignProfileSchema.shape.inventory.parse(row.inventory),
+  };
 }
