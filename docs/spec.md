@@ -27,8 +27,7 @@ O sistema se organiza em três camadas conceituais que precisam permanecer disti
 | **Habilidade**         | Ação criada pelo autor a partir de um tipo de efeito genérico, com alvo, magnitude, duração, custo e cooldown.                                          |
 | **Pergunta**           | Desafio de combate. Tipo objetivo (validação automática) ou aberto (julgado pelo mestre).                                                               |
 | **Sala**               | Instância de jogo. Pública ou privada com código. Tem dono/mestre transferível.                                                                         |
-| **Perfil de Campanha** | Personagem do jogador na sala. Nível, atributos, HP, energia, equipamentos, inventário.                                                                 |
-| **Bolsa do Grupo**     | Ouro e itens compartilhados da sala, distribuídos por votação.                                                                                          |
+| **Perfil de Campanha** | Personagem do jogador na sala. Nível, atributos, HP, energia, ouro, equipamentos, inventário.                                                           |
 | **Batalha Ativa**      | Estado transitório de uma luta em andamento. Fonte da verdade no servidor.                                                                              |
 | **Histórico**          | Registro permanente de campanhas encerradas e do personagem do usuário nelas.                                                                           |
 
@@ -127,7 +126,7 @@ Habilidades com efeito de reerguer devolvem aliados caídos ao combate, gastando
 
 HP, energia e o estado de caído **persistem entre batalhas**: ao fim de cada batalha, vitória ou derrota, os valores de cada participante — inclusive de quem saiu por desconexão, no momento da saída — são gravados no Perfil de Campanha. Quem está caído não pode entrar numa batalha.
 
-Se todos os jogadores de uma batalha caírem, a batalha é perdida e o grupo é devolvido automaticamente à última fogueira ativada, sem necessidade de percorrer o caminho. O snapshot da fogueira restaura **apenas o estado de combate**: HP, energia, caídos reerguidos e reset dos nós de batalha do capítulo atual. Nível, experiência, equipamentos e inventário nunca regridem. O custo da derrota é o tempo e uma fração do ouro da bolsa.
+Se todos os jogadores de uma batalha caírem, a batalha é perdida e o grupo é devolvido automaticamente à última fogueira ativada, sem necessidade de percorrer o caminho. O snapshot da fogueira restaura **apenas o estado de combate**: HP, energia, caídos reerguidos e reset dos nós de batalha do capítulo atual. Nível, experiência, equipamentos e inventário nunca regridem. O custo da derrota é o tempo e uma fração do ouro de cada participante da batalha — inclusive de quem saiu antes do fim, para que abandonar não seja a saída barata.
 
 ---
 
@@ -180,13 +179,13 @@ A energia é recuperada por ataques básicos (cerca de 10 por ataque), por habil
 
 ### 4.4 Nível
 
-Cada nível concede **3 pontos de atributo livres** mais o ganho fixo de vida e energia da classe. O nível máximo sugerido é 20, com a curva de experiência seguindo `XP para o próximo nível = 100 × nível atual` — cem de experiência para sair do nível 1, mil e novecentos para sair do 19, num total de dezenove mil pontos ao longo da campanha inteira.
+Cada nível concede **3 pontos de atributo livres** mais o ganho fixo de vida e energia da classe. O jogador distribui os pontos quando quiser, fora de batalha, e o ponto gasto é permanente (não há redistribuição). Quando subir de nível ou investir pontos aumenta a vida ou a energia máximas, a vida e a energia atuais sobem o mesmo tanto: subir de nível não cura por completo, mas também não perde o ganho. Um personagem caído continua caído. Uma batalha pode render vários níveis de uma vez; no nível máximo a experiência para de acumular. O nível máximo sugerido é 20, com a curva de experiência seguindo `XP para o próximo nível = 100 × nível atual` — cem de experiência para sair do nível 1, mil e novecentos para sair do 19, num total de dezenove mil pontos ao longo da campanha inteira.
 
 As quatro habilidades de classe são desbloqueadas progressivamente. O padrão do sistema é liberá-las nos níveis 1, 4, 8 e 13, mas o autor pode definir níveis próprios de desbloqueio por classe.
 
 ### 4.5 Fator de relevância — balanceamento de recompensas
 
-O problema do jogador que entra tarde e o problema do farm excessivo são o mesmo fenômeno visto de lados opostos, e podem ser resolvidos por um único mecanismo. Cada nó carrega um nível recomendado, e a diferença entre ele e o nível do jogador determina um multiplicador aplicado a experiência, ouro e chance de drop.
+O problema do jogador que entra tarde e o problema do farm excessivo são o mesmo fenômeno visto de lados opostos, e podem ser resolvidos por um único mecanismo. Cada nó carrega um nível recomendado, e a diferença entre ele e o nível do jogador determina um multiplicador aplicado a experiência, ouro e chance de drop. O multiplicador é **de cada jogador**: numa mesma batalha, cada participante recebe as recompensas com o fator do próprio nível.
 
 Seja `Δ = NívelRecomendadoDoNó − NívelDoJogador`:
 
@@ -196,7 +195,7 @@ Se Δ = 0:  multiplicador = 1,0
 Se Δ < 0:  multiplicador = máximo(0,05 ; 1 + 0,20 × Δ)
 ```
 
-Na prática, um jogador oito níveis abaixo do conteúdo recebe o triplo de recompensa, alcançando o grupo em poucas batalhas sem que ninguém precise repetir conteúdo por ele. Já um jogador cinco níveis acima recebe praticamente nada — a experiência despenca, o ouro seca e os drops somem —, o que torna o farm de conteúdo antigo inútil por si só, sem precisar de bloqueio explícito.
+Na prática, um jogador oito níveis abaixo do conteúdo recebe o triplo de recompensa, alcançando o grupo em poucas batalhas sem que ninguém precise repetir conteúdo por ele. Já um jogador cinco níveis acima recebe praticamente nada — a experiência despenca, o ouro seca e os drops somem —, o que torna o farm de conteúdo antigo inútil por si só, sem precisar de bloqueio explícito. Mesmo com o multiplicador, a chance de um drop nunca passa de um teto definido na configuração da plataforma: nenhum item cai sempre.
 
 Microcapítulos repetíveis podem ser criados nos capítulos anteriores especificamente para dar aos jogadores atrasados um lugar onde subir de nível, e o mesmo fator garante que veteranos não tenham motivo para farmá-los.
 
@@ -270,15 +269,19 @@ Vale também exibir ao autor uma estimativa de dano por rodada da classe que ele
 
 ## 6. Economia e itens
 
-Ouro e itens obtidos em batalha vão para a **bolsa do grupo**, não para inventários pessoais. A distribuição acontece por votação de maioria simples entre os jogadores presentes na sala.
+**Recompensas.** Cada vilão define quanta experiência e quanto ouro vale e uma tabela de drops: os itens que ele pode deixar cair, cada um com uma chance. Uma batalha vale a soma dos inimigos que a compõem. Só a vitória dá recompensa, e ela é **de cada participante**: todos que estavam na batalha no fim — inclusive os caídos — recebem a experiência e o ouro inteiros, multiplicados pelo próprio fator de relevância (seção 4.5), e cada um sorteia os drops para si. Nada é dividido pelo tamanho do grupo, para que jogar junto nunca renda menos. Quem saiu da batalha antes do fim não recebe nada.
 
-Compras em nós de loja funcionam por **lote**: o grupo monta uma lista de compras coletiva e vota uma única vez sobre ela, evitando dezenas de votações consecutivas. A loja não tem estoque limitado.
+**Drops são raros.** Nenhum drop é garantido. O autor escolhe a chance de cada item a partir de faixas — comum, incomum e rara —, e a chance final, já com o fator de relevância, tem um teto. Itens simples ficam nas faixas comuns e itens bons nas raras; o ouro, e portanto a loja, é a fonte principal de equipamento.
 
-A compra e a repartição são etapas separadas. Tudo que é comprado entra primeiro na bolsa do grupo, junto com o que caiu dos inimigos, e só depois o grupo decide, item a item, para quem cada coisa vai. Essa transferência da bolsa compartilhada para o inventário individual é o momento em que o item deixa de ser coletivo e passa a pertencer ao personagem. Separar as duas etapas permite que o grupo compre em massa sem precisar decidir destinatários no calor da votação, e que remaneje o que já está na bolsa a qualquer momento.
+**Ouro e itens são de cada jogador.** Não há bolsa do grupo: o ouro e os itens que um jogador ganha ou compra são dele, e o ouro de cada um é privado. Os itens ficam no inventário pessoal até serem equipados ou consumidos.
 
-A distinção que rege toda a economia é entre **aquisição** e **uso**. Adquirir — comprar na loja ou retirar um item da bolsa do grupo — é decisão coletiva e passa por votação, porque o recurso pertence ao grupo. Depois que um item foi atribuído a um jogador, ele passa a ser propriedade daquele personagem: equipar, desequipar, trocar entre os próprios slots e consumir poções são ações livres, sem votação e sem restrição.
+**Troca entre jogadores.** Jogadores da mesma sala podem dar, vender e trocar ouro e itens entre si por meio de uma **oferta**: quem oferece diz o que dá (ouro e/ou itens) e o que pede em troca (ouro e/ou itens do outro). Um presente é uma oferta que não pede nada; uma venda dá um item e pede ouro; uma troca dá item por item, com ou sem ouro na diferença. **Toda oferta precisa do aceite do outro jogador**, inclusive o presente. Ao aceitar, os dois lados são conferidos de novo e tudo se move de uma vez — nunca pela metade; se um dos lados já não tem o que prometeu, a troca é recusada sem revelar quanto ouro falta. Só entram itens do inventário (um item equipado precisa ser desequipado antes), e ninguém troca enquanto está numa batalha.
 
-Slots de equipamento: arma, capacete, peitoral, botas, braceletes e anéis. Consumíveis ficam em inventário pessoal e usá-los consome a ação do grupo. Todos os itens são de raridade "normal" nesta versão; um sistema de tiers e troca entre jogadores fica para depois.
+**Loja.** Nos nós de loja, cada jogador compra com o próprio ouro, sem votação. A loja não tem estoque limitado, e o preço é o do item na versão da campanha que a sala está jogando.
+
+**Uso.** Equipar, desequipar, trocar entre os próprios slots e consumir são ações livres do dono, fora de batalha. Equipar exige os requisitos de atributo do item (seção 4.1); o slot de arma só é trocado, nunca esvaziado. Fora de batalha, só fazem efeito os consumíveis que não dependem de combate: curar e restaurar energia do próprio personagem, e reerguer um aliado caído da sala. Os demais consumíveis só são usados em batalha, onde gastam a ação do grupo.
+
+Slots de equipamento: arma, capacete, peitoral, botas, braceletes e anéis. Todos os itens são de raridade "normal" nesta versão (a raridade de um drop é só a sua chance); um sistema de tiers e a venda de itens à loja ficam para depois.
 
 Jogadores começam apenas com a arma base de sua classe.
 
@@ -308,7 +311,7 @@ Em caso de queda de conexão, o jogador é removido da batalha em andamento e n�
 
 **Fase 3 — Motor de combate.** É a parte de maior risco técnico e a que mais depende de teste com pessoas reais. Fila de iniciativa, sinal com rotação, dois modos de pergunta, HP e energia, resolução dos efeitos do catálogo com duração e empilhamento, cooldowns, alvo dos inimigos, fórmula de dano, morte e reerguer.
 
-**Fase 4 — Progressão e economia.** XP, nível, distribuição de pontos, desbloqueio de habilidades, fator de relevância, loot, bolsa do grupo, votação, loja por lote, inventário e equipamentos.
+**Fase 4 — Progressão e economia.** XP, nível, distribuição de pontos, desbloqueio de habilidades, fator de relevância, loot, ouro, troca entre jogadores, loja, inventário e equipamentos.
 
 **Fase 5 — Fluxo de capítulo.** Vídeos de abertura, desbloqueio por conclusão (inclusive do chefe), fogueiras e snapshot, conclusão de campanha, histórico.
 
