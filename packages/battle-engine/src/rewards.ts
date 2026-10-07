@@ -22,11 +22,14 @@ export function grantRewards(ctx: DecideContext): void {
     .filter((c) => !c.left)
     .map((c): BattleReward => {
       const factor = relevanceMultiplier(content.recommendedLevel, c.level);
-      const items: string[] = [];
+      const items: BattleReward['items'] = [];
       for (const villain of villains) {
         for (const drop of villain.drops) {
           const chance = Math.min(MAX_DROP_CHANCE, drop.chance * factor);
-          if (draw(ctx, nextFloat) < chance) items.push(drop.itemId);
+          if (draw(ctx, nextFloat) < chance) {
+            const name = content.items.find((i) => i.id === drop.itemId)?.name ?? drop.itemId;
+            items.push({ itemId: drop.itemId, name });
+          }
         }
       }
       return {
