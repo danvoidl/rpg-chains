@@ -239,6 +239,20 @@ com `RewardsGranted` imediatamente antes do fim, derrota nunca, e drops variando
 
 ### M3 — Servidor e web da progressão (fecha a Etapa A)
 
+**Status (2026-10-07): feito.** `settleProfile` (`battle-settlement.ts`, puro) calcula o perfil
+depois da batalha — recursos, consumo, XP com subida de nível, ouro e drops, ou a perda de ouro na
+derrota — e o write-back só o aplica, lendo o perfil sob o `lockRoom`. `GET /api/rooms/:id/profile`
+devolve a ficha do dono (`ProfileSheet`, com ouro privado e `baseDefense`) e `POST
+.../profile/points` investe pontos (`409 in_battle`, `422 not_enough_points`). O
+`RewardsGranted` passou a levar o nome do item (`items: [{ itemId, name }]`): o cliente não tem o
+catálogo. Web: recompensas por participante na tela de fim de batalha; ficha na sala (nível,
+barra de XP, ouro, vida/energia, atributos, defesa, habilidades com nível de desbloqueio,
+inventário) e distribuição de pontos com prévia e confirmação. Seed de playtest com recompensas
+dentro da faixa (sem avisos), quatro itens com preço e um nó de loja. Testes:
+`profile-progress.test.ts` (vitória com subida de nível e drops, derrota com perda de ouro de quem
+saiu, pontos, recusas). Conferido no navegador: batalha dos ratos jogada pela interface, ficha e
+distribuição de pontos.
+
 - [eu] Write-back na vitória: XP → nível → pontos → recursos atuais, ouro e itens somados, delta
   de consumíveis; na derrota, a perda de ouro (decisão 10). Tudo na mesma transação sob
   `lockRoom`.
