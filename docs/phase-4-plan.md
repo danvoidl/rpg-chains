@@ -295,6 +295,23 @@ poção (vida 93 → 123) e desequipar.
 
 ### M5 — Troca entre jogadores (Etapa C)
 
+**Status (2026-10-07): feito.** `trade.ts` no motor (`applyTrade` move tudo ou nada; `covers`,
+`takeUnits`) e `trade.ts` em `shared-types`. Servidor: `services/trade-offers.ts` (memória, uma
+oferta por par em qualquer direção, expira por `TRADE_OFFER_TIMEOUT_MS`, sobrescrevível em teste)
+num plugin próprio; `routes/trades.ts` — `GET /trades` (as do leitor), `POST /trades` (confere que
+quem oferece tem o que dá agora; item equipado não conta), `POST /trades/:id/accept` (só o
+destinatário; relê os dois perfis sob o `lockRoom` e grava os dois na mesma transação), `DELETE
+/trades/:id` (recusar ou cancelar) e `GET /members/:profileId/inventory` (o inventário de outro
+membro, para pedir itens; o ouro continua privado). Abrir ou entrar numa formação e abandonar a
+sala derrubam as ofertas do jogador. Recusas sem revelar saldo: `ask_not_covered`,
+`offer_no_longer_covered`. Web: seção "Trocas" na sala (ofertas recebidas com aceitar/recusar,
+enviadas com cancelar, formulário "Você dá / Você pede"). Testes: `trade.test.ts`,
+`trades.test.ts` (venda, presente, saldo que mudou, dois aceites simultâneos do mesmo item, item
+equipado, par com oferta pendente, batalha, recusa, expiração, inventário de outro membro) e o e2e
+`battle-group.spec.ts`, que agora vence com 30 de ouro para cada um e termina com uma oferta de 10
+aceita pelo outro jogador. O e2e do plano (comprar uma poção e vendê-la) ficou coberto em partes:
+compra e venda de item estão nos testes de servidor, e a troca pela interface no e2e.
+
 - [eu] `services/trade-offers.ts` em memória: propor, aceitar, recusar, cancelar, expirar
   (decisão 9). Aceitar revalida os dois lados e move tudo numa transação sob `lockRoom`.
 - [eu] Rotas REST que emitem `roomEvents.changed`; sair da sala ou entrar em batalha derruba as
