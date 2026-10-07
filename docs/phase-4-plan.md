@@ -265,6 +265,23 @@ distribuição de pontos.
 
 ### M4 — Inventário, equipamento e loja (Etapa B)
 
+**Status (2026-10-07): feito.** Motor: `equipment.ts` (`equipItem` troca de slot numa operação só,
+`unequipSlot` nunca esvazia a arma, `meetsRequirements`) e `out-of-battle.ts` (`useOutOfBattle`:
+cura e energia no dono até o teto, reerguer um caído com a fração da vida; recusa o que não mudaria
+nada — `nothing_to_restore` — e os efeitos de batalha — `battle_only`). `magnitudeAmount` separa a
+leitura do atributo, para a magnitude escalável funcionar fora de batalha. Servidor:
+`services/owned-profile.ts` (`lockOwnedProfile`: trava a sala, exige o perfil do chamador, sala
+aberta e fora de batalha) usado por pontos, `routes/profile-items.ts` (`/profile/equip`,
+`/unequip`, `/use`) e `routes/shops.ts` (`GET /shops/:nodeId` com o ouro do comprador, `POST
+.../buy` revalidando o saldo sob a trava); `RoomDetail.shopNodes` e `profileId` nos membros (para
+escolher quem reerguer). A ficha marca requisitos não atendidos e consumíveis usáveis fora de
+batalha. Web: equipamento por slot com "Desequipar", inventário com "Equipar"/"Usar"/"Usar em…",
+seção de lojas na sala e página da loja. Testes: `equipment.test.ts`, `out-of-battle.test.ts`,
+`profile-items.test.ts` (requisitos, troca, defesa na batalha seguinte, `in_battle`, poção, pena
+de fênix) e `shops.test.ts` (vitrine, compra, ouro insuficiente, duas compras simultâneas com
+ouro para uma). Conferido no navegador: compra do elmo e do peitoral, equipar (defesa 4 → 16),
+poção (vida 93 → 123) e desequipar.
+
 - [eu] `canEquip` puro (requisitos, slot, arma nunca vazia) e o uso fora de batalha
   (`heal`, `restore_energy`, `revive`; decisão 13) em `battle-engine`.
 - [eu] Rotas do dono: equipar, desequipar, usar item, comprar na loja (decisões 11–12), todas com

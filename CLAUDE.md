@@ -296,10 +296,11 @@ not duplicate it here; drop notes made obsolete by the current setup.**
   event passed where `BattleEvent` was expected) passed the engine's tests and the e2e and only
   failed `tsc` in the full turbo run. → Before calling a package green, run its `build`/`typecheck`,
   not just its tests.
-- **Running the e2e suite while a `next dev` is up broke both**: Playwright starts its own
-  `next dev` in the same `apps/web/.next`, the two compile over each other (random `ERR_ABORTED`
-  in the e2e, 404s on the dev server). → Stop the dev web server before `pnpm test:e2e`; if it
-  already happened, `rm -rf apps/web/.next` and restart it.
+- **Running the e2e suite — or `pnpm turbo run build` — while a `next dev` is up broke it**:
+  Playwright's own `next dev` and `next build` both write the same `apps/web/.next` (random
+  `ERR_ABORTED` in the e2e; "Cannot find module './866.js'" and an unhydrated page on the dev
+  server). → Stop the dev web server before `pnpm test:e2e`, and restart it (after
+  `rm -rf apps/web/.next`) after any turbo `build`; if pages stop hydrating, that is why.
 
 ### 2026-10-07 (Fase 4 M1)
 
