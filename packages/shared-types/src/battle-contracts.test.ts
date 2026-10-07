@@ -78,6 +78,7 @@ describe('battle state pieces', () => {
     const modifier = {
       id: 'x1',
       sourceId: 'p1',
+      appliedRound: 1,
       kind: 'stat_modifier',
       polarity: 'buff',
       stat: 'damage',
@@ -86,9 +87,12 @@ describe('battle state pieces', () => {
     };
     expect(ActiveEffectSchema.safeParse(modifier).success).toBe(false);
     expect(ActiveEffectSchema.safeParse({ ...modifier, channel: 'percent' }).success).toBe(true);
-    expect(
-      ActiveEffectSchema.safeParse({ id: 'x2', sourceId: 'p1', kind: 'shield', rounds: 2 }).success,
-    ).toBe(false);
+    const shield = { id: 'x2', sourceId: 'p1', appliedRound: 1, kind: 'shield', rounds: 2 };
+    expect(ActiveEffectSchema.safeParse(shield).success).toBe(false);
+    expect(ActiveEffectSchema.safeParse({ ...shield, remaining: 30 }).success).toBe(true);
+    // The round of application is part of every effect: durations skip it (spec §5.5).
+    const { appliedRound: _round, ...undated } = { ...shield, remaining: 30 };
+    expect(ActiveEffectSchema.safeParse(undated).success).toBe(false);
   });
 
   it('ties the answering stage to the player who won the signal', () => {

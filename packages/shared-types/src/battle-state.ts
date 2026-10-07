@@ -2,7 +2,8 @@ import { z } from 'zod';
 import { AttributeSchema, IdSchema } from './common.js';
 import { InvestedAttributesSchema } from './accounts.js';
 import { ActiveEffectSchema } from './battle-effects.js';
-import { WeaponTypeSchema } from './content.js';
+import { SkillSchema, WeaponTypeSchema } from './content.js';
+import { EffectSchema } from './effects.js';
 import { PublicQuestionSchema } from './battle-question.js';
 
 /**
@@ -48,11 +49,22 @@ export const CombatantSchema = z.object({
   left: z.boolean(),
   /** Acted last round: blocked from the next signal (spec §3.3). */
   blockedFromSignal: z.boolean(),
-  /** Skills unlocked at this level, by id into the battle content. */
-  skillIds: z.array(IdSchema),
-  consumables: z.array(z.object({ itemId: IdSchema, quantity: z.number().int().positive() })),
+  /** Skills unlocked at this level, copied from the content so the client can offer them. */
+  skills: z.array(SkillSchema),
+  /** Consumables in the personal inventory (spec §6), with their effect. */
+  consumables: z.array(
+    z.object({
+      itemId: IdSchema,
+      name: z.string(),
+      effect: EffectSchema,
+      quantity: z.number().int().positive(),
+    }),
+  ),
   effects: z.array(ActiveEffectSchema),
-  /** Group rounds left per skill id; absent = ready. */
+  /**
+   * Per skill id on cooldown, the group round from which it can be used again; absent = ready.
+   * The round of use does not count (spec §5.5): used in round 5 with cooldown 3 → 9.
+   */
   cooldowns: z.record(z.string(), z.number().int().positive()),
 });
 export type Combatant = z.infer<typeof CombatantSchema>;

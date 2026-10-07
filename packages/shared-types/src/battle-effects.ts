@@ -15,6 +15,11 @@ const base = {
   id: IdSchema,
   /** Who applied it: a profile id or an enemy instance id. */
   sourceId: IdSchema,
+  /**
+   * The group round it was applied in. That round's end does not count against `rounds`, nor
+   * tick an over-time effect: a duration of N covers the N rounds after it (spec §5.5).
+   */
+  appliedRound: z.number().int().nonnegative(),
 };
 
 /**

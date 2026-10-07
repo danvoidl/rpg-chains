@@ -23,8 +23,10 @@ export const MIN_DAMAGE = 1;
 export const BATTLE_TIMERS = {
   /** Nobody taps the signal. */
   signalMs: 20_000,
-  /** The signal winner does not answer. */
+  /** The signal winner does not answer a multiple-choice question. */
   answerMs: 30_000,
+  /** The signal winner does not send an open answer; typing takes longer (spec §3.3). */
+  openAnswerMs: 120_000,
   /** A correct answerer does not choose an action. */
   actionMs: 30_000,
 } as const;

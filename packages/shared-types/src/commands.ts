@@ -28,13 +28,17 @@ const submitOpenAnswer = z.object({
 });
 const chooseAction = z.object({ type: z.literal('ChooseAction'), turnToken, action: ActionSchema });
 
-/** Master intents (spec §3.2): show an open question — from the node or written on the spot. */
+/**
+ * Master intents (spec §3.2): at the start of each group turn the master shows a question of the
+ * node, one written on the spot (kept only in this battle), or draws an objective one.
+ */
 const presentQuestion = z.object({
   type: z.literal('PresentQuestion'),
   turnToken,
   question: z.union([
     z.object({ questionId: IdSchema }),
     z.object({ prompt: z.string().trim().min(1).max(2000) }),
+    z.object({ draw: z.literal('objective') }),
   ]),
 });
 const judgeOpenAnswer = z.object({

@@ -22,7 +22,7 @@ import type {
   Magnitude,
   ModifiableStat,
 } from '@rpg-chains/shared-types';
-import { isAreaEffect } from './effect-targets.js';
+import { isAreaEffect } from '@rpg-chains/shared-types';
 import { formatPath, type DraftWarning, type DraftWarningCode } from './issues.js';
 
 type Path = Array<string | number>;

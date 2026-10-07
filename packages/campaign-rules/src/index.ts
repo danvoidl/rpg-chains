@@ -5,7 +5,6 @@ export * from './validate-draft.js';
 export * from './draft-to-snapshot.js';
 export * from './check-compatibility.js';
 export * from './normalize-graph.js';
-export * from './effect-targets.js';
 export * from './validate-classes.js';
 export * from './draft-warnings.js';
 export * from './default-kit.js';

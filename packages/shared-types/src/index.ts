@@ -1,6 +1,7 @@
 // Entities & snapshot contract
 export * from './common.js';
 export * from './effects.js';
+export * from './effect-targets.js';
 export * from './content.js';
 export * from './accounts.js';
 export * from './snapshot.js';
