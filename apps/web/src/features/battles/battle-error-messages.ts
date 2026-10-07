@@ -32,6 +32,19 @@ const messages: Record<string, string> = {
   not_implemented: 'Isso ainda não está disponível.',
   invalid_target: 'Alvo inválido.',
   disconnected: 'Sem conexão com o servidor.',
+  // Skills and items (M6).
+  unknown_skill: 'Habilidade indisponível.',
+  skill_on_cooldown: 'A habilidade ainda está em recarga.',
+  not_enough_energy: 'Energia insuficiente.',
+  no_such_item: 'Você não tem esse item.',
+  // The master and open questions (M7).
+  master_cannot_fight: 'O mestre julga as perguntas abertas e não luta nesta batalha.',
+  master_offline: 'O mestre precisa estar na sala para começar esta batalha.',
+  no_question_requested: 'Não é hora de escolher pergunta.',
+  nothing_to_judge: 'Não há resposta para julgar.',
+  unknown_question: 'Pergunta desconhecida.',
+  no_objective_questions: 'Este nó não tem perguntas objetivas.',
+  wrong_answer_type: 'Tipo de resposta errado para esta pergunta.',
 };
 
 /** A Portuguese message for a battle refusal code, if one is known. */

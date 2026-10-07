@@ -9,7 +9,7 @@ import { ClassPicker } from '@/features/rooms/class-picker';
 import { MasterPanel } from '@/features/rooms/master-panel';
 import { MemberList } from '@/features/rooms/member-list';
 import { roomErrorMessage } from '@/features/rooms/room-error-messages';
-import { useRoomChannel } from '@/features/rooms/use-room-channel';
+import { useRoomPresence } from '@/features/rooms/room-channel-context';
 
 /** Room page: members, battles, class picker for newcomers, abandon and master controls. */
 export default function RoomPage() {
@@ -19,7 +19,7 @@ export default function RoomPage() {
   const { data: session } = authClient.useSession();
 
   const { data: room, isLoading, error } = useRoom(roomId, code);
-  const { onlineUserIds } = useRoomChannel(roomId, room?.viewer.hasProfile ? 'member' : 'guest');
+  const onlineUserIds = useRoomPresence();
 
   if (isLoading) return <p className="text-sm text-gray-500">Carregando…</p>;
   if (error || !room) {

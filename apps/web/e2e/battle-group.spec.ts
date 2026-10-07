@@ -36,7 +36,7 @@ test('two players form a battle and beat the villain, taking turns at the signal
   // A weak villain (25 HP): a few hits win. BATTLE_SEED fixes the rolls (playwright.config.ts).
   const campaignName = `Campanha em grupo ${Date.now()}`;
   const campaignId = await createCampaign(page, campaignName);
-  await buildPublishableChapter(page, campaignId, 25);
+  await buildPublishableChapter(page, campaignId, { villainHp: 25 });
   await importDefaultKit(page, campaignId);
   await publish(page, campaignId, 1);
   await expect(page.getByRole('status').filter({ hasText: 'Versão 1 publicada.' })).toBeVisible();

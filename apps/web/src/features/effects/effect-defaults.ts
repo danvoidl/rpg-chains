@@ -1,4 +1,4 @@
-import { ALLOWED_TARGETS } from '@rpg-chains/campaign-rules';
+import { ALLOWED_TARGETS } from '@rpg-chains/shared-types';
 import type { Effect, EffectType, Magnitude, MagnitudeMode } from '@rpg-chains/shared-types';
 
 /** Starting magnitude when the author picks a mode. */

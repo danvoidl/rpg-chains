@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { BattleSummary, RoomDetail } from '@rpg-chains/shared-types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { BattleSummary, PublicQuestion, RoomDetail } from '@rpg-chains/shared-types';
 import { apiFetch } from '@/lib/api';
 
 /** Every battle mutation changes the room page; the lobby signal refreshes the others. */
@@ -47,4 +47,14 @@ export function useRest(roomId: string) {
   return useRoomMutation(() =>
     apiFetch<RoomDetail>(`/api/rooms/${roomId}/rest`, { method: 'POST' }),
   );
+}
+
+/** Master-only: the node's questions to choose from, without answer keys (spec §3.2). */
+export function useQuestionBank(battleId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['battles', battleId, 'questions'],
+    queryFn: () => apiFetch<PublicQuestion[]>(`/api/battles/${battleId}/questions`),
+    enabled,
+    staleTime: Infinity,
+  });
 }

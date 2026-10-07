@@ -50,6 +50,14 @@ export async function createObjectiveQuestion(page: Page, campaignId: string, pr
   await expect(page.getByText(prompt).first()).toBeVisible();
 }
 
+export async function createOpenQuestion(page: Page, campaignId: string, prompt: string) {
+  await openTab(page, campaignId, 'questions', 'Banco de perguntas');
+  await page.getByLabel('Tipo', { exact: true }).selectOption('open');
+  await page.getByLabel('Enunciado').fill(prompt);
+  await page.getByRole('button', { name: /Criar pergunta/ }).click();
+  await expect(page.getByText(prompt).first()).toBeVisible();
+}
+
 /** Selects a node on the canvas by its display label. */
 export async function selectNode(page: Page, label: string) {
   await page.locator('.react-flow__node').filter({ hasText: label }).first().click();
@@ -77,12 +85,18 @@ export async function importDefaultKit(page: Page, campaignId: string) {
 
 /**
  * A publishable campaign body: one villain, one objective question and a chapter graph
- * Narrativa (entry) → Batalha → Chefe, saved. Classes are up to the caller; `villainHp` makes the
- * villain quick to beat in battle flows.
+ * Narrativa (entry) → Batalha → Chefe, saved. Classes are up to the caller. `villainHp` makes the
+ * villain quick to beat in battle flows; `openQuestion` adds an open question to the battle node
+ * (a single-path node, so the publish gate allows it).
  */
-export async function buildPublishableChapter(page: Page, campaignId: string, villainHp = 120) {
-  await createVillain(page, campaignId, 'Guardião das Correntes', true, villainHp);
+export async function buildPublishableChapter(
+  page: Page,
+  campaignId: string,
+  options: { villainHp?: number; openQuestion?: string } = {},
+) {
+  await createVillain(page, campaignId, 'Guardião das Correntes', true, options.villainHp ?? 120);
   await createObjectiveQuestion(page, campaignId, 'Quanto é 2 + 2?');
+  if (options.openQuestion) await createOpenQuestion(page, campaignId, options.openQuestion);
 
   await openTab(page, campaignId, 'chapters', 'Capítulos');
   await page.getByLabel('Nome do capítulo').fill('A Primeira Corrente');
@@ -96,6 +110,9 @@ export async function buildPublishableChapter(page: Page, campaignId: string, vi
   await page.getByLabel('Limite de participantes').fill('3');
   await page.getByRole('group', { name: 'Vilões' }).getByLabel('Guardião das Correntes').fill('1');
   await page.getByRole('group', { name: 'Perguntas' }).getByLabel('Quanto é 2 + 2?').check();
+  if (options.openQuestion) {
+    await page.getByRole('group', { name: 'Perguntas' }).getByLabel(options.openQuestion).check();
+  }
   await page.getByRole('button', { name: 'Adicionar Chefe' }).click();
   await page.getByRole('button', { name: 'Definir como chefe' }).click();
   await page.getByLabel('Nível recomendado').fill('2');

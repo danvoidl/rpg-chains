@@ -4,7 +4,7 @@ import { buildPublishableChapter, importDefaultKit, publish } from './authoring'
 // Authoring, a room and a battle in one flow; `next dev` compiles each route on first visit.
 test.describe.configure({ timeout: 180_000 });
 
-test('a player forms a battle, is taken to it, answers the signal and attacks', async ({
+test('a player forms a battle, is taken to it, answers, attacks and uses a skill', async ({
   page,
   author: _author,
 }) => {
@@ -48,7 +48,20 @@ test('a player forms a battle, is taken to it, answers the signal and attacks', 
   await expect(villainHp).not.toHaveAttribute('aria-valuenow', '120');
   // The enemy's reply is paced, then the next signal opens.
   await expect(page.getByRole('button', { name: 'Tocar o sinal' })).toBeVisible();
+
+  // Next round, a skill: the Guardian's provoke draws the villain's attack, then waits its cooldown.
+  await page.getByRole('button', { name: 'Tocar o sinal' }).click();
+  await page.getByRole('button', { name: '4', exact: true }).click();
+  await page.getByRole('button', { name: /Corrente de Ferro/ }).click();
+  await expect(feed.getByText('E2E Author usou Corrente de Ferro.')).toBeVisible();
+  await expect(feed.getByText('E2E Author atraiu o ataque.')).toBeVisible();
+  await page.getByRole('button', { name: 'Tocar o sinal' }).click();
+  await page.getByRole('button', { name: '4', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: /Corrente de Ferro.*volta na rodada/ }),
+  ).toBeDisabled();
   await page.screenshot({ path: 'test-results/battle-page.png', fullPage: true });
+  await page.getByRole('button', { name: 'Atacar Guardião das Correntes' }).click();
 
   // Leaving the battle page takes the fighter out (spec §7); alone, that loses the battle.
   await page.goto(page.url().replace(/\/battles\/[^/]+$/, ''));

@@ -1,4 +1,5 @@
 import type { Enemy } from '@rpg-chains/shared-types';
+import { EffectBadges } from './effect-badges';
 import { ResourceBar } from './resource-bar';
 
 interface EnemyCardProps {
@@ -10,7 +11,6 @@ interface EnemyCardProps {
 /** A villain on the field: portrait, HP and whether it is still standing. */
 export function EnemyCard({ enemy, isActing }: EnemyCardProps) {
   const defeated = enemy.currentHp === 0;
-  const stunned = enemy.effects.some((e) => e.kind === 'stun');
   return (
     <li
       aria-label={enemy.name}
@@ -24,9 +24,9 @@ export function EnemyCard({ enemy, isActing }: EnemyCardProps) {
       <div className="flex items-center justify-between gap-2">
         <span className="font-medium text-gray-900">{enemy.name}</span>
         {defeated && <span className="text-xs text-gray-600">derrotado</span>}
-        {!defeated && stunned && <span className="text-xs text-amber-700">atordoado</span>}
       </div>
       <ResourceBar label="Vida" current={enemy.currentHp} max={enemy.maxHp} color="bg-red-500" />
+      <EffectBadges effects={enemy.effects} />
     </li>
   );
 }

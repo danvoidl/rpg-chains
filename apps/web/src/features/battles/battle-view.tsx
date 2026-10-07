@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRoom } from '@/features/rooms/api';
 import Link from 'next/link';
 import { eligibleForSignal } from '@rpg-chains/battle-engine';
 import type { ClientIntent } from '@rpg-chains/shared-types';
@@ -21,6 +22,7 @@ interface BattleViewProps {
 /** The battle page body: enemies, the group, the turn and the feed (Fase 3 plan M4). */
 export function BattleView({ battleId, roomId, userId }: BattleViewProps) {
   const { view, feed, closed, joinError, send } = useBattleChannel(battleId);
+  const isMaster = useRoom(roomId).data?.viewer.isMaster ?? false;
   const [pending, setPending] = useState(false);
   /** The last refusal, tied to the turn it happened in so it fades when the turn moves on. */
   const [refusal, setRefusal] = useState<{ token: number; text: string } | null>(null);
@@ -85,7 +87,14 @@ export function BattleView({ battleId, roomId, userId }: BattleViewProps) {
             {backToRoom}
           </div>
         ) : (
-          <TurnPanel view={view} me={me} act={act} pending={pending} />
+          <TurnPanel
+            view={view}
+            me={me}
+            act={act}
+            pending={pending}
+            isMaster={isMaster}
+            battleId={battleId}
+          />
         )}
         {refusal?.token === view.turnToken && !view.result && (
           <p role="alert" className="mt-3 text-sm text-red-700">

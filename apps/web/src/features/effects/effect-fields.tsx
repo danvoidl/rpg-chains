@@ -1,6 +1,6 @@
 'use client';
 
-import { ALLOWED_TARGETS } from '@rpg-chains/campaign-rules';
+import { ALLOWED_TARGETS } from '@rpg-chains/shared-types';
 import {
   AttributeSchema,
   EffectSchema,

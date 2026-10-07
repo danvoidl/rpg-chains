@@ -1,5 +1,6 @@
 import type { PublicQuestion } from '@rpg-chains/shared-types';
 import { unitName } from './event-text';
+import { OpenAnswerForm } from './open-answer-form';
 import { QuestionPrompt } from './question-prompt';
 import { optionButton, type TurnProps } from './turn-props';
 
@@ -29,10 +30,9 @@ export function AnswerPanel(props: TurnProps & { question: PublicQuestion; profi
             </button>
           ))}
         </div>
-      ) : (
-        // Open answers arrive with the master's judgement (Fase 3 plan M7).
-        <p className="text-sm text-gray-600">Perguntas abertas ainda não estão disponíveis.</p>
-      )}
+      ) : answering ? (
+        <OpenAnswerForm view={view} act={act} pending={pending} />
+      ) : null}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import type { Combatant } from '@rpg-chains/shared-types';
+import { EffectBadges } from './effect-badges';
 import { ResourceBar } from './resource-bar';
 
 interface CombatantCardProps {
@@ -47,6 +48,7 @@ export function CombatantCard({ combatant, isViewer, isActing, isEligible }: Com
         max={combatant.maxEnergy}
         color="bg-sky-500"
       />
+      <EffectBadges effects={combatant.effects} />
     </li>
   );
 }

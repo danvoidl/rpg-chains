@@ -12,6 +12,9 @@ const messages: Record<string, string> = {
   not_master: 'Apenas o mestre pode fazer isso.',
   room_is_public: 'Salas públicas não têm código de acesso.',
   invalid_new_master: 'O novo mestre precisa ter escolhido uma classe.',
+  battle_needs_master: 'Há uma batalha com pergunta aberta: o mestre não pode ser trocado agora.',
+  in_battle: 'Você está numa batalha. Saia dela antes de abandonar a sala.',
+  battle_in_progress: 'Não é possível com uma batalha em andamento.',
 };
 
 /** Maps a failed request to a Portuguese message, falling back to the given text. */

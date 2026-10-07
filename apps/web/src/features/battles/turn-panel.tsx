@@ -1,5 +1,7 @@
 import { ActionPanel } from './action-panel';
 import { AnswerPanel } from './answer-panel';
+import { JudgementPanel } from './judgement-panel';
+import { QuestionPicker } from './question-picker';
 import { unitName } from './event-text';
 import { SignalPanel } from './signal-panel';
 import type { TurnProps } from './turn-props';
@@ -19,11 +21,26 @@ export function TurnPanel(props: TurnProps) {
         <p className="text-sm text-gray-700">Vez de {unitName(props.view, turn.instanceId)}…</p>
       );
     case 'awaiting_question':
-      return <p className="text-sm text-gray-700">Aguardando o mestre escolher uma pergunta…</p>;
+      return props.isMaster ? (
+        <QuestionPicker {...props} />
+      ) : (
+        <p className="text-sm text-gray-700">O mestre está escolhendo a pergunta…</p>
+      );
     case 'awaiting_judgement':
-      return <p className="text-sm text-gray-700">Aguardando o julgamento do mestre…</p>;
+      return (
+        <JudgementPanel
+          {...props}
+          question={turn.question}
+          profileId={turn.profileId}
+          answer={turn.answer}
+        />
+      );
     case 'paused':
-      return <p className="text-sm text-gray-700">Batalha pausada: o mestre saiu.</p>;
+      return (
+        <p className="text-sm text-gray-700">
+          Batalha pausada: o mestre saiu. Ela continua quando ele voltar à sala.
+        </p>
+      );
     case 'starting':
     case 'ended':
       return null;

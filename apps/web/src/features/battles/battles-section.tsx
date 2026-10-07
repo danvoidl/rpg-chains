@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { RoomDetail } from '@rpg-chains/shared-types';
 import { useOpenBattle, useRest } from './api';
 import { battleErrorMessage } from './battle-error-messages';
+import { useRoomPresence } from '@/features/rooms/room-channel-context';
 import { FormationCard } from './formation-card';
 
 interface BattlesSectionProps {
@@ -31,18 +32,22 @@ export function BattlesSection({ room, userId }: BattlesSectionProps) {
     for (const battle of room.battles) {
       const before = statuses.current.get(battle.battleId);
       statuses.current.set(battle.battleId, battle.status);
-      const mine = battle.participants.some((p) => p.userId === userId);
+      // Fighters go to their battle; the master goes to the ones he must judge.
+      const mine =
+        battle.participants.some((p) => p.userId === userId) ||
+        (battle.needsMaster && room.viewer.isMaster);
       if (mine && before === 'forming' && battle.status === 'running') {
         router.push(`/rooms/${room.id}/battles/${battle.battleId}`);
       }
     }
-  }, [room.battles, room.id, userId, router]);
+  }, [room.battles, room.id, room.viewer.isMaster, userId, router]);
 
   const me = room.members.find((m) => m.userId === userId)?.profile ?? null;
   const busyNodes = new Set(room.battles.map((b) => b.nodeId));
   const inBattle = room.battles.some((b) => b.participants.some((p) => p.userId === userId));
   const canFight = me !== null && !me.downed && !inBattle;
   const error = [open, rest].find((m) => m.isError)?.error;
+  const masterOnline = useRoomPresence().includes(room.master.id);
 
   return (
     <section className="space-y-4">
@@ -67,7 +72,8 @@ export function BattlesSection({ room, userId }: BattlesSectionProps) {
               roomId={room.id}
               userId={userId}
               isMaster={room.viewer.isMaster}
-              canFight={canFight}
+              canFight={canFight && !(battle.needsMaster && room.viewer.isMaster)}
+              masterOnline={masterOnline}
             />
           ))}
         </ul>
@@ -89,19 +95,25 @@ export function BattlesSection({ room, userId }: BattlesSectionProps) {
                     {node.participantLimit !== null && ` · até ${node.participantLimit}`}
                   </span>
                 </div>
-                {node.needsMaster ? (
-                  <span className="text-xs text-gray-500">pergunta aberta: em breve</span>
-                ) : (
+                <div className="flex items-center gap-2">
+                  {node.needsMaster && (
+                    <span className="text-xs text-gray-500">pergunta aberta: o mestre julga</span>
+                  )}
                   <button
                     type="button"
                     className={buttonClass}
                     aria-label={`Abrir formação: ${title}`}
-                    disabled={!canFight || busyNodes.has(node.nodeId) || open.isPending}
+                    disabled={
+                      !canFight ||
+                      (node.needsMaster && room.viewer.isMaster) ||
+                      busyNodes.has(node.nodeId) ||
+                      open.isPending
+                    }
                     onClick={() => open.mutate(node.nodeId)}
                   >
                     Abrir formação
                   </button>
-                )}
+                </div>
               </li>
             );
           })}

@@ -8,6 +8,9 @@ export interface TurnProps {
   act: (intent: ClientIntent) => void;
   /** An intent is waiting for its ack. */
   pending: boolean;
+  /** The viewer is the room master: he picks questions and judges open answers (spec §3.2). */
+  isMaster: boolean;
+  battleId: string;
 }
 
 export const primaryButton =

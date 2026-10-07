@@ -12,13 +12,22 @@ interface FormationCardProps {
   isMaster: boolean;
   /** The viewer has a profile that could join. */
   canFight: boolean;
+  /** The room master is in the lobby; a battle with open questions needs him to start. */
+  masterOnline: boolean;
 }
 
 const buttonClass =
   'rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50';
 
 /** A battle of the room: who is in, and what the viewer can do with it. */
-export function FormationCard({ battle, roomId, userId, isMaster, canFight }: FormationCardProps) {
+export function FormationCard({
+  battle,
+  roomId,
+  userId,
+  isMaster,
+  canFight,
+  masterOnline,
+}: FormationCardProps) {
   const join = useJoinFormation();
   const leave = useLeaveFormation();
   const start = useStartBattle();
@@ -46,6 +55,11 @@ export function FormationCard({ battle, roomId, userId, isMaster, canFight }: Fo
         {battle.participantLimit !== null &&
           ` (${battle.participants.length}/${battle.participantLimit})`}
       </p>
+      {battle.needsMaster && forming && !masterOnline && (
+        <p className="text-xs text-amber-800">
+          Com pergunta aberta: o mestre precisa estar na sala para começar.
+        </p>
+      )}
       {error != null && (
         <p role="alert" className="text-sm text-red-700">
           {battleErrorMessage(error, 'Erro ao atualizar a batalha.')}
@@ -87,7 +101,7 @@ export function FormationCard({ battle, roomId, userId, isMaster, canFight }: Fo
             href={`/rooms/${roomId}/battles/${battle.battleId}`}
             className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700"
           >
-            {inIt ? 'Ir para a batalha' : 'Assistir'}
+            {inIt ? 'Ir para a batalha' : battle.needsMaster && isMaster ? 'Conduzir' : 'Assistir'}
           </Link>
         )}
         {(isMaster || (!forming && soleParticipant)) && (
