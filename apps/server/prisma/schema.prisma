@@ -209,6 +209,10 @@ model Villain {
   intelligence Int
   defense      Int
   attacks      Json     @default("[]")
+  /// Rewards per defeated instance (spec §6); `drops` is [{ itemId, chance }] (VillainDropSchema).
+  xpReward     Int      @default(0)
+  goldReward   Int      @default(0)
+  drops        Json     @default("[]")
 
   @@index([campaignId])
 }
@@ -232,6 +236,8 @@ model Item {
   category     String
   name         String
   slot         String?
+  /// Shop price in gold (spec §6).
+  price        Int      @default(0)
   requirements Json     @default("{}")
   defenseBonus Int      @default(0)
   weapon       Json?
@@ -263,7 +269,6 @@ model Room {
   updatedAt         DateTime          @updatedAt
   closedAt          DateTime?
   profiles          CampaignProfile[]
-  bag               GroupBag?
   history           History[]
 
   @@index([campaignId])
@@ -283,6 +288,8 @@ model CampaignProfile {
   level           Int      @default(1)
   xp              Int      @default(0)
   availablePoints Int      @default(0)
+  /// Private to the player (spec §6); rewards, shop and trades move it.
+  gold            Int      @default(0)
   strength        Int      @default(0)
   dexterity       Int      @default(0)
   intelligence    Int      @default(0)
@@ -295,14 +302,6 @@ model CampaignProfile {
 
   @@unique([roomId, userId])
   @@index([roomId])
-}
-
-model GroupBag {
-  id     String @id @default(cuid())
-  roomId String @unique
-  room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  gold   Int    @default(0)
-  items  Json   @default("[]")
 }
 
 model History {

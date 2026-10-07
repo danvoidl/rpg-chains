@@ -64,7 +64,6 @@ describe('room creation and listing', () => {
       ['cl-solo', 0, 1],
       ['cl-duo', 0, 2],
     ]);
-    expect(await app.prisma.groupBag.count({ where: { roomId: room.id } })).toBe(1);
   });
 
   it('gives a private room an unambiguous 6-character code, shown to the master only', async () => {

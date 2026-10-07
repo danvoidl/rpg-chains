@@ -39,7 +39,6 @@ export default async function roomsRoutes(app: FastifyInstance): Promise<void> {
           campaignId: body.campaignId,
           campaignVersionId: latest.id,
           masterId: userId,
-          bag: { create: {} },
         },
       });
     const room = body.isPublic ? await create(null) : await withFreshAccessCode(create);

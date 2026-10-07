@@ -5,12 +5,13 @@ import { ItemSchema, type Item, type ItemInput } from '@rpg-chains/shared-types'
 export function toItem(row: ItemModel): Item {
   return ItemSchema.parse(
     row.category === 'consumable'
-      ? { category: row.category, id: row.id, name: row.name, effect: row.effect }
+      ? { category: row.category, id: row.id, name: row.name, price: row.price, effect: row.effect }
       : {
           category: row.category,
           id: row.id,
           name: row.name,
           slot: row.slot,
+          price: row.price,
           requirements: row.requirements,
           defenseBonus: row.defenseBonus,
           weapon: row.weapon ?? undefined,
@@ -24,6 +25,7 @@ export function toItemData(input: ItemInput) {
     ? {
         category: input.category,
         name: input.name,
+        price: input.price,
         slot: null,
         requirements: {},
         defenseBonus: 0,
@@ -33,6 +35,7 @@ export function toItemData(input: ItemInput) {
     : {
         category: input.category,
         name: input.name,
+        price: input.price,
         slot: input.slot,
         requirements: input.requirements as Prisma.InputJsonValue,
         defenseBonus: input.defenseBonus,

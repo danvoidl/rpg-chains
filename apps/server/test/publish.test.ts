@@ -57,6 +57,9 @@ async function authorCampaign(user: TestUser) {
     intelligence: 2,
     defense: 4,
     attacks: [{ name: 'Lash', baseDamage: 10, targetType: 'single', cooldownRounds: 0 }],
+    // Inside the reward guide of the level 1 and 2 nodes, so the kit publishes warning-free.
+    xpReward: 30,
+    goldReward: 15,
   });
   const question = await post(`${base}/questions`, {
     type: 'objective',

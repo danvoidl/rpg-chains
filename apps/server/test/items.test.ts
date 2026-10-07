@@ -53,6 +53,7 @@ describe('items REST routes', () => {
       category: 'consumable',
       id: item.id,
       name: 'Potion',
+      price: 0,
       effect: { type: 'heal', target: 'self', magnitude: { mode: 'fixed', value: 30 } },
     });
 
