@@ -64,6 +64,8 @@ export default async function battlesRoutes(app: FastifyInstance): Promise<void>
         masterId: room.masterId,
       });
       if ('error' in battle) return refuse(reply, battle);
+      // Going into a battle drops the player's trade offers (Fase 4 plan decision 9).
+      app.trades.dropProfile(opener.profileId);
       app.roomEvents.changed(roomId);
       return reply.code(201).send(toBattleSummary(battle));
     },
@@ -87,6 +89,7 @@ export default async function battlesRoutes(app: FastifyInstance): Promise<void>
       if ('error' in open) return refuse(reply, open);
       const refused = joinFormation(app.battles, open, joiner);
       if (refused) return refuse(reply, refused);
+      app.trades.dropProfile(joiner.profileId);
       app.roomEvents.changed(open.roomId);
       return toBattleSummary(open);
     },

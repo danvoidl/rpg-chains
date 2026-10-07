@@ -78,6 +78,8 @@ export default async function roomProfileRoutes(app: FastifyInstance): Promise<v
       // A profile in a battle — even one they left — still gets that battle's write-back.
       if (app.battles.battleOf(profile.id)) return { error: 409, code: 'in_battle' } as const;
       await tx.campaignProfile.delete({ where: { id: profile.id } });
+      // Leaving the room drops the player's trade offers (Fase 4 plan decision 9).
+      app.trades.dropProfile(profile.id);
       return { error: null } as const;
     });
 

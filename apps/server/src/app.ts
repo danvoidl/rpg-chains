@@ -17,7 +17,7 @@ import itemsRoutes from './routes/items.js';
 import classesRoutes from './routes/classes.js';
 import classKitRoutes from './routes/class-kit.js';
 import { randomInt } from 'node:crypto';
-import { BATTLE_TIMERS } from '@rpg-chains/game-config';
+import { BATTLE_TIMERS, TRADE_OFFER_TIMEOUT_MS } from '@rpg-chains/game-config';
 import battlesPlugin, { type BattlesPluginOptions } from './plugins/battles.js';
 import realtimePlugin from './plugins/realtime.js';
 import catalogRoutes from './routes/catalog.js';
@@ -28,12 +28,16 @@ import roomRestRoutes from './routes/room-rest.js';
 import profileProgressRoutes from './routes/profile-progress.js';
 import profileItemsRoutes from './routes/profile-items.js';
 import shopsRoutes from './routes/shops.js';
+import tradesRoutes from './routes/trades.js';
+import tradesPlugin, { type TradesPluginOptions } from './plugins/trades.js';
 import battlesRoutes from './routes/battles.js';
 
 export interface AppOptions {
   logger: boolean;
   /** Overrides for tests: short turn timers, a fixed seed. */
   battles?: Partial<BattlesPluginOptions>;
+  /** Overrides for tests: a short trade offer timeout. */
+  trades?: Partial<TradesPluginOptions>;
 }
 
 /**
@@ -60,6 +64,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     ...options.battles,
   });
   await app.register(realtimePlugin);
+  await app.register(tradesPlugin, { timeoutMs: TRADE_OFFER_TIMEOUT_MS, ...options.trades });
   await app.register(healthRoutes);
   await app.register(campaignsRoutes, { prefix: '/api/campaigns' });
   await app.register(villainsRoutes, { prefix: '/api/campaigns/:campaignId/villains' });
@@ -79,6 +84,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   await app.register(profileProgressRoutes, { prefix: '/api/rooms/:roomId' });
   await app.register(profileItemsRoutes, { prefix: '/api/rooms/:roomId' });
   await app.register(shopsRoutes, { prefix: '/api/rooms/:roomId' });
+  await app.register(tradesRoutes, { prefix: '/api/rooms/:roomId' });
   await app.register(battlesRoutes, { prefix: '/api' });
 
   return app;
