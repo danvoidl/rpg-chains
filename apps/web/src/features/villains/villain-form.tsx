@@ -3,17 +3,42 @@
 import { useEffect } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { VillainInputSchema, type VillainInput, type DraftVillain } from '@rpg-chains/shared-types';
+import {
+  VillainInputSchema,
+  type DraftVillain,
+  type Item,
+  type VillainInput,
+} from '@rpg-chains/shared-types';
 import { ImageUpload } from '@/components/image-upload';
+import { VillainRewardsFields } from './villain-rewards-fields';
 
 const inputClass =
   'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
 const labelClass = 'block text-sm font-medium text-gray-700';
 const errorClass = 'mt-1 text-sm text-red-600';
 
+/** The form values of a villain being edited. */
+function toFormValues(villain: DraftVillain): VillainInput {
+  return {
+    name: villain.name,
+    imageUrl: villain.imageUrl ?? null,
+    hp: villain.hp,
+    strength: villain.strength,
+    dexterity: villain.dexterity,
+    intelligence: villain.intelligence,
+    defense: villain.defense,
+    attacks: villain.attacks,
+    xpReward: villain.xpReward,
+    goldReward: villain.goldReward,
+    drops: villain.drops,
+  };
+}
+
 interface VillainFormProps {
   /** Prefill values when editing an existing villain. */
   defaultValues?: DraftVillain;
+  /** The campaign's items, for the drop table. */
+  items: Item[];
   submitLabel: string;
   onSubmit: (values: VillainInput) => Promise<void>;
   isSubmitting: boolean;
@@ -22,6 +47,7 @@ interface VillainFormProps {
 /** react-hook-form villain editor with dynamic attack rows and image upload. */
 export function VillainForm({
   defaultValues,
+  items,
   submitLabel,
   onSubmit,
   isSubmitting,
@@ -31,20 +57,12 @@ export function VillainForm({
     handleSubmit,
     control,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<VillainInput>({
     resolver: zodResolver(VillainInputSchema),
     defaultValues: defaultValues
-      ? {
-          name: defaultValues.name,
-          imageUrl: defaultValues.imageUrl ?? null,
-          hp: defaultValues.hp,
-          strength: defaultValues.strength,
-          dexterity: defaultValues.dexterity,
-          intelligence: defaultValues.intelligence,
-          defense: defaultValues.defense,
-          attacks: defaultValues.attacks,
-        }
+      ? toFormValues(defaultValues)
       : {
           name: '',
           imageUrl: null,
@@ -54,23 +72,15 @@ export function VillainForm({
           intelligence: 0,
           defense: 0,
           attacks: [],
+          xpReward: 0,
+          goldReward: 0,
+          drops: [],
         },
   });
 
   // Sync form values when defaultValues changes (switching to a different villain to edit).
   useEffect(() => {
-    if (defaultValues) {
-      reset({
-        name: defaultValues.name,
-        imageUrl: defaultValues.imageUrl ?? null,
-        hp: defaultValues.hp,
-        strength: defaultValues.strength,
-        dexterity: defaultValues.dexterity,
-        intelligence: defaultValues.intelligence,
-        defense: defaultValues.defense,
-        attacks: defaultValues.attacks,
-      });
-    }
+    if (defaultValues) reset(toFormValues(defaultValues));
   }, [defaultValues, reset]);
 
   const { fields, append, remove } = useFieldArray({ control, name: 'attacks' });
@@ -277,6 +287,14 @@ export function VillainForm({
           Adicionar ataque
         </button>
       </div>
+
+      <VillainRewardsFields
+        control={control}
+        register={register}
+        setValue={setValue}
+        errors={errors}
+        items={items}
+      />
 
       <button
         type="submit"
