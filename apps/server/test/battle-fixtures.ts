@@ -30,7 +30,7 @@ function battleNode(
  * The room fixture plus one chapter to fight in (Fase 3 plan M3). Knights (100 HP, sword 10 dmg)
  * against a 15 HP rat without defense that bites for 1: two hits win, nobody falls.
  * Nodes: `n-rat` (limit 2), `n-boss`, `n-open` (an open question), `n-silent` (no questions),
- * `n-camp` (a campfire).
+ * `n-camp` (a campfire), `n-shop` (sells the potion, the helmet and the phoenix feather).
  */
 export function battleSnapshot(campaignId: string, version: number): CampaignSnapshot {
   const base = roomSnapshot(campaignId, version);
@@ -65,6 +65,15 @@ export function battleSnapshot(campaignId: string, version: number): CampaignSna
             prerequisites: [],
             mandatory: false,
             position: at,
+          },
+          {
+            type: 'shop',
+            id: 'n-shop',
+            title: 'Merchant',
+            prerequisites: [],
+            mandatory: false,
+            position: at,
+            itemIds: ['it-potion', 'it-helmet', 'it-phoenix'],
           },
         ],
         edges: [],

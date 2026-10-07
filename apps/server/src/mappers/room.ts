@@ -7,6 +7,7 @@ import type {
   RoomDetail,
   RoomStatus,
   RoomSummary,
+  ShopNodeOption,
 } from '@rpg-chains/shared-types';
 import { RoomTurnTimersSchema } from '@rpg-chains/shared-types';
 import type { RoomWithRelations } from '../services/room-query.js';
@@ -52,6 +53,17 @@ function battleNodes(snapshot: CampaignSnapshot): BattleNodeOption[] {
               needsMaster: node.questionIds.some((id) => open.has(id)),
             },
           ]
+        : [],
+    ),
+  );
+}
+
+/** Every `shop` node of the version, in chapter order (provisional list until the map). */
+function shopNodes(snapshot: CampaignSnapshot): ShopNodeOption[] {
+  return snapshot.chapters.flatMap((chapter) =>
+    chapter.nodes.flatMap((node): ShopNodeOption[] =>
+      node.type === 'shop'
+        ? [{ nodeId: node.id, title: node.title, chapterName: chapter.name }]
         : [],
     ),
   );
@@ -111,6 +123,7 @@ export function toRoomDetail(
         name: profile.user.name,
         isMaster: profile.userId === room.masterId,
         profile: {
+          profileId: profile.id,
           classId: profile.classId,
           className: className(snapshot, profile.classId),
           level: profile.level,
@@ -131,6 +144,7 @@ export function toRoomDetail(
     })),
     battles,
     battleNodes: battleNodes(snapshot),
+    shopNodes: shopNodes(snapshot),
     turnTimers: RoomTurnTimersSchema.parse(room.turnTimers),
     viewer: { isMaster, hasProfile: room.profiles.some((p) => p.userId === viewerId) },
   };

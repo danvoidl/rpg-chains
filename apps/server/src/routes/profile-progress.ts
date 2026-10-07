@@ -2,7 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { spendPoints } from '@rpg-chains/battle-engine';
 import { SpendPointsInputSchema } from '@rpg-chains/shared-types';
 import { toProfileSheet } from '../mappers/profile-sheet.js';
-import { lockRoom } from '../services/room-lock.js';
+import { classOf, progressOf } from '../mappers/profile-state.js';
+import { lockOwnedProfile } from '../services/owned-profile.js';
 import { findRoom } from '../services/room-query.js';
 import { syncRoomVersion } from '../services/room-version.js';
 
@@ -31,34 +32,11 @@ export default async function profileProgressRoutes(app: FastifyInstance): Promi
       const spend = SpendPointsInputSchema.parse(request.body);
 
       const outcome = await app.prisma.$transaction(async (tx) => {
-        if (!(await lockRoom(tx, roomId))) return { error: 404, code: 'not_a_player' } as const;
-        const room = (await findRoom(tx, roomId))!;
-        const profile = room.profiles.find((p) => p.userId === userId);
-        if (!profile) return { error: 404, code: 'not_a_player' } as const;
-        if (room.status === 'closed') return { error: 409, code: 'room_closed' } as const;
-        // The battle read the profile when it started; its write-back would undo the change.
-        if (app.battles.battleOf(profile.id)) return { error: 409, code: 'in_battle' } as const;
-
-        const { snapshot } = await syncRoomVersion(tx, room, app.battles);
-        const cls = snapshot.classes.find((c) => c.id === profile.classId)!;
-        const spent = spendPoints(
-          cls,
-          {
-            level: profile.level,
-            xp: profile.xp,
-            availablePoints: profile.availablePoints,
-            attributes: {
-              strength: profile.strength,
-              dexterity: profile.dexterity,
-              intelligence: profile.intelligence,
-            },
-            currentHp: profile.currentHp,
-            currentEnergy: profile.currentEnergy,
-            downed: profile.downed,
-          },
-          spend,
-        );
-        if ('ok' in spent) return { error: 422, code: spent.reason } as const;
+        const owned = await lockOwnedProfile(tx, app.battles, roomId, userId);
+        if ('error' in owned) return owned;
+        const { profile, snapshot } = owned;
+        const spent = spendPoints(classOf(snapshot, profile), progressOf(profile), spend);
+        if ('ok' in spent) return { error: 422, code: spent.reason };
         const updated = await tx.campaignProfile.update({
           where: { id: profile.id },
           data: {
@@ -68,7 +46,7 @@ export default async function profileProgressRoutes(app: FastifyInstance): Promi
             currentEnergy: spent.currentEnergy,
           },
         });
-        return { error: null, sheet: toProfileSheet(updated, snapshot) } as const;
+        return { error: null, sheet: toProfileSheet(updated, snapshot) };
       });
 
       if (outcome.error !== null) return reply.code(outcome.error).send({ error: outcome.code });
