@@ -15,6 +15,9 @@ const messages: Record<string, string> = {
   battle_needs_master: 'Há uma batalha com pergunta aberta: o mestre não pode ser trocado agora.',
   in_battle: 'Você está numa batalha. Saia dela antes de abandonar a sala.',
   battle_in_progress: 'Não é possível com uma batalha em andamento.',
+  not_enough_points: 'Você não tem tantos pontos para distribuir.',
+  invalid_points: 'Distribua pelo menos um ponto, em números inteiros.',
+  not_a_player: 'Você não tem personagem nesta sala.',
 };
 
 /** Maps a failed request to a Portuguese message, falling back to the given text. */

@@ -4,6 +4,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import { useRoom } from '@/features/rooms/api';
 import { BattlesSection } from '@/features/battles/battles-section';
+import { CharacterSheet } from '@/features/profile/character-sheet';
 import { AbandonSection } from '@/features/rooms/abandon-section';
 import { ClassPicker } from '@/features/rooms/class-picker';
 import { MasterPanel } from '@/features/rooms/master-panel';
@@ -11,7 +12,10 @@ import { MemberList } from '@/features/rooms/member-list';
 import { roomErrorMessage } from '@/features/rooms/room-error-messages';
 import { useRoomPresence } from '@/features/rooms/room-channel-context';
 
-/** Room page: members, battles, class picker for newcomers, abandon and master controls. */
+/**
+ * Room page: the viewer's character, members, battles, class picker for newcomers, abandon and
+ * master controls.
+ */
 export default function RoomPage() {
   const params = useParams();
   const roomId = params.roomId as string;
@@ -47,6 +51,8 @@ export default function RoomPage() {
           {room.campaign.name} · versão {room.version}
         </p>
       </div>
+
+      {room.viewer.hasProfile && <CharacterSheet roomId={room.id} />}
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-gray-900">Membros</h2>

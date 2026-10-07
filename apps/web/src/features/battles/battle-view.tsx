@@ -79,7 +79,13 @@ export function BattleView({ battleId, roomId, userId }: BattleViewProps) {
 
       <section aria-label="Turno" className="rounded-lg border border-gray-200 bg-white p-4">
         {view.result ? (
-          <BattleResult result={view.result} roomId={roomId} />
+          <BattleResult
+            result={view.result}
+            roomId={roomId}
+            rewards={view.rewards}
+            combatants={view.combatants}
+            myProfileId={me?.profileId ?? null}
+          />
         ) : closed === 'cancelled' ? (
           <div className="space-y-2">
             <p role="status" className="text-sm text-gray-700">
