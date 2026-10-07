@@ -38,14 +38,6 @@ const MASTER_INTENTS: ReadonlySet<ClientIntent['type']> = new Set([
   'JudgeOpenAnswer',
 ]);
 
-function syncOf(battle: RunningBattle): BattleSync {
-  return {
-    battleId: battle.battleId,
-    seq: battle.log.length,
-    state: toPublicState(battle.state),
-  };
-}
-
 /** No-op ack for clients that did not ask for one. */
 function replier<T>(ack: unknown): (result: T) => void {
   return typeof ack === 'function' ? (ack as (result: T) => void) : () => undefined;
@@ -61,6 +53,13 @@ function replier<T>(ack: unknown): (result: T) => void {
 export function registerBattleChannel(io: Server, app: FastifyInstance): void {
   const presence = new Presence();
 
+  const syncOf = (battle: RunningBattle): BattleSync => ({
+    battleId: battle.battleId,
+    seq: battle.log.length,
+    state: toPublicState(battle.state),
+    clock: app.battleTimers.clockOf(battle.battleId),
+  });
+
   app.battles.subscribe({
     appended(battle, { fromSeq, events }) {
       const message: BattleEventsMessage = {
@@ -68,6 +67,8 @@ export function registerBattleChannel(io: Server, app: FastifyInstance): void {
         fromSeq,
         toSeq: fromSeq + events.length - 1,
         events: events.map(toPublicEvent).filter((e): e is PublicBattleEvent => e !== null),
+        // The timers listener ran first (it subscribed earlier), so this is the new stage's clock.
+        clock: app.battleTimers.clockOf(battle.battleId),
       };
       io.to(battleChannel(battle.battleId)).emit(BATTLE_EVENTS.events, message);
     },

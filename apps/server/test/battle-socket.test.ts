@@ -240,6 +240,21 @@ describe('a battle over the socket', () => {
     });
   });
 
+  it('tells clients how long the stage has left, from the join and with every batch', async () => {
+    const f = await fight();
+    const anaSocket = await pool.connect(f.ana);
+    const joined = await joinBattle(anaSocket, f.battleId);
+    if (!joined.ok) throw new Error(joined.error);
+    const { turnToken } = stateOf(f.battleId)!;
+    // The signal waits 20 s (game-config BATTLE_TIMERS).
+    expect(joined.sync.clock).toMatchObject({ turnToken, durationMs: 20_000 });
+    expect(joined.sync.clock!.remainingMs).toBeLessThanOrEqual(20_000);
+
+    const answering = next(anaSocket, BATTLE_EVENTS.events, () => true);
+    await send(anaSocket, f.battleId, { type: 'TapSignal', turnToken });
+    expect((await answering).clock).toMatchObject({ turnToken: turnToken + 1, durationMs: 30_000 });
+  });
+
   it('keeps strangers to a private room out of its battles', async () => {
     const f = await fight();
     await requestAs(app, f.master, {

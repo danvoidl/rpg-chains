@@ -1,4 +1,4 @@
-import type { SystemCommand, Turn } from '@rpg-chains/shared-types';
+import type { BattleClock, SystemCommand, Turn } from '@rpg-chains/shared-types';
 import type { BattleListener, BattleRegistry, RunningBattle } from './battle-registry.js';
 
 export interface BattleTimerConfig {
@@ -35,7 +35,10 @@ export function timeoutOf(turn: Turn): { command: Timeout; key: keyof BattleTime
  * is simply `stale_turn_token`. The master's judgement never expires (decision 2).
  */
 export class BattleTimers implements BattleListener {
-  private readonly pending = new Map<string, { token: number; handle: NodeJS.Timeout }>();
+  private readonly pending = new Map<
+    string,
+    { token: number; handle: NodeJS.Timeout; startedAt: number; durationMs: number }
+  >();
 
   constructor(
     private readonly registry: BattleRegistry,
@@ -54,11 +57,24 @@ export class BattleTimers implements BattleListener {
     const timeout = state.result === null ? timeoutOf(state.turn) : null;
     if (!timeout) return;
     const token = state.turnToken;
+    const durationMs = this.config[timeout.key];
     const handle = setTimeout(() => {
       this.pending.delete(battleId);
       this.registry.apply(battleId, { type: timeout.command, turnToken: token });
-    }, this.config[timeout.key]);
-    this.pending.set(battleId, { token, handle });
+    }, durationMs);
+    this.pending.set(battleId, { token, handle, startedAt: Date.now(), durationMs });
+  }
+
+  /** What is left of the battle's current stage clock, for clients to show (spec §3.3). */
+  clockOf(battleId: string): BattleClock | null {
+    const current = this.pending.get(battleId);
+    if (!current) return null;
+    const elapsed = Date.now() - current.startedAt;
+    return {
+      turnToken: current.token,
+      durationMs: current.durationMs,
+      remainingMs: Math.max(0, current.durationMs - elapsed),
+    };
   }
 
   removed(battle: { battleId: string }): void {

@@ -3,6 +3,7 @@ import { io, type Socket } from 'socket.io-client';
 import { evolvePublic } from '@rpg-chains/battle-engine';
 import {
   BATTLE_EVENTS,
+  type BattleClock,
   type BattleClosedMessage,
   type BattleCommandAck,
   type BattleEventsMessage,
@@ -19,11 +20,30 @@ import { pauseBefore } from './event-pacing';
 /** How many recent events the feed keeps. */
 const FEED_SIZE = 40;
 
+/** A stage clock pinned to this device's time: the stage ends at `deadline` (`Date.now()` ms). */
+export interface LocalClock {
+  turnToken: number;
+  durationMs: number;
+  deadline: number;
+}
+
+function pin(clock: BattleClock | null): LocalClock | null {
+  return (
+    clock && {
+      turnToken: clock.turnToken,
+      durationMs: clock.durationMs,
+      deadline: Date.now() + clock.remainingMs,
+    }
+  );
+}
+
 export interface BattleChannel {
   /** The state on screen; it trails the server only by the replay pauses. */
   view: PublicBattleState | null;
   /** Recent events, oldest first, as already shown. */
   feed: PublicBattleEvent[];
+  /** The server's latest stage clock (spec §3.3); null when nobody is timed. */
+  clock: LocalClock | null;
   /** Why the battle left the server, once it did. */
   closed: BattleClosedMessage['reason'] | null;
   /** The join was refused (not found, not allowed). */
@@ -42,6 +62,7 @@ export function useBattleChannel(battleId: string): BattleChannel {
   const [view, setView] = useState<PublicBattleState | null>(null);
   const [feed, setFeed] = useState<PublicBattleEvent[]>([]);
   const [closed, setClosed] = useState<BattleChannel['closed']>(null);
+  const [clock, setClock] = useState<LocalClock | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
@@ -81,6 +102,7 @@ export function useBattleChannel(battleId: string): BattleChannel {
       queue = [];
       seq = sync.seq;
       setView(sync.state);
+      setClock(pin(sync.clock));
     };
     const requestSync = () => {
       void (socket.emitWithAck(BATTLE_EVENTS.sync, { battleId }) as Promise<BattleSyncAck>).then(
@@ -102,6 +124,7 @@ export function useBattleChannel(battleId: string): BattleChannel {
       if (message.battleId !== battleId || seq < 0 || message.toSeq <= seq) return;
       if (message.fromSeq !== seq + 1) return requestSync();
       seq = message.toSeq;
+      setClock(pin(message.clock));
       queue = [...queue, ...message.events];
       drain();
     });
@@ -129,5 +152,5 @@ export function useBattleChannel(battleId: string): BattleChannel {
     [battleId],
   );
 
-  return { view, feed, closed, joinError, send };
+  return { view, feed, clock, closed, joinError, send };
 }

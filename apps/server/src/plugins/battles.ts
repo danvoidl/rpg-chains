@@ -11,6 +11,8 @@ declare module 'fastify' {
     battleResolution: BattleResolution;
     /** Draws the seed of a new battle. */
     battleSeed: () => number;
+    /** Turn clocks; `clockOf` tells clients how long the current stage has left. */
+    battleTimers: BattleTimers;
   }
 }
 
@@ -38,6 +40,7 @@ export default fp<BattlesPluginOptions>(async (app, options) => {
   app.decorate('battles', registry);
   app.decorate('battleResolution', resolution);
   app.decorate('battleSeed', options.seed);
+  app.decorate('battleTimers', timers);
 
   app.addHook('preClose', async () => {
     timers.clearAll();

@@ -296,3 +296,7 @@ not duplicate it here; drop notes made obsolete by the current setup.**
   event passed where `BattleEvent` was expected) passed the engine's tests and the e2e and only
   failed `tsc` in the full turbo run. → Before calling a package green, run its `build`/`typecheck`,
   not just its tests.
+- **Running the e2e suite while a `next dev` is up broke both**: Playwright starts its own
+  `next dev` in the same `apps/web/.next`, the two compile over each other (random `ERR_ABORTED`
+  in the e2e, 404s on the dev server). → Stop the dev web server before `pnpm test:e2e`; if it
+  already happened, `rm -rf apps/web/.next` and restart it.

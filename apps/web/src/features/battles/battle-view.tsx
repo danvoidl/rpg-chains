@@ -10,6 +10,7 @@ import { BattleResult } from './battle-result';
 import { CombatantCard } from './combatant-card';
 import { EnemyCard } from './enemy-card';
 import { EventFeed } from './event-feed';
+import { TurnClock } from './turn-clock';
 import { TurnPanel } from './turn-panel';
 import { useBattleChannel } from './use-battle-channel';
 
@@ -21,7 +22,7 @@ interface BattleViewProps {
 
 /** The battle page body: enemies, the group, the turn and the feed (Fase 3 plan M4). */
 export function BattleView({ battleId, roomId, userId }: BattleViewProps) {
-  const { view, feed, closed, joinError, send } = useBattleChannel(battleId);
+  const { view, feed, clock, closed, joinError, send } = useBattleChannel(battleId);
   const isMaster = useRoom(roomId).data?.viewer.isMaster ?? false;
   const [pending, setPending] = useState(false);
   /** The last refusal, tied to the turn it happened in so it fades when the turn moves on. */
@@ -87,14 +88,17 @@ export function BattleView({ battleId, roomId, userId }: BattleViewProps) {
             {backToRoom}
           </div>
         ) : (
-          <TurnPanel
-            view={view}
-            me={me}
-            act={act}
-            pending={pending}
-            isMaster={isMaster}
-            battleId={battleId}
-          />
+          <>
+            <TurnClock clock={clock} turnToken={view.turnToken} />
+            <TurnPanel
+              view={view}
+              me={me}
+              act={act}
+              pending={pending}
+              isMaster={isMaster}
+              battleId={battleId}
+            />
+          </>
         )}
         {refusal?.token === view.turnToken && !view.result && (
           <p role="alert" className="mt-3 text-sm text-red-700">

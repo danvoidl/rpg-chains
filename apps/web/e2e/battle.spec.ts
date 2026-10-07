@@ -33,6 +33,10 @@ test('a player forms a battle, is taken to it, answers, attacks and uses a skill
   await expect(page.getByRole('heading', { name: 'Batalha' })).toBeVisible({ timeout: 60_000 });
   await expect(page.getByRole('listitem', { name: 'Guardião das Correntes' })).toBeVisible();
 
+  // The signal runs against a visible clock (spec §3.3).
+  await expect(page.getByRole('progressbar', { name: 'Prazo do turno' })).toBeVisible();
+  await expect(page.getByLabel('Tempo restante')).toHaveText(/^\d+s$/);
+
   // Signal → answer → attack. If the villain struck first, the signal opens right after.
   await page.getByRole('button', { name: 'Tocar o sinal' }).click();
   await page.getByRole('button', { name: '4', exact: true }).click();

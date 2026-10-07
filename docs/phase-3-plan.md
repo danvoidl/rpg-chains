@@ -384,8 +384,10 @@ caído); o descanso do mestre o reergue. Observações:
 
 - **Sair da página tira o jogador** (spec §7): um clique em "Salas" no meio da batalha derruba quem
   luta sozinho. A página avisa; a tolerância de reconexão é da Fase 6 — reavaliar no playtest.
-- **Sem contagem regressiva**: o contrato não leva o prazo dos timers ao cliente. Se o playtest
-  pedir, `SignalOpened`/estágios ganham um `deadline` (aditivo).
+- **Contagem regressiva** (pedida no playtest, 2026-10-06): `BattleClock { turnToken, durationMs,
+remainingMs }` viaja em `battle:events` e no `battle:sync` (transporte, fora do log); o cliente
+  conta a partir do próprio recebimento (`turn-clock.tsx`) e só mostra quando a tela alcançou o
+  estágio medido.
 - Cartão de vilão mostra só vida e "atordoado"; ícones de efeito com duração ficam para o M6.
 
 - [delegável] Na sala: lista de nós `battle`/`boss` da versão (provisória), formações com
