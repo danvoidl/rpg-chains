@@ -18,6 +18,20 @@ const messages: Record<string, string> = {
   not_enough_points: 'Você não tem tantos pontos para distribuir.',
   invalid_points: 'Distribua pelo menos um ponto, em números inteiros.',
   not_a_player: 'Você não tem personagem nesta sala.',
+  requirements_not_met: 'Seus atributos não alcançam os requisitos do item.',
+  weapon_required: 'A arma só pode ser trocada, nunca removida.',
+  slot_empty: 'Não há nada nesse espaço.',
+  not_in_inventory: 'Esse item não está no seu inventário.',
+  not_consumable: 'Esse item não é consumível.',
+  invalid_target: 'Escolha quem reerguer.',
+  target_in_battle: 'Esse jogador está numa batalha.',
+  target_downed: 'Você está caído: só reerguer funciona agora.',
+  target_not_downed: 'Esse jogador não está caído.',
+  nothing_to_restore: 'Já está cheio: o item seria desperdiçado.',
+  battle_only: 'Esse item só funciona em batalha.',
+  insufficient_gold: 'Ouro insuficiente.',
+  not_sold_here: 'Essa loja não vende esse item.',
+  shop_not_found: 'Loja não encontrada.',
 };
 
 /** Maps a failed request to a Portuguese message, falling back to the given text. */

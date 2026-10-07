@@ -1,18 +1,21 @@
 'use client';
 
-import type { ProfileSheet } from '@rpg-chains/shared-types';
+import type { ProfileSheet, RoomMember } from '@rpg-chains/shared-types';
 import { ATTRIBUTES } from '@rpg-chains/game-config';
 import { ATTRIBUTE_LABELS } from '@/features/effects/effect-labels';
 import { ResourceBar } from '@/features/battles/resource-bar';
 import { useProfileSheet } from './api';
+import { EquipmentList } from './equipment-list';
+import { InventoryList } from './inventory-list';
 import { PointsForm } from './points-form';
 
 interface CharacterSheetProps {
   roomId: string;
+  members: RoomMember[];
 }
 
-/** The viewer's character in the room (Fase 4 plan M3): level, XP, private gold, points, gear. */
-export function CharacterSheet({ roomId }: CharacterSheetProps) {
+/** The viewer's character in the room (Fase 4 plan M3–M4): level, XP, private gold, points, gear. */
+export function CharacterSheet({ roomId, members }: CharacterSheetProps) {
   const { data: sheet, isLoading } = useProfileSheet(roomId, true);
   if (isLoading || !sheet) return <p className="text-sm text-gray-500">Carregando ficha…</p>;
 
@@ -63,7 +66,7 @@ export function CharacterSheet({ roomId }: CharacterSheetProps) {
         <PointsForm key={sheet.availablePoints} roomId={roomId} sheet={sheet} />
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <div>
           <h3 className="text-sm font-semibold text-gray-900">Habilidades</h3>
           <ul className="mt-1 space-y-0.5 text-sm">
@@ -75,21 +78,8 @@ export function CharacterSheet({ roomId }: CharacterSheetProps) {
             ))}
           </ul>
         </div>
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900">Inventário</h3>
-          {sheet.inventory.length === 0 ? (
-            <p className="mt-1 text-sm text-gray-500">Vazio.</p>
-          ) : (
-            <ul className="mt-1 space-y-0.5 text-sm text-gray-900">
-              {sheet.inventory.map((item) => (
-                <li key={item.itemId}>
-                  {item.name}
-                  {item.quantity > 1 && ` ×${item.quantity}`}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <EquipmentList roomId={roomId} sheet={sheet} />
+        <InventoryList roomId={roomId} sheet={sheet} members={members} />
       </div>
     </section>
   );

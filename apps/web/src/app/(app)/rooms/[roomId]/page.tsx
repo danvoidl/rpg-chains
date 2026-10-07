@@ -5,6 +5,7 @@ import { authClient } from '@/lib/auth-client';
 import { useRoom } from '@/features/rooms/api';
 import { BattlesSection } from '@/features/battles/battles-section';
 import { CharacterSheet } from '@/features/profile/character-sheet';
+import { ShopsSection } from '@/features/shops/shops-section';
 import { AbandonSection } from '@/features/rooms/abandon-section';
 import { ClassPicker } from '@/features/rooms/class-picker';
 import { MasterPanel } from '@/features/rooms/master-panel';
@@ -52,7 +53,7 @@ export default function RoomPage() {
         </p>
       </div>
 
-      {room.viewer.hasProfile && <CharacterSheet roomId={room.id} />}
+      {room.viewer.hasProfile && <CharacterSheet roomId={room.id} members={room.members} />}
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-gray-900">Membros</h2>
@@ -60,6 +61,7 @@ export default function RoomPage() {
       </section>
 
       {isOpen && session && <BattlesSection room={room} userId={session.user.id} />}
+      {isOpen && room.viewer.hasProfile && <ShopsSection room={room} />}
       {isOpen && !room.viewer.hasProfile && (
         <ClassPicker roomId={room.id} classes={room.classes} accessCode={code} />
       )}
