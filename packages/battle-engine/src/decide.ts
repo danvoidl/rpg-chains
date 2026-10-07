@@ -6,7 +6,8 @@ import type {
   Rejection,
 } from '@rpg-chains/shared-types';
 import { createContext, finish } from './decide-context.js';
-import { chooseAction, submitObjectiveAnswer, tapSignal } from './player-turn.js';
+import { judgeOpenAnswer, masterPresence, presentQuestion } from './master-turn.js';
+import { chooseAction, submitObjectiveAnswer, submitOpenAnswer, tapSignal } from './player-turn.js';
 import { playerLeft, timeOut } from './system-commands.js';
 
 export type DecideResult = { ok: true; events: BattleEvent[] } | Rejection;
@@ -44,11 +45,13 @@ function run(ctx: ReturnType<typeof createContext>, command: Command): Rejection
     case 'PlayerLeft':
       return playerLeft(ctx, command.profileId);
     case 'SubmitOpenAnswer':
+      return submitOpenAnswer(ctx, command.profileId, command.text);
     case 'PresentQuestion':
+      return presentQuestion(ctx, command.question);
     case 'JudgeOpenAnswer':
+      return judgeOpenAnswer(ctx, command.approved);
     case 'MasterPresenceChanged':
-      // TODO(Phase 3 M7): open questions and the master's presence.
-      return { ok: false, reason: 'not_implemented' };
+      return masterPresence(ctx, command.online);
     default: {
       const _exhaustive: never = command;
       return _exhaustive;

@@ -1,6 +1,7 @@
 import { emit, nextToken, type DecideContext } from './decide-context.js';
+import { tickOverTime } from './effects/over-time.js';
 import { runEnemyTurn } from './enemy-turn.js';
-import { openSignalFromDeck } from './questions.js';
+import { objectiveIds, openSignalFromDeck } from './questions.js';
 import { isActive } from './signal.js';
 
 /**
@@ -26,12 +27,23 @@ export function resolveIfOver(ctx: DecideContext): boolean {
 export function startGroupTurn(ctx: DecideContext): void {
   if (resolveIfOver(ctx)) return;
   emit(ctx, { type: 'TurnAdvanced', turnToken: nextToken(ctx), to: { side: 'group' } });
-  if (ctx.state.needsMaster) {
-    // TODO(Phase 3 M7): fall back to objective questions or pause while the master is away.
+  openGroupQuestion(ctx);
+}
+
+/**
+ * Where the group's question comes from (spec §3.2): a battle with open questions waits for the
+ * master to pick one while he is present; without him it falls back to the node's objective
+ * questions, or pauses — enemies included — if there are none.
+ */
+export function openGroupQuestion(ctx: DecideContext): void {
+  if (!ctx.state.needsMaster) return openSignalFromDeck(ctx);
+  if (ctx.state.masterOnline) {
     emit(ctx, { type: 'QuestionRequested', turnToken: nextToken(ctx) });
-    return;
+  } else if (objectiveIds(ctx.content).length > 0) {
+    openSignalFromDeck(ctx);
+  } else {
+    emit(ctx, { type: 'BattlePaused', turnToken: nextToken(ctx), reason: 'master_absent' });
   }
-  openSignalFromDeck(ctx);
 }
 
 /** The next enemy acts, then the group's turn opens. */
@@ -46,7 +58,9 @@ export function runEnemyPhase(ctx: DecideContext): void {
  */
 export function endGroupTurn(ctx: DecideContext, actorId: string | null): void {
   if (resolveIfOver(ctx)) return;
-  // TODO(Phase 3 M6): over-time effects tick here, before durations count down.
+  // Over-time effects tick before durations count down (spec §5.5).
+  tickOverTime(ctx);
+  if (resolveIfOver(ctx)) return;
   emit(ctx, { type: 'RoundEnded', round: ctx.state.round, blocked: actorId });
   if (resolveIfOver(ctx)) return;
   runEnemyPhase(ctx);

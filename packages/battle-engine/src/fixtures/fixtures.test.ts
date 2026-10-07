@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ALLOWED_TARGETS } from '@rpg-chains/campaign-rules';
+import { ALLOWED_TARGETS } from '@rpg-chains/shared-types';
 import { DEFAULT_CLASS_KIT } from '@rpg-chains/game-config';
 import { EffectSchema, type CampaignSnapshot, type Effect } from '@rpg-chains/shared-types';
 import { basicSnapshot, catalogSnapshot, kitSnapshot } from './load.js';

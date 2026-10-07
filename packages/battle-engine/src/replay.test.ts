@@ -1,11 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import type { BattleContent, BattleState } from '@rpg-chains/shared-types';
 import { buildBattleContent } from './battle-content.js';
+import type { RosterEntry } from './create-battle.js';
 import { evolvePublic } from './client-fold.js';
 import { emptyBattle, replay } from './evolve.js';
 import { effectiveMaxHp } from './evolve-units.js';
-import { basicSnapshot } from './fixtures/load.js';
-import { assertValidState, robot, rosterFor, runBattle } from './fixtures/run-battle.js';
+import { basicSnapshot, catalogSnapshot, kitSnapshot } from './fixtures/load.js';
+import {
+  assertValidState,
+  robot,
+  rosterFor,
+  runBattle,
+  skilledRobot,
+  masterRobot,
+  type Policy,
+} from './fixtures/run-battle.js';
 import { toPublicEvent, toPublicState } from './public-view.js';
 
 /**
@@ -35,6 +44,22 @@ function content(hard: boolean): BattleContent {
 
 const roster = rosterFor(basicSnapshot(), ['cl-fencer', 'cl-brute', 'cl-fencer']);
 
+/** Every effect type in play: the catalog classes against two training dummies (plan M6). */
+function catalogContent(): BattleContent {
+  const built = buildBattleContent(catalogSnapshot(), 'n-dummies');
+  if ('ok' in built) throw new Error(built.reason);
+  // Lighter dummies, so both endings happen.
+  built.villains = built.villains.map((v) => ({ ...v, hp: 90 }));
+  return built;
+}
+// The robot drops the third player at round 4: keep the healer out of that seat.
+const catalogRoster = rosterFor(catalogSnapshot(), [
+  'cl-cat-strike',
+  'cl-cat-support',
+  'cl-cat-buff',
+  'cl-cat-control',
+]);
+
 function soundnessIssues(state: BattleState): string[] {
   const issues: string[] = [];
   for (const unit of [...state.combatants, ...state.enemies]) {
@@ -51,18 +76,35 @@ function soundnessIssues(state: BattleState): string[] {
       issues.push(`${e.instanceId}: defeated but queued`);
     }
   }
-  if (state.result === null && !state.turn.stage.startsWith('awaiting')) {
+  // A battle rests waiting for someone, or paused for the master (spec §3.2).
+  if (
+    state.result === null &&
+    !state.turn.stage.startsWith('awaiting') &&
+    state.turn.stage !== 'paused'
+  ) {
     issues.push(`at rest in stage ${state.turn.stage}`);
   }
   return issues;
 }
 
-describe.each([
-  ['normal', false],
-  ['hard', true],
-])('replay property, %s villains', (_name, hard) => {
-  const battle = content(hard);
-  const runs = SEEDS.map((seed) => ({ seed, run: runBattle(battle, roster, seed, robot) }));
+/** The kit boss node — objective and open questions — or only its open question (plan M7). */
+function masterContent(openOnly: boolean): BattleContent {
+  const built = buildBattleContent(kitSnapshot(), 'n-kit-boss');
+  if ('ok' in built) throw new Error(built.reason);
+  if (openOnly) built.questions = built.questions.filter((q) => q.type === 'open');
+  return built;
+}
+const kitRoster = rosterFor(kitSnapshot(), ['cl-guardian', 'cl-priest', 'cl-penitent']);
+
+describe.each<[string, () => BattleContent, RosterEntry[], Policy]>([
+  ['normal villains', () => content(false), roster, robot],
+  ['hard villains', () => content(true), roster, robot],
+  ['every effect type, skills in play', catalogContent, catalogRoster, skilledRobot],
+  ['a master who judges, leaves and returns', () => masterContent(false), kitRoster, masterRobot],
+  ['a master and only open questions (pauses)', () => masterContent(true), kitRoster, masterRobot],
+])('replay property, %s', (_name, makeContent, group, policy) => {
+  const battle = makeContent();
+  const runs = SEEDS.map((seed) => ({ seed, run: runBattle(battle, group, seed, policy) }));
 
   it('every battle ends', () => {
     const unfinished = runs.filter(({ run }) => run.state.result === null).map(({ seed }) => seed);
@@ -114,7 +156,7 @@ describe.each([
 
   it('the same seed replays the same battle', () => {
     for (const { seed, run } of runs.slice(0, 20)) {
-      expect(runBattle(battle, roster, seed, robot).log).toEqual(run.log);
+      expect(runBattle(battle, group, seed, policy).log).toEqual(run.log);
     }
   });
 });
@@ -125,6 +167,53 @@ describe('the robot exercises both endings and every turn path', () => {
       new Set(SEEDS.map((seed) => runBattle(content(hard), roster, seed, robot).state.result));
     expect(results(false)).toContain('victory');
     expect(results(true)).toEqual(new Set(['victory', 'defeat']));
+  });
+
+  it('with skills in play, every catalog skill is used and both endings happen', () => {
+    const used = new Set<string>();
+    const results = new Set<string | null>();
+    for (const seed of SEEDS) {
+      const run = runBattle(catalogContent(), catalogRoster, seed, skilledRobot);
+      results.add(run.state.result);
+      for (const event of run.log) {
+        if (event.type === 'ActionTaken' && event.action.type === 'skill') {
+          used.add(event.action.skillId);
+        }
+      }
+    }
+    const catalogSkills = catalogSnapshot().classes.flatMap((c) => c.skills.map((s) => s.id));
+    expect([...used].sort()).toEqual(catalogSkills.sort());
+    expect(results).toEqual(new Set(['victory', 'defeat']));
+  });
+
+  it('with a master, every open-question path happens: judgement both ways, ad hoc, fallback, pause', () => {
+    const seen = new Set<string>();
+    for (const openOnly of [false, true]) {
+      for (const seed of SEEDS.slice(0, 50)) {
+        for (const e of runBattle(masterContent(openOnly), kitRoster, seed, masterRobot).log) {
+          if (e.type === 'AnswerJudged' && e.turnToken > 0) seen.add(`judged:${e.correct}`);
+          if (e.type === 'SignalOpened')
+            seen.add(
+              `shown:${e.question.type}:${e.question.questionId === null ? 'ad-hoc' : 'node'}`,
+            );
+          if (e.type === 'BattlePaused' || e.type === 'OpenAnswerSubmitted') seen.add(e.type);
+          if (e.type === 'MasterPresenceChanged') seen.add(`master:${e.online}`);
+        }
+      }
+    }
+    expect([...seen].sort()).toEqual(
+      [
+        'BattlePaused',
+        'OpenAnswerSubmitted',
+        'judged:false',
+        'judged:true',
+        'master:false',
+        'master:true',
+        'shown:objective:node',
+        'shown:open:ad-hoc',
+        'shown:open:node',
+      ].sort(),
+    );
   });
 
   it('wrong answers, timeouts and a player leaving all happen', () => {

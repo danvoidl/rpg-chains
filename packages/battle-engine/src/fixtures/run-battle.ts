@@ -123,3 +123,71 @@ export const robot: Policy = (state, content) => {
 
   return null;
 };
+
+/**
+ * The robot, plus skills (Fase 3 plan M6): when it may act, it tries its skills in an order that
+ * shifts every turn — each with every target — and attacks only if none is accepted. Validity is
+ * asked of `decide` itself, so the policy never sends a command the engine refuses.
+ */
+export const skilledRobot: Policy = (state, content) => {
+  const { turn, turnToken } = state;
+  if (turn.stage !== 'awaiting_action') return robot(state, content);
+  const actor = state.combatants.find((c) => c.profileId === turn.profileId)!;
+  // Shifted by the high bits of a token hash: plain counters line up with who acts when (and the
+  // action-stage token is always even).
+  const shift = (Math.imul(turnToken, 2654435761) >>> 0) >>> 16;
+  const skills = actor.skills.map((_, i) => actor.skills[(i + shift) % actor.skills.length]!);
+  const targets = [
+    undefined,
+    ...state.combatants.map((c) => c.profileId),
+    ...state.enemies.map((e) => e.instanceId),
+  ];
+  for (const skill of skills) {
+    for (const targetId of targets) {
+      const command: Command = {
+        type: 'ChooseAction',
+        turnToken,
+        profileId: actor.profileId,
+        action: { type: 'skill', skillId: skill.id, ...(targetId ? { targetId } : {}) },
+      };
+      if (decide(state, command, content).ok) return command;
+    }
+  }
+  return robot(state, content);
+};
+
+/**
+ * A master for battles with open questions (Fase 3 plan M7), on top of the skilled robot: he
+ * shows a drawn objective, the node's open question or one written on the spot, fails one open
+ * answer in four, leaves during round 3's signal and comes back from round 5, or as soon as the
+ * battle pauses.
+ */
+export const masterRobot: Policy = (state, content) => {
+  const { turn, turnToken, round, masterOnline } = state;
+  if (turn.stage === 'paused' || (!masterOnline && round >= 5)) {
+    return { type: 'MasterPresenceChanged', online: true };
+  }
+  // He leaves mid-signal, so the next group turn is the one that falls back or pauses.
+  if (masterOnline && round === 3 && turn.stage === 'awaiting_signal') {
+    return { type: 'MasterPresenceChanged', online: false };
+  }
+  if (turn.stage === 'awaiting_question') {
+    const open = content.questions.find((q) => q.type === 'open')!;
+    const hasObjective = content.questions.some((q) => q.type === 'objective');
+    const pick = turnToken % 3;
+    const question =
+      pick === 0 && hasObjective
+        ? ({ draw: 'objective' } as const)
+        : pick === 1
+          ? { questionId: open.id }
+          : { prompt: `Pergunta improvisada ${turnToken}` };
+    return { type: 'PresentQuestion', turnToken, question };
+  }
+  if (turn.stage === 'awaiting_answer' && turn.question.type === 'open') {
+    return { type: 'SubmitOpenAnswer', turnToken, profileId: turn.profileId, text: 'resposta' };
+  }
+  if (turn.stage === 'awaiting_judgement') {
+    return { type: 'JudgeOpenAnswer', turnToken, approved: turnToken % 4 !== 0 };
+  }
+  return skilledRobot(state, content);
+};

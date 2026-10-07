@@ -133,10 +133,10 @@ export function evolve(state: BattleState, event: BattleEvent): BattleState {
       return {
         ...state,
         combatants: state.combatants.map((c) => ({
-          ...endRound(c),
+          ...endRound(c, event.round),
           blockedFromSignal: c.profileId === event.blocked,
         })),
-        enemies: state.enemies.map((e) => endRound(e)),
+        enemies: state.enemies.map((e) => endRound(e, event.round)),
       };
 
     case 'BattleResolved':
@@ -180,7 +180,8 @@ export function evolve(state: BattleState, event: BattleEvent): BattleState {
     case 'CooldownStarted':
       return updateCombatant(state, event.profileId, (c) => ({
         ...c,
-        cooldowns: { ...c.cooldowns, [event.skillId]: event.rounds },
+        // The round of use does not count: back after `rounds` whole rounds (spec §5.5).
+        cooldowns: { ...c.cooldowns, [event.skillId]: state.round + event.rounds + 1 },
       }));
 
     case 'ConsumableUsed':

@@ -75,10 +75,13 @@ function toCombatant(content: BattleContent, entry: RosterEntry): Combatant | Re
     downed: false,
     left: false,
     blockedFromSignal: false,
-    skillIds: cls.skills.filter((s) => s.unlockLevel <= entry.level).map((s) => s.id),
-    consumables: entry.inventory.filter(
-      (slot) => content.items.find((i) => i.id === slot.itemId)?.category === 'consumable',
-    ),
+    skills: cls.skills.filter((s) => s.unlockLevel <= entry.level),
+    consumables: entry.inventory.flatMap((slot) => {
+      const item = content.items.find((i) => i.id === slot.itemId);
+      return item?.category === 'consumable'
+        ? [{ itemId: item.id, name: item.name, effect: item.effect, quantity: slot.quantity }]
+        : [];
+    }),
     effects: [],
     cooldowns: {},
   };

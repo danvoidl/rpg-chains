@@ -41,7 +41,7 @@
       "downed": false,
       "left": false,
       "blockedFromSignal": false,
-      "skillIds": [],
+      "skills": [],
       "consumables": [],
       "effects": [],
       "cooldowns": {}
@@ -73,7 +73,7 @@
       "downed": false,
       "left": false,
       "blockedFromSignal": true,
-      "skillIds": [],
+      "skills": [],
       "consumables": [],
       "effects": [],
       "cooldowns": {}
@@ -105,7 +105,7 @@
       "downed": true,
       "left": false,
       "blockedFromSignal": false,
-      "skillIds": [],
+      "skills": [],
       "consumables": [],
       "effects": [],
       "cooldowns": {}
@@ -137,7 +137,7 @@
       "downed": false,
       "left": true,
       "blockedFromSignal": false,
-      "skillIds": [],
+      "skills": [],
       "consumables": [],
       "effects": [],
       "cooldowns": {}

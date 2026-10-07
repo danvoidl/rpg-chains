@@ -60,9 +60,12 @@ export function heal<U extends Combatant | Enemy>(unit: U, amount: number): U {
   return { ...unit, currentHp: Math.min(effectiveMaxHp(unit), unit.currentHp + amount) };
 }
 
-/** One group round passes for an effect: `rounds` ticks down; turn/attack-counted ones don't. */
-function tickEffect(effect: ActiveEffect): ActiveEffect[] {
-  if (!('rounds' in effect)) return [effect];
+/**
+ * Group round `round` ends for an effect: `rounds` ticks down, unless it was applied in that very
+ * round (spec §5.5: the round of application does not count). Turn/attack-counted ones don't tick.
+ */
+function tickEffect(effect: ActiveEffect, round: number): ActiveEffect[] {
+  if (!('rounds' in effect) || effect.appliedRound >= round) return [effect];
   return effect.rounds > 1 ? [{ ...effect, rounds: effect.rounds - 1 }] : [];
 }
 
@@ -75,14 +78,19 @@ export function tickCooldowns(cooldowns: Record<string, number>): Record<string,
   );
 }
 
-/** End of a group round for one unit: effects and skill cooldowns tick (spec §5.5). */
-export function endRound<U extends Combatant | Enemy>(unit: U): U {
-  const ticked = { ...unit, effects: unit.effects.flatMap(tickEffect) };
+/**
+ * End of group round `round` for one unit (spec §5.5): effects tick, and skill cooldowns that are
+ * over by the next round are dropped (they hold the round they are back in, so they never tick).
+ */
+export function endRound<U extends Combatant | Enemy>(unit: U, round: number): U {
+  const ticked = { ...unit, effects: unit.effects.flatMap((e) => tickEffect(e, round)) };
   // Losing a max-HP reduction restores the ceiling, not the HP lost to it.
   const capped = { ...ticked, currentHp: Math.min(ticked.currentHp, effectiveMaxHp(ticked)) };
-  return 'cooldowns' in capped
-    ? { ...capped, cooldowns: tickCooldowns((capped as Combatant).cooldowns) }
-    : capped;
+  if (!('cooldowns' in capped)) return capped;
+  const cooldowns = Object.fromEntries(
+    Object.entries((capped as Combatant).cooldowns).filter(([, ready]) => ready > round + 1),
+  );
+  return { ...capped, cooldowns };
 }
 
 /** The head of the enemy queue acted (or lost its turn): it goes to the back (spec §3.1). */

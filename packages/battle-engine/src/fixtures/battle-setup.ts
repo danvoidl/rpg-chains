@@ -1,4 +1,5 @@
 import type {
+  Action,
   ActiveEffect,
   BattleContent,
   BattleEvent,
@@ -69,12 +70,11 @@ export function passTurn(state: BattleState, content: BattleContent) {
   return step(state, { type: 'SignalExpired', turnToken: state.turnToken }, content);
 }
 
-/** Taps, answers correctly and attacks `target` with `profileId`. */
-export function attackWith(
+/** Taps the signal and answers correctly with `profileId`, reaching `awaiting_action`. */
+export function answerWith(
   state: BattleState,
   content: BattleContent,
   profileId: string,
-  target: string,
 ): { state: BattleState; events: BattleEvent[] } {
   const tapped = step(state, { type: 'TapSignal', turnToken: state.turnToken, profileId }, content);
   const turn = tapped.state.turn;
@@ -88,24 +88,41 @@ export function attackWith(
     { type: 'SubmitObjectiveAnswer', turnToken: tapped.state.turnToken, profileId, index },
     content,
   );
+  return { state: answered.state, events: [...tapped.events, ...answered.events] };
+}
+
+/** Taps, answers correctly and takes `action` with `profileId`; throws if the action is refused. */
+export function actWith(
+  state: BattleState,
+  content: BattleContent,
+  profileId: string,
+  action: Action,
+): { state: BattleState; events: BattleEvent[] } {
+  const answered = answerWith(state, content, profileId);
   const acted = step(
     answered.state,
-    {
-      type: 'ChooseAction',
-      turnToken: answered.state.turnToken,
-      profileId,
-      action: { type: 'attack', targetInstanceId: target },
-    },
+    { type: 'ChooseAction', turnToken: answered.state.turnToken, profileId, action },
     content,
   );
-  return { state: acted.state, events: [...tapped.events, ...answered.events, ...acted.events] };
+  return { state: acted.state, events: [...answered.events, ...acted.events] };
+}
+
+/** Taps, answers correctly and attacks `target` with `profileId`. */
+export function attackWith(
+  state: BattleState,
+  content: BattleContent,
+  profileId: string,
+  target: string,
+): { state: BattleState; events: BattleEvent[] } {
+  return actWith(state, content, profileId, { type: 'attack', targetInstanceId: target });
 }
 
 /** Puts an active effect on a unit, the way `decide` would via `EffectApplied`. */
 export function withEffect(
   state: BattleState,
   targetId: string,
-  effect: ActiveEffect,
+  effect: Omit<ActiveEffect, 'appliedRound'> & { appliedRound?: number },
 ): BattleState {
-  return evolve(state, { type: 'EffectApplied', targetId, effect });
+  const applied = { appliedRound: 0, ...effect } as ActiveEffect;
+  return evolve(state, { type: 'EffectApplied', targetId, effect: applied });
 }

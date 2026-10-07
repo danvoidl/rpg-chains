@@ -11,6 +11,7 @@ const modifier = (
 ): ActiveEffect => ({
   id: `e${nextId++}`,
   sourceId: 'p1',
+  appliedRound: 0,
   kind: 'stat_modifier',
   polarity,
   stat,
@@ -21,6 +22,7 @@ const modifier = (
 const stun = (turns: number): ActiveEffect => ({
   id: `e${nextId++}`,
   sourceId: 'p1',
+  appliedRound: 0,
   kind: 'stun',
   turns,
 });

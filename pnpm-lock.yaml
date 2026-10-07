@@ -200,9 +200,6 @@ importers:
         specifier: workspace:*
         version: link:../shared-types
     devDependencies:
-      '@rpg-chains/campaign-rules':
-        specifier: workspace:*
-        version: link:../campaign-rules
       '@rpg-chains/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config

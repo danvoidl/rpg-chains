@@ -225,6 +225,7 @@ describe('enemy turns (spec §3.1, §3.5, §3.6)', () => {
     const provoked = withEffect(state, 'p2', {
       id: 'fx-1',
       sourceId: 'p2',
+      appliedRound: 0,
       kind: 'provoke',
       attacks: 1,
     });
@@ -252,6 +253,7 @@ describe('enemy turns (spec §3.1, §3.5, §3.6)', () => {
     const stunned = withEffect(state, 'enemy-1', {
       id: 'fx-1',
       sourceId: 'p1',
+      appliedRound: 0,
       kind: 'stun',
       turns: 1,
     });

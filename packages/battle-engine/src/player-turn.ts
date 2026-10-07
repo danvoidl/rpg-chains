@@ -1,5 +1,7 @@
 import type { Action, Combatant, Rejection } from '@rpg-chains/shared-types';
 import { attack } from './actions/attack.js';
+import { useConsumable } from './actions/consumable.js';
+import { useSkill } from './actions/skill.js';
 import { emit, nextToken, type DecideContext } from './decide-context.js';
 import { findQuestion } from './questions.js';
 import { eligibleForSignal } from './signal.js';
@@ -52,6 +54,20 @@ export function submitObjectiveAnswer(
   return null;
 }
 
+/** The signal winner writes an answer to an open question; the master judges it (spec §3.2). */
+export function submitOpenAnswer(
+  ctx: DecideContext,
+  profileId: string,
+  text: string,
+): Rejection | null {
+  const { turn } = ctx.state;
+  if (turn.stage !== 'awaiting_answer') return reject('not_answering');
+  if (turn.profileId !== profileId) return reject('not_your_turn');
+  if (turn.question.type !== 'open') return reject('wrong_answer_type');
+  emit(ctx, { type: 'OpenAnswerSubmitted', turnToken: nextToken(ctx), profileId, text });
+  return null;
+}
+
 /** The player who answered correctly acts (spec §3.4); acting blocks the next signal (§3.3). */
 export function chooseAction(
   ctx: DecideContext,
@@ -63,17 +79,13 @@ export function chooseAction(
   if (turn.profileId !== profileId) return reject('not_your_turn');
   const actor = findCombatant(ctx, profileId)!;
 
-  switch (action.type) {
-    case 'attack': {
-      const rejected = attack(ctx, actor, action.targetInstanceId);
-      if (rejected) return rejected;
-      break;
-    }
-    case 'skill':
-    case 'consumable':
-      // TODO(Phase 3 M6): skills and consumables.
-      return reject('not_implemented');
-  }
+  const rejected =
+    action.type === 'attack'
+      ? attack(ctx, actor, action.targetInstanceId)
+      : action.type === 'skill'
+        ? useSkill(ctx, actor, action.skillId, action.targetId)
+        : useConsumable(ctx, actor, action.itemId, action.targetId);
+  if (rejected) return rejected;
   endGroupTurn(ctx, profileId);
   return null;
 }
