@@ -91,7 +91,6 @@ describe('opening a formation', () => {
     expect(await refused(ana, 'n-nowhere')).toEqual([422, 'unknown_node']);
     expect(await refused(ana, 'n-camp')).toEqual([422, 'not_a_battle_node']);
     expect(await refused(ana, 'n-silent')).toEqual([422, 'node_without_questions']);
-    expect(await refused(ana, 'n-open')).toEqual([422, 'open_questions_unsupported']);
     await formation(t, ana);
     expect(await refused(bia, 'n-rat')).toEqual([409, 'node_busy']);
     expect(await refused(ana, 'n-boss')).toEqual([409, 'already_in_battle']);

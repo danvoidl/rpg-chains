@@ -27,10 +27,16 @@ type LobbySocket = Socket<
  * anyone for a public one), everyone in it receives the updated online list, and a disconnect
  * leaves every joined lobby. Mutations never travel here — they are REST.
  */
-export function registerLobby(io: Server, app: FastifyInstance, presence: Presence): void {
+export function registerLobby(
+  io: Server,
+  app: FastifyInstance,
+  presence: Presence,
+  onPresenceChanged: (roomId: string) => void,
+): void {
   const broadcast = (roomId: string) => {
     const message: RoomPresenceMessage = { roomId, onlineUserIds: presence.online(roomId) };
     io.to(roomChannel(roomId)).emit(ROOM_EVENTS.presence, message);
+    onPresenceChanged(roomId);
   };
 
   const leave = (socket: LobbySocket, roomId: string) => {

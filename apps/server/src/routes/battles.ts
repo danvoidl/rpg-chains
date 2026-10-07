@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
-import { BattleCreateInputSchema } from '@rpg-chains/shared-types';
+import { toPublicQuestion } from '@rpg-chains/battle-engine';
+import { BattleCreateInputSchema, type PublicQuestion } from '@rpg-chains/shared-types';
 import { toBattleSummary } from '../mappers/battle.js';
 import {
   forming,
@@ -60,6 +61,7 @@ export default async function battlesRoutes(app: FastifyInstance): Promise<void>
         snapshot: version.snapshot,
         nodeId,
         opener,
+        masterId: room.masterId,
       });
       if ('error' in battle) return refuse(reply, battle);
       app.roomEvents.changed(roomId);
@@ -129,6 +131,23 @@ export default async function battlesRoutes(app: FastifyInstance): Promise<void>
     if ('error' in running) return refuse(reply, running);
     app.roomEvents.changed(running.roomId);
     return toBattleSummary(running);
+  });
+
+  /**
+   * The node's questions for the master to choose from (spec §3.2), without answer keys: he picks
+   * by prompt, and the engine judges objective answers itself.
+   */
+  app.get<BattleParams>('/battles/:battleId/questions', { preHandler }, async (request, reply) => {
+    const userId = request.user!.id;
+    const found = app.battles.get(request.params.battleId);
+    if (found?.status !== 'running') return reply.code(404).send({ error: 'battle_not_found' });
+    const room = await app.prisma.room.findUniqueOrThrow({
+      where: { id: found.roomId },
+      select: { masterId: true },
+    });
+    if (room.masterId !== userId) return reply.code(403).send({ error: 'not_master' });
+    const questions: PublicQuestion[] = found.content.questions.map(toPublicQuestion);
+    return questions;
   });
 
   app.post<BattleParams>('/battles/:battleId/cancel', { preHandler }, async (request, reply) => {

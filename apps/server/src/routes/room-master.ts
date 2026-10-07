@@ -90,6 +90,10 @@ export default async function roomMasterRoutes(app: FastifyInstance): Promise<vo
     if (!room.profiles.some((p) => p.userId === body.userId) || body.userId === userId) {
       return reply.code(422).send({ error: 'invalid_new_master' });
     }
+    // The judge of an open-question battle cannot change mid-fight (spec §3.2).
+    if (app.battles.needsMaster(roomId)) {
+      return reply.code(409).send({ error: 'battle_needs_master' });
+    }
     await app.prisma.room.update({ where: { id: roomId }, data: { masterId: body.userId } });
     return changed(roomId, userId);
   });

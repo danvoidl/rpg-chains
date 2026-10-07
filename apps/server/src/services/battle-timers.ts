@@ -1,21 +1,32 @@
-import type { SystemCommand, TurnStage } from '@rpg-chains/shared-types';
+import type { SystemCommand, Turn } from '@rpg-chains/shared-types';
 import type { BattleListener, BattleRegistry, RunningBattle } from './battle-registry.js';
 
 export interface BattleTimerConfig {
   signalMs: number;
   answerMs: number;
+  openAnswerMs: number;
   actionMs: number;
 }
 
 type Timeout = Extract<SystemCommand, { turnToken: number }>['type'];
 
-const TIMEOUT_BY_STAGE: Partial<
-  Record<TurnStage, { command: Timeout; key: keyof BattleTimerConfig }>
-> = {
-  awaiting_signal: { command: 'SignalExpired', key: 'signalMs' },
-  awaiting_answer: { command: 'AnswerTimedOut', key: 'answerMs' },
-  awaiting_action: { command: 'ActionTimedOut', key: 'actionMs' },
-};
+/** The clock of a stage that waits on a player; none for the master or a pause (decision 2). */
+export function timeoutOf(turn: Turn): { command: Timeout; key: keyof BattleTimerConfig } | null {
+  switch (turn.stage) {
+    case 'awaiting_signal':
+      return { command: 'SignalExpired', key: 'signalMs' };
+    case 'awaiting_answer':
+      // An open answer is typed, so it gets longer (spec §3.3).
+      return {
+        command: 'AnswerTimedOut',
+        key: turn.question.type === 'open' ? 'openAnswerMs' : 'answerMs',
+      };
+    case 'awaiting_action':
+      return { command: 'ActionTimedOut', key: 'actionMs' };
+    default:
+      return null;
+  }
+}
 
 /**
  * Turn timers (Fase 3 plan decision 8): the server keeps the clock, the engine keeps the rule.
@@ -40,7 +51,7 @@ export class BattleTimers implements BattleListener {
     if (current?.token === state.turnToken) return;
     this.clear(battleId);
 
-    const timeout = state.result === null ? TIMEOUT_BY_STAGE[state.turn.stage] : undefined;
+    const timeout = state.result === null ? timeoutOf(state.turn) : null;
     if (!timeout) return;
     const token = state.turnToken;
     const handle = setTimeout(() => {

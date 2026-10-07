@@ -26,6 +26,8 @@ interface BattleRecord {
   roomId: string;
   node: BattleNode;
   needsMaster: boolean;
+  /** The room master when the battle formed; a battle that needs him blocks the transfer. */
+  masterId: string;
   /** The version the battle was formed on; it ends on it even if the room has a newer one. */
   campaignVersionId: string;
   participants: BattleParticipant[];
@@ -84,6 +86,11 @@ export class BattleRegistry {
   /** Battles of a room, oldest first. */
   inRoom(roomId: string): ActiveBattle[] {
     return [...this.battles.values()].filter((b) => b.roomId === roomId);
+  }
+
+  /** Whether any battle of the room has open questions, so the master must stay (spec §3.2). */
+  needsMaster(roomId: string): boolean {
+    return this.inRoom(roomId).some((b) => b.needsMaster);
   }
 
   /** A forming battle counts: the room must not roll forward under it (Fase 3 plan M3). */

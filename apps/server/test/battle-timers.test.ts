@@ -18,7 +18,10 @@ const pool = new SocketPool();
 
 beforeAll(async () => {
   app = await createTestApp({
-    battles: { seed: () => 7, timers: { signalMs: TICK, answerMs: TICK, actionMs: TICK } },
+    battles: {
+      seed: () => 7,
+      timers: { signalMs: TICK, answerMs: TICK, openAnswerMs: TICK, actionMs: TICK },
+    },
   });
   await pool.listen(app);
 });

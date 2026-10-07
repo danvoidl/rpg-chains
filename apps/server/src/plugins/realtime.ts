@@ -6,6 +6,7 @@ import { toHeaders } from '../auth-headers.js';
 import { config } from '../config.js';
 import { registerBattleChannel } from '../realtime/battle-channel.js';
 import { registerLobby, roomChannel } from '../realtime/lobby.js';
+import { syncMasterPresence } from '../realtime/master-presence.js';
 import { Presence } from '../realtime/presence.js';
 import type { SocketData } from '../realtime/socket-data.js';
 
@@ -41,7 +42,7 @@ export default fp(async (app) => {
     next();
   });
   const lobbyPresence = new Presence();
-  registerLobby(io, app, lobbyPresence);
+  registerLobby(io, app, lobbyPresence, (roomId) => syncMasterPresence(app, lobbyPresence, roomId));
   registerBattleChannel(io, app);
 
   app.decorate('io', io);

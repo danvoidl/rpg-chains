@@ -22,9 +22,17 @@ export interface Candidate extends BattleParticipant {
 const refuse = (status: Refusal['status'], error: string): Refusal => ({ status, error });
 
 /** Whether `candidate` may take a place in a forming battle. Synchronous: run it after every read. */
-function admission(registry: BattleRegistry, candidate: Candidate): Refusal | null {
+function admission(
+  registry: BattleRegistry,
+  candidate: Candidate,
+  battle: { needsMaster: boolean; masterId: string },
+): Refusal | null {
   // Downed players stay out until a campfire (spec §3.7).
   if (candidate.downed) return refuse(409, 'profile_downed');
+  // In a battle with open questions the master judges; he cannot judge his own answer (spec §3.2).
+  if (battle.needsMaster && candidate.userId === battle.masterId) {
+    return refuse(409, 'master_cannot_fight');
+  }
   if (registry.battleOf(candidate.profileId)) return refuse(409, 'already_in_battle');
   return null;
 }
@@ -42,20 +50,20 @@ export function openFormation(
     snapshot: CampaignSnapshot;
     nodeId: string;
     opener: Candidate;
+    /** The room master; fixed for the battle's life when it needs him (transfer is refused). */
+    masterId: string;
   },
 ): FormingBattle | Refusal {
   const content = buildBattleContent(input.snapshot, input.nodeId);
   if ('ok' in content) return refuse(422, content.reason);
   if (content.questions.length === 0) return refuse(422, 'node_without_questions');
   const needsMaster = content.questions.some((q) => q.type === 'open');
-  // The master's judgement arrives in Fase 3 plan M7; until then an open question would stall.
-  if (needsMaster) return refuse(422, 'open_questions_unsupported');
   const node = input.snapshot.chapters
     .flatMap((ch) => ch.nodes)
     .find((n) => n.id === input.nodeId)!;
   if (node.type !== 'battle' && node.type !== 'boss') return refuse(422, 'not_a_battle_node');
 
-  const refused = admission(registry, input.opener);
+  const refused = admission(registry, input.opener, { needsMaster, masterId: input.masterId });
   if (refused) return refused;
   if (registry.inRoom(input.roomId).some((b) => b.node.id === input.nodeId)) {
     return refuse(409, 'node_busy');
@@ -74,6 +82,7 @@ export function openFormation(
       participantLimit: node.type === 'battle' ? node.participantLimit : null,
     },
     needsMaster,
+    masterId: input.masterId,
     campaignVersionId: input.campaignVersionId,
     participants: [opener],
   };
@@ -93,7 +102,7 @@ export function joinFormation(
   battle: FormingBattle,
   candidate: Candidate,
 ): Refusal | null {
-  const refused = admission(registry, candidate);
+  const refused = admission(registry, candidate, battle);
   if (refused) return refused;
   const limit = battle.node.participantLimit;
   if (limit !== null && battle.participants.length >= limit) {

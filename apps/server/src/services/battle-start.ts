@@ -53,6 +53,9 @@ export async function startBattle(
     if (roster.length !== battle.participants.length) {
       return { status: 409, error: 'roster_changed' };
     }
+    const masterOnline = deps.masterOnline(battle.roomId, room.masterId);
+    // Only the master judges open questions: such a battle starts with him there (spec §3.2).
+    if (battle.needsMaster && !masterOnline) return { status: 409, error: 'master_offline' };
 
     const content = buildBattleContent(
       CampaignSnapshotSchema.parse(version.snapshot),
@@ -62,7 +65,7 @@ export async function startBattle(
     const started = createBattle(content, roster, {
       battleId: battle.battleId,
       seed: deps.seed(),
-      masterOnline: deps.masterOnline(battle.roomId, room.masterId),
+      masterOnline,
     });
     if (!started.ok) {
       return { status: CONTENT_ERRORS.has(started.reason) ? 422 : 409, error: started.reason };
