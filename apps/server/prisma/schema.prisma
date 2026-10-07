@@ -257,6 +257,8 @@ model Room {
   masterId          String
   master            User              @relation(fields: [masterId], references: [id])
   status            String            @default("open")
+  /// The master's turn timer adjustments (RoomTurnTimersSchema); `{}` = platform defaults.
+  turnTimers        Json              @default("{}")
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   closedAt          DateTime?

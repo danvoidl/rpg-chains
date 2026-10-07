@@ -34,6 +34,46 @@ describe('master-only room management', () => {
     expect(pub.json<RoomDetail>()).toMatchObject({ isPublic: true, accessCode: null });
   });
 
+  it('adjusts the turn timers within the platform ranges', async () => {
+    const master = await signUp(app, 'Master');
+    const player = await signUp(app, 'Player');
+    const campaignId = await publishedCampaign(app, master);
+    const room = await createRoom(app, master, campaignId);
+    const url = `/api/rooms/${room.id}`;
+    const fresh = await requestAs(app, master, { method: 'GET', url });
+    expect(fresh.json<RoomDetail>().turnTimers).toEqual({});
+
+    const res = await requestAs(app, master, {
+      method: 'PATCH',
+      url,
+      payload: { turnTimers: { signalMs: 40_000, openAnswerMs: 300_000 } },
+    });
+    expect(res.statusCode, res.body).toBe(200);
+    expect(res.json<RoomDetail>().turnTimers).toEqual({ signalMs: 40_000, openAnswerMs: 300_000 });
+
+    // Too short to play: refused, the saved values stay.
+    const tooShort = await requestAs(app, master, {
+      method: 'PATCH',
+      url,
+      payload: { turnTimers: { signalMs: 1_000 } },
+    });
+    expect(tooShort.statusCode).toBe(400);
+    const notMaster = await requestAs(app, player, {
+      method: 'PATCH',
+      url,
+      payload: { turnTimers: {} },
+    });
+    expect(notMaster.statusCode).toBe(403);
+
+    // `{}` restores every default.
+    const reset = await requestAs(app, master, {
+      method: 'PATCH',
+      url,
+      payload: { turnTimers: {} },
+    });
+    expect(reset.json<RoomDetail>().turnTimers).toEqual({});
+  });
+
   it('regenerates the code, invalidating the old one', async () => {
     const master = await signUp(app, 'Master');
     const player = await signUp(app, 'Player');

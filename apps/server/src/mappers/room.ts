@@ -8,6 +8,7 @@ import type {
   RoomStatus,
   RoomSummary,
 } from '@rpg-chains/shared-types';
+import { RoomTurnTimersSchema } from '@rpg-chains/shared-types';
 import type { RoomWithRelations } from '../services/room-query.js';
 import type { RoomVersion } from '../services/room-version.js';
 
@@ -130,6 +131,7 @@ export function toRoomDetail(
     })),
     battles,
     battleNodes: battleNodes(snapshot),
+    turnTimers: RoomTurnTimersSchema.parse(room.turnTimers),
     viewer: { isMaster, hasProfile: room.profiles.some((p) => p.userId === viewerId) },
   };
 }

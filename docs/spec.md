@@ -101,7 +101,7 @@ Um jogador que agiu numa rodada fica bloqueado do sinal na rodada seguinte. Isso
 
 Habilidades que não causam dano — provocar, curar, reerguer, aplicar buff — contam como a ação da rodada da mesma forma que um ataque, e portanto também bloqueiam quem as usou na rodada seguinte. Errar a resposta não é agir: quem erra não fica bloqueado.
 
-**Tempo limite.** Cada etapa do turno do grupo tem um prazo, definido na configuração da plataforma: se ninguém tocar no sinal, se quem tocou não responder ou se quem acertou não escolher a ação a tempo, o turno do grupo é perdido e a vez passa ao próximo inimigo. A resposta de uma pergunta aberta tem um prazo próprio, mais longo, porque precisa ser digitada. O julgamento do mestre e a escolha da pergunta não têm prazo. Isso impede que um jogador ausente congele a batalha.
+**Tempo limite.** Cada etapa do turno do grupo tem um prazo, com um padrão da plataforma que o mestre da sala pode ajustar dentro de limites (o ajuste vale a partir da batalha seguinte): se ninguém tocar no sinal, se quem tocou não responder ou se quem acertou não escolher a ação a tempo, o turno do grupo é perdido e a vez passa ao próximo inimigo. A resposta de uma pergunta aberta tem um prazo próprio, mais longo, porque precisa ser digitada. O julgamento do mestre e a escolha da pergunta não têm prazo. Isso impede que um jogador ausente congele a batalha.
 
 ### 3.4 Ações disponíveis
 

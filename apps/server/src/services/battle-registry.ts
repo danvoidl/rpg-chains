@@ -5,6 +5,7 @@ import type {
   BattleState,
   Command,
   Rejection,
+  RoomTurnTimers,
 } from '@rpg-chains/shared-types';
 
 export interface BattleParticipant {
@@ -43,6 +44,8 @@ export interface FormingBattle extends BattleRecord {
 export interface RunningBattle extends BattleRecord {
   status: 'running';
   content: BattleContent;
+  /** The room's timer adjustments when the battle started; later edits reach the next battle. */
+  turnTimers: RoomTurnTimers;
   state: BattleState;
   /** The full server log, secret events included. An event's `seq` is its 1-based position. */
   log: BattleEvent[];
@@ -126,12 +129,18 @@ export class BattleRegistry {
   }
 
   /** Turns a formation into a running battle from the events `createBattle` produced. */
-  run(forming: FormingBattle, content: BattleContent, events: BattleEvent[]): RunningBattle {
+  run(
+    forming: FormingBattle,
+    content: BattleContent,
+    events: BattleEvent[],
+    turnTimers: RoomTurnTimers,
+  ): RunningBattle {
     const { status: _status, starting: _starting, ...record } = forming;
     const battle: RunningBattle = {
       ...record,
       status: 'running',
       content,
+      turnTimers,
       state: replay(emptyBattle(forming.battleId), events),
       log: [...events],
     };

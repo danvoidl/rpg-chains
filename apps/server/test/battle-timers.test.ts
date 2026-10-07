@@ -5,7 +5,7 @@ import {
   type BattleEventsMessage,
   type BattleSummary,
 } from '@rpg-chains/shared-types';
-import { createTestApp, resetDatabase, signUp } from './helpers.js';
+import { createTestApp, requestAs, resetDatabase, signUp } from './helpers.js';
 import { battleAction, battleCampaign, openBattle } from './battle-fixtures.js';
 import { chooseClass, createRoom } from './room-fixtures.js';
 import { next, SocketPool } from './socket-client.js';
@@ -78,5 +78,31 @@ describe('turn timers (Fase 3 plan decision 8)', () => {
     });
     // The new stage got its own clock: nobody answers, so the answer times out.
     await answerTimeout;
+  });
+
+  it("a battle runs on the room's timers as they were when it started", async () => {
+    const master = await signUp(app, 'Master');
+    const ana = await signUp(app, 'Ana');
+    const campaignId = await battleCampaign(app, master);
+    const { id: roomId } = await createRoom(app, master, campaignId);
+    await chooseClass(app, ana, roomId, 'cl-duo');
+    const patch = (signalMs: number) =>
+      requestAs(app, master, {
+        method: 'PATCH',
+        url: `/api/rooms/${roomId}`,
+        payload: { turnTimers: { signalMs } },
+      });
+    expect((await patch(45_000)).statusCode).toBe(200);
+
+    const { battleId } = (await openBattle(app, ana, roomId, 'n-rat')).json<BattleSummary>();
+    await battleAction(app, ana, battleId, 'start');
+    // The adjusted signal wins over the platform default (TICK here).
+    expect(app.battleTimers.clockOf(battleId)?.durationMs).toBe(45_000);
+
+    // A later edit reaches the next battle, not this one.
+    expect((await patch(60_000)).statusCode).toBe(200);
+    const battle = app.battles.get(battleId)!;
+    if (battle.status !== 'running') throw new Error('not running');
+    expect(battle.turnTimers).toEqual({ signalMs: 45_000 });
   });
 });

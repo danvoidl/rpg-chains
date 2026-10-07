@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { buildBattleContent, createBattle } from '@rpg-chains/battle-engine';
-import { CampaignSnapshotSchema } from '@rpg-chains/shared-types';
+import { CampaignSnapshotSchema, RoomTurnTimersSchema } from '@rpg-chains/shared-types';
 import { toRosterEntry } from '../mappers/roster.js';
 import type { Refusal } from './battle-formation.js';
 import type { BattleRegistry, FormingBattle, RunningBattle } from './battle-registry.js';
@@ -25,6 +25,7 @@ const CONTENT_ERRORS = new Set([
 /**
  * Starts a formation (Fase 3 plan decision 12): reads every participant's profile fresh, cuts the
  * battle content from the version it was formed on, and lets `createBattle` validate and open it.
+ * The room's turn timers are read here too, so the master's adjustments reach the next battle.
  * The formation is locked (`starting`) across the reads, so nobody joins or leaves meanwhile.
  */
 export async function startBattle(
@@ -41,7 +42,7 @@ export async function startBattle(
       }),
       deps.prisma.room.findUniqueOrThrow({
         where: { id: battle.roomId },
-        select: { masterId: true },
+        select: { masterId: true, turnTimers: true },
       }),
     ]);
 
@@ -70,7 +71,12 @@ export async function startBattle(
     if (!started.ok) {
       return { status: CONTENT_ERRORS.has(started.reason) ? 422 : 409, error: started.reason };
     }
-    return deps.registry.run(battle, content, started.events);
+    return deps.registry.run(
+      battle,
+      content,
+      started.events,
+      RoomTurnTimersSchema.parse(room.turnTimers),
+    );
   } finally {
     battle.starting = false;
   }

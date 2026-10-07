@@ -57,7 +57,8 @@ export class BattleTimers implements BattleListener {
     const timeout = state.result === null ? timeoutOf(state.turn) : null;
     if (!timeout) return;
     const token = state.turnToken;
-    const durationMs = this.config[timeout.key];
+    // The room master's adjustment wins over the platform default (spec §3.3).
+    const durationMs = battle.turnTimers[timeout.key] ?? this.config[timeout.key];
     const handle = setTimeout(() => {
       this.pending.delete(battleId);
       this.registry.apply(battleId, { type: timeout.command, turnToken: token });

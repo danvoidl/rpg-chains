@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { RoomDetail } from '@rpg-chains/shared-types';
 import { useCloseRoom, usePatchRoom, useRegenerateCode, useTransferMaster } from './api';
 import { roomErrorMessage } from './room-error-messages';
+import { TurnTimersForm } from './turn-timers-form';
 
 interface MasterPanelProps {
   room: RoomDetail;
@@ -13,7 +14,7 @@ interface MasterPanelProps {
 const buttonClass =
   'rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50';
 
-/** Master-only controls: access code, rename/privacy, transfer and close. */
+/** Master-only controls: access code, rename/privacy, turn timers, transfer and close. */
 export function MasterPanel({ room, userId }: MasterPanelProps) {
   const patchRoom = usePatchRoom(room.id);
   const regenerate = useRegenerateCode(room.id);
@@ -88,6 +89,8 @@ export function MasterPanel({ room, userId }: MasterPanelProps) {
           Salvar sala
         </button>
       </form>
+
+      <TurnTimersForm room={room} />
 
       {candidates.length > 0 && (
         <div className="flex flex-wrap items-end gap-3">

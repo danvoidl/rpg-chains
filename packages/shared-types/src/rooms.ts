@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { IdSchema } from './common.js';
 import { RoomStatusSchema } from './accounts.js';
 import { BattleNodeOptionSchema, BattleSummarySchema } from './battles.js';
+import { RoomTurnTimersSchema } from './room-turn-timers.js';
 
 /**
  * Room REST contracts (Fase 2, spec §7): write payloads validated by the server and reused by the
@@ -25,8 +26,13 @@ export const RoomCreateInputSchema = z.object({
 });
 export type RoomCreateInput = z.infer<typeof RoomCreateInputSchema>;
 
-/** Master-only edits. Turning private generates a code; turning public drops it. */
-export const RoomPatchSchema = z.object({ name: RoomName, isPublic: z.boolean() }).partial();
+/**
+ * Master-only edits. Turning private generates a code; turning public drops it. `turnTimers`
+ * replaces the room's timer adjustments as a whole.
+ */
+export const RoomPatchSchema = z
+  .object({ name: RoomName, isPublic: z.boolean(), turnTimers: RoomTurnTimersSchema })
+  .partial();
 export type RoomPatch = z.infer<typeof RoomPatchSchema>;
 
 export const JoinByCodeInputSchema = z.object({ code: AccessCode });
@@ -122,6 +128,8 @@ export const RoomDetailSchema = z.object({
   battles: z.array(BattleSummarySchema),
   /** Nodes of the current version a formation can open on (provisional list until the map). */
   battleNodes: z.array(BattleNodeOptionSchema),
+  /** The master's adjustments to the turn timers; a missing key is the platform default. */
+  turnTimers: RoomTurnTimersSchema,
   /** The caller's own standing in the room. */
   viewer: z.object({ isMaster: z.boolean(), hasProfile: z.boolean() }),
 });

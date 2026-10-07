@@ -18,7 +18,8 @@ export const MIN_DAMAGE = 1;
 
 /**
  * How long each step of the group's turn may take before the turn is lost (spec §3.3, Fase 3 plan
- * decision 8). The master's judgement has no limit. Playtest values.
+ * decision 8): the platform default, which a room master may adjust within
+ * `BATTLE_TIMER_RANGES`. The master's judgement has no limit. Playtest values.
  */
 export const BATTLE_TIMERS = {
   /** Nobody taps the signal. */
@@ -30,3 +31,16 @@ export const BATTLE_TIMERS = {
   /** A correct answerer does not choose an action. */
   actionMs: 30_000,
 } as const;
+
+export type BattleTimerKey = keyof typeof BATTLE_TIMERS;
+
+/**
+ * How far a room master may move each turn timer (spec §3.3): short enough that an absent player
+ * cannot stall the battle, long enough that the step stays playable.
+ */
+export const BATTLE_TIMER_RANGES: Record<BattleTimerKey, { minMs: number; maxMs: number }> = {
+  signalMs: { minMs: 5_000, maxMs: 120_000 },
+  answerMs: { minMs: 10_000, maxMs: 180_000 },
+  openAnswerMs: { minMs: 30_000, maxMs: 600_000 },
+  actionMs: { minMs: 10_000, maxMs: 120_000 },
+};

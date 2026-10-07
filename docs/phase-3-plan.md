@@ -401,7 +401,8 @@ remainingMs }` viaja em `battle:events` e no `battle:sync` (transporte, fora do 
 
 ### M5 — E2E e playtest da fatia (fecha a Etapa A)
 
-**Status (2026-10-06): e2e e seed feitos; falta o playtest com pessoas.** E2E
+**Status (2026-10-07): feito.** Playtest com duas pessoas em 2026-10-06: a batalha correu bem.
+Dele saíram a contagem regressiva (M4) e os tempos ajustáveis pelo mestre da sala (abaixo). E2E
 `e2e/battle-group.spec.ts`: dois usuários em contextos separados, sala pública, formação aberta
 por um e completada pelo outro ao vivo, início levando os dois à batalha, rodadas com o sinal
 alternando entre eles (rotação), vitória nas duas telas e, de volta à sala, a batalha some e o
@@ -418,6 +419,12 @@ de referência em [`phase-3-playtest.md`](phase-3-playtest.md).
 - [delegável] Script de seed de playtest: campanha com o kit padrão e um capítulo de 3 batalhas.
 - **Playtest com pessoas reais antes da Etapa B**: ritmo do sinal, duração dos timers, legibilidade
   do turno inimigo. Ajustes vão para `game-config`.
+- **Tempos ajustáveis pelo mestre** (pedido do playtest): o ritmo confortável depende da mesa, não
+  da campanha. `BATTLE_TIMERS` continua sendo o padrão da plataforma; `BATTLE_TIMER_RANGES`
+  (`game-config`) limita cada prazo. A sala guarda só os ajustes (`Room.turnTimers`, jsonb,
+  `RoomTurnTimersSchema`; `{}` = padrões), editados no `PATCH /api/rooms/:id` pelo painel do
+  mestre. A batalha lê os ajustes ao iniciar (`RunningBattle.turnTimers`): mudar no meio de uma
+  batalha só vale para a próxima. Os prazos ficam fora do log, então o replay não muda.
 
 ### M6 — Habilidades e catálogo de efeitos (Etapa B)
 

@@ -9,6 +9,7 @@ export * from './graph.js';
 
 // Rooms (REST + lobby realtime)
 export * from './rooms.js';
+export * from './room-turn-timers.js';
 export * from './room-realtime.js';
 
 // Authoring (draft + REST write payloads)
