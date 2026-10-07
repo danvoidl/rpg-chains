@@ -4,7 +4,7 @@ import { IdSchema, AttributeSchema } from './common.js';
 import { EffectSchema } from './effects.js';
 
 /** Minimum attribute requirements to equip an item; one or two attributes (spec §4.1). */
-const RequirementsSchema = z.object({
+export const RequirementsSchema = z.object({
   strength: z.number().int().nonnegative().optional(),
   dexterity: z.number().int().nonnegative().optional(),
   intelligence: z.number().int().nonnegative().optional(),

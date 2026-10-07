@@ -3,6 +3,7 @@ import { IdSchema } from './common.js';
 import { RoomStatusSchema } from './accounts.js';
 import { BattleNodeOptionSchema, BattleSummarySchema } from './battles.js';
 import { RoomTurnTimersSchema } from './room-turn-timers.js';
+import { ShopNodeOptionSchema } from './shop.js';
 
 /**
  * Room REST contracts (Fase 2, spec §7): write payloads validated by the server and reused by the
@@ -83,6 +84,7 @@ export const RoomMemberSchema = z.object({
   /** Null while the member (only ever the master) has not picked a class. */
   profile: z
     .object({
+      profileId: IdSchema,
       classId: IdSchema,
       className: z.string(),
       level: z.number().int().positive(),
@@ -128,6 +130,8 @@ export const RoomDetailSchema = z.object({
   battles: z.array(BattleSummarySchema),
   /** Nodes of the current version a formation can open on (provisional list until the map). */
   battleNodes: z.array(BattleNodeOptionSchema),
+  /** Shop nodes of the current version (provisional list until the map, like `battleNodes`). */
+  shopNodes: z.array(ShopNodeOptionSchema),
   /** The master's adjustments to the turn timers; a missing key is the platform default. */
   turnTimers: RoomTurnTimersSchema,
   /** The caller's own standing in the room. */
