@@ -2,6 +2,7 @@ import { emit, nextToken, type DecideContext } from './decide-context.js';
 import { tickOverTime } from './effects/over-time.js';
 import { runEnemyTurn } from './enemy-turn.js';
 import { objectiveIds, openSignalFromDeck } from './questions.js';
+import { grantRewards } from './rewards.js';
 import { isActive } from './signal.js';
 
 /**
@@ -9,10 +10,14 @@ import { isActive } from './signal.js';
  * Every path that finishes a step ends here, so a battle can never stall between turns.
  */
 
-/** Ends the battle if one side is out (all enemies at 0 HP, or no active player). */
+/**
+ * Ends the battle if one side is out (all enemies at 0 HP, or no active player). A victory grants
+ * its rewards first (spec §6).
+ */
 export function resolveIfOver(ctx: DecideContext): boolean {
   if (ctx.state.result !== null) return true;
   if (ctx.state.enemies.every((e) => e.currentHp <= 0)) {
+    grantRewards(ctx);
     emit(ctx, { type: 'BattleResolved', result: 'victory' });
     return true;
   }

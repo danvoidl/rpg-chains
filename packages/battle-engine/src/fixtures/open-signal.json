@@ -158,6 +158,7 @@
   "needsMaster": false,
   "masterOnline": true,
   "result": null,
+  "rewards": [],
   "secret": {
     "prng": {
       "seed": 12345,

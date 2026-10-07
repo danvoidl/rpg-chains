@@ -28,6 +28,16 @@ const SEEDS = Array.from({ length: 200 }, (_, i) => i * 7919 + 1);
 function content(hard: boolean): BattleContent {
   const built = buildBattleContent(basicSnapshot(), 'n-boss');
   if ('ok' in built) throw new Error(built.reason);
+  // Rewards with a common and a rare drop, so victories roll loot through the log (Fase 4 M2).
+  built.villains = built.villains.map((v) => ({
+    ...v,
+    xpReward: 20,
+    goldReward: 10,
+    drops: [
+      { itemId: 'it-tail', chance: 0.35 },
+      { itemId: 'it-fang', chance: 0.03 },
+    ],
+  }));
   if (hard) {
     // Tough enough that some groups lose.
     built.villains = built.villains.map((v) => ({
@@ -158,6 +168,33 @@ describe.each<[string, () => BattleContent, RosterEntry[], Policy]>([
     for (const { seed, run } of runs.slice(0, 20)) {
       expect(runBattle(battle, group, seed, policy).log).toEqual(run.log);
     }
+  });
+});
+
+describe('rewards in the log (Fase 4 plan decision 4)', () => {
+  const runs = SEEDS.map((seed) => runBattle(content(false), roster, seed, robot));
+
+  it('a victory grants rewards right before resolving; a defeat never does', () => {
+    const hardRuns = SEEDS.map((seed) => runBattle(content(true), roster, seed, robot));
+    for (const { log, state } of [...runs, ...hardRuns]) {
+      const types = log.map((e) => e.type);
+      const granted = types.indexOf('RewardsGranted');
+      if (state.result === 'victory') {
+        expect(types[granted + 1]).toBe('BattleResolved');
+        expect(state.rewards.map((r) => r.profileId)).toEqual(
+          state.combatants.filter((c) => !c.left).map((c) => c.profileId),
+        );
+      } else {
+        expect(granted).toBe(-1);
+        expect(state.rewards).toEqual([]);
+      }
+    }
+  });
+
+  it('drops vary by seed: some victories drop items, some drop none', () => {
+    const dropped = runs.map(({ state }) => state.rewards.some((r) => r.items.length > 0));
+    expect(dropped).toContain(true);
+    expect(dropped).toContain(false);
   });
 });
 

@@ -32,6 +32,7 @@ export function emptyBattle(battleId: string): BattleState {
     needsMaster: false,
     masterOnline: false,
     result: null,
+    rewards: [],
     secret: { prng: { seed: 0, cursor: 0 }, questionDeck: [] },
   };
 }
@@ -138,6 +139,9 @@ export function evolve(state: BattleState, event: BattleEvent): BattleState {
         })),
         enemies: state.enemies.map((e) => endRound(e, event.round)),
       };
+
+    case 'RewardsGranted':
+      return { ...state, rewards: event.rewards };
 
     case 'BattleResolved':
       return { ...state, result: event.result, turn: { stage: 'ended' } };
