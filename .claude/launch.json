@@ -12,6 +12,23 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@rpg-chains/web", "dev"],
       "port": 3000
+    },
+    {
+      "name": "server-localhost",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@rpg-chains/server", "dev"],
+      "env": {
+        "BETTER_AUTH_URL": "http://localhost:3001",
+        "WEB_ORIGIN": "http://localhost:3000"
+      },
+      "port": 3001
+    },
+    {
+      "name": "web-localhost",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@rpg-chains/web", "dev"],
+      "env": { "NEXT_PUBLIC_API_URL": "http://localhost:3001" },
+      "port": 3000
     }
   ]
 }

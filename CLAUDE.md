@@ -300,3 +300,11 @@ not duplicate it here; drop notes made obsolete by the current setup.**
   `next dev` in the same `apps/web/.next`, the two compile over each other (random `ERR_ABORTED`
   in the e2e, 404s on the dev server). → Stop the dev web server before `pnpm test:e2e`; if it
   already happened, `rm -rf apps/web/.next` and restart it.
+
+### 2026-10-07 (Fase 4 M1)
+
+- **The local `.env` files point at the LAN IP** (`192.168.2.103`, for playtests on other devices),
+  so a browser on `localhost:3000` gets "Falha na comunicação com o servidor" (CORS/auth origin).
+  → To verify UI, kill whatever holds :3000/:3001 and start the `server-localhost` and
+  `web-localhost` configs of `.claude/launch.json`, which override the URLs through the process
+  env without touching `.env`.
