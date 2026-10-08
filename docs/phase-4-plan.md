@@ -326,6 +326,18 @@ compra e venda de item estão nos testes de servidor, e a troca pela interface n
 
 ### M6 — Playtest
 
+**Achados (2026-10-08), já corrigidos:**
+
+- **Não dava para saber o dano de um personagem.** A ficha mostra o ataque básico (`attack` no
+  `ProfileSheet`: dano, arma, base + atributo × escala), e o cartão de cada combatente na batalha
+  mostra ataque e defesa como estão, com buffs e debuffs.
+- **A habilidade não dizia o que faz.** `describe-effect.ts` (web) escreve uma frase com os números
+  calculados para quem usa — "Causa 24 de dano (150% do ataque básico) em um inimigo", "Cura 18 de
+  vida (10 + Inteligência × 2)" — seguindo a tabela de percentuais do motor (o que só o alvo sabe,
+  como a vida máxima dele, fica em percentual). Aparece nos botões de habilidade e de item da
+  batalha (antes o texto do autor era só um `title`) e na ficha, com custo, recarga e o nível que
+  libera.
+
 - Playtest com pessoas: ritmo da subida de nível (a curva de 100 × nível com as recompensas do
   seed), se o ouro rende o bastante na loja, se drop raro "parece" raro, e se a troca é fácil de
   usar. Ajustes vão para `game-config`.
