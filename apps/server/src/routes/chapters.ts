@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Prisma } from '@prisma/client';
 import { ChapterInputSchema, ChapterPatchSchema, DraftGraphSchema } from '@rpg-chains/shared-types';
 import { normalizeGraph } from '@rpg-chains/campaign-rules';
-import { toBackgroundColumns, toDraftChapter } from '../mappers/chapter.js';
+import { toBackgroundColumns, toDraftChapter, toOpeningColumns } from '../mappers/chapter.js';
 
 /** Loads a chapter with its nodes and edges, scoped to a campaign (returns null if not found). */
 async function findChapter(
@@ -48,6 +48,7 @@ export default async function chaptersRoutes(app: FastifyInstance): Promise<void
         order,
         underConstruction: body.underConstruction ?? false,
         ...toBackgroundColumns(body.background),
+        ...toOpeningColumns(body.opening),
       },
       select: { id: true, name: true, order: true, underConstruction: true },
     });
@@ -80,10 +81,10 @@ export default async function chaptersRoutes(app: FastifyInstance): Promise<void
       if (!existing) {
         return reply.code(404).send({ error: 'chapter_not_found' });
       }
-      const { background, ...fields } = ChapterPatchSchema.parse(request.body);
+      const { background, opening, ...fields } = ChapterPatchSchema.parse(request.body);
       const row = await app.prisma.chapter.update({
         where: { id: chapterId },
-        data: { ...fields, ...toBackgroundColumns(background) },
+        data: { ...fields, ...toBackgroundColumns(background), ...toOpeningColumns(opening) },
         select: { id: true, name: true, order: true, underConstruction: true },
       });
       return reply.code(200).send(row);

@@ -39,8 +39,8 @@ function admission(
 
 /**
  * Opens a formation on a `battle`/`boss` node of the room's version, with the opener as its first
- * participant (Fase 3 plan decision 9). At most one battle per node per room; the unlock gate of
- * the chapter graph arrives in Fase 5.
+ * participant (Fase 3 plan decision 9). At most one battle per node per room; the route checks
+ * first that the node is unlocked and not yet won (Fase 5, `checkNodeEntry`).
  */
 export function openFormation(
   registry: BattleRegistry,

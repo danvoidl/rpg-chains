@@ -20,6 +20,8 @@ export const EnvSchema = z.object({
   S3_FORCE_PATH_STYLE: z.enum(['true', 'false']).transform((v) => v === 'true'),
   S3_PUBLIC_BASE_URL: z.string().url(),
   MEDIA_MAX_UPLOAD_BYTES: z.coerce.number().int().positive(),
+  /** Ceiling of a video upload (chapter openings and narratives, Fase 5). */
+  MEDIA_MAX_VIDEO_BYTES: z.coerce.number().int().positive(),
   /**
    * Test-only (the e2e stack): every battle uses this seed, so a run replays the same rolls.
    * Unset everywhere else, where each battle draws its own.

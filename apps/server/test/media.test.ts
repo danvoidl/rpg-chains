@@ -44,6 +44,20 @@ describe('media REST routes', () => {
     expect(res.statusCode).toBe(400);
   });
 
+  it('takes a video up to its own, larger ceiling (Fase 5 plan decision 11)', async () => {
+    const user = await signUp(app);
+    const presign = (contentType: string, size: number) =>
+      requestAs(app, user, {
+        method: 'POST',
+        url: '/api/media/presign',
+        payload: { contentType, size },
+      });
+    const video = await presign('video/mp4', config.MEDIA_MAX_UPLOAD_BYTES + 1);
+    expect(video.statusCode).toBe(200);
+    expect(video.json<{ key: string }>().key.endsWith('.mp4')).toBe(true);
+    expect((await presign('video/webm', config.MEDIA_MAX_VIDEO_BYTES + 1)).statusCode).toBe(400);
+  });
+
   it('returns a presigned upload url for a valid request', async () => {
     const user = await signUp(app);
     const res = await requestAs(app, user, {

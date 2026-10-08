@@ -47,7 +47,7 @@ export default async function roomsRoutes(app: FastifyInstance): Promise<void> {
 
   app.get('/', { preHandler }, async () => {
     const rows = await app.prisma.room.findMany({
-      where: { isPublic: true, status: 'open' },
+      where: { isPublic: true, status: { in: ['open', 'completed'] } },
       orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
       take: LIST_LIMIT,
       include: summaryInclude,

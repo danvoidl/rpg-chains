@@ -11,16 +11,35 @@ const EXTENSION_BY_CONTENT_TYPE = {
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
   'image/gif': 'gif',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
 } as const;
 
 const PRESIGN_EXPIRES_IN_SECONDS = 300;
 
-const PresignBodySchema = z.object({
-  contentType: z.enum(['image/png', 'image/jpeg', 'image/webp', 'image/gif']),
-  size: z.number().int().positive().max(config.MEDIA_MAX_UPLOAD_BYTES),
-});
+/** Videos (chapter openings and narratives, Fase 5 plan decision 11) have their own ceiling. */
+const PresignBodySchema = z
+  .object({
+    contentType: z.enum([
+      'image/png',
+      'image/jpeg',
+      'image/webp',
+      'image/gif',
+      'video/mp4',
+      'video/webm',
+    ]),
+    size: z.number().int().positive(),
+  })
+  .refine(
+    ({ contentType, size }) =>
+      size <=
+      (contentType.startsWith('video/')
+        ? config.MEDIA_MAX_VIDEO_BYTES
+        : config.MEDIA_MAX_UPLOAD_BYTES),
+    { message: 'File too large', path: ['size'] },
+  );
 
-/** Media routes: presigned URLs for direct browser-to-S3 image uploads. */
+/** Media routes: presigned URLs for direct browser-to-S3 image and video uploads. */
 export default async function mediaRoutes(app: FastifyInstance): Promise<void> {
   app.post('/presign', { preHandler: [app.authenticate] }, async (request) => {
     const { contentType, size } = PresignBodySchema.parse(request.body);

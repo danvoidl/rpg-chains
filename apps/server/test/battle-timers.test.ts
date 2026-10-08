@@ -6,7 +6,7 @@ import {
   type BattleSummary,
 } from '@rpg-chains/shared-types';
 import { createTestApp, requestAs, resetDatabase, signUp } from './helpers.js';
-import { battleAction, battleCampaign, openBattle } from './battle-fixtures.js';
+import { battleAction, battleCampaign, clearGate, openBattle } from './battle-fixtures.js';
 import { chooseClass, createRoom } from './room-fixtures.js';
 import { next, SocketPool } from './socket-client.js';
 
@@ -41,6 +41,7 @@ async function soloBattle() {
   const ana = await signUp(app, 'Ana');
   const campaignId = await battleCampaign(app, master);
   const { id: roomId } = await createRoom(app, master, campaignId);
+  await clearGate(app, roomId);
   await chooseClass(app, ana, roomId, 'cl-duo');
   const { battleId } = (await openBattle(app, ana, roomId, 'n-rat')).json<BattleSummary>();
   const socket = await pool.connect(ana);
@@ -85,6 +86,7 @@ describe('turn timers (Fase 3 plan decision 8)', () => {
     const ana = await signUp(app, 'Ana');
     const campaignId = await battleCampaign(app, master);
     const { id: roomId } = await createRoom(app, master, campaignId);
+    await clearGate(app, roomId);
     await chooseClass(app, ana, roomId, 'cl-duo');
     const patch = (signalMs: number) =>
       requestAs(app, master, {

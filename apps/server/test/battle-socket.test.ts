@@ -16,6 +16,7 @@ import { createTestApp, requestAs, resetDatabase, signUp, type TestUser } from '
 import {
   battleAction,
   battleCampaign,
+  clearGate,
   correctIndex,
   openBattle,
   publishBattleVersion,
@@ -56,6 +57,7 @@ async function fight(): Promise<Fight> {
   const bia = await signUp(app, 'Bia');
   const campaignId = await battleCampaign(app, master);
   const { id: roomId } = await createRoom(app, master, campaignId);
+  await clearGate(app, roomId);
   await chooseClass(app, master, roomId, 'cl-duo');
   await chooseClass(app, ana, roomId, 'cl-duo');
   await chooseClass(app, bia, roomId, 'cl-solo');
@@ -197,6 +199,7 @@ describe('a battle over the socket', () => {
     const ana = await signUp(app, 'Ana');
     const campaignId = await battleCampaign(app, master);
     const { id: roomId } = await createRoom(app, master, campaignId);
+    await clearGate(app, roomId);
     await chooseClass(app, ana, roomId, 'cl-duo');
     // Two potions: the perfect group drinks both on its first action turns, then attacks.
     await app.prisma.campaignProfile.updateMany({
@@ -314,7 +317,7 @@ describe('a battle over the socket', () => {
     });
   });
 
-  it('takes out a player whose last socket leaves; the last one out loses, downing everyone', async () => {
+  it('takes out a player whose last socket leaves; the last one out loses, and everyone is back at the campfire', async () => {
     const f = await fight();
     const anaTabs = [await watcher(f.ana, f.battleId), await watcher(f.ana, f.battleId)];
     const biaSocket = await watcher(f.bia, f.battleId);
@@ -337,9 +340,10 @@ describe('a battle over the socket', () => {
     const profiles = await app.prisma.campaignProfile.findMany({
       where: { userId: { in: [f.ana.id, f.bia.id] } },
     });
-    expect(profiles.map((p) => [p.downed, p.currentHp])).toEqual([
-      [true, 0],
-      [true, 0],
+    // A defeat returns the group to the campfire, revived and refilled (spec §3.7).
+    expect(profiles.map((p) => [p.downed, p.currentHp > 0])).toEqual([
+      [false, true],
+      [false, true],
     ]);
   });
 

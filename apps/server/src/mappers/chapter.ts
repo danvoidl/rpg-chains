@@ -8,6 +8,7 @@ import {
   type ChapterBackground,
   type DraftChapter,
   type DraftNode,
+  type DraftOpening,
 } from '@rpg-chains/shared-types';
 
 /** Maps a database ChapterNode row to the DraftNode representation. */
@@ -43,6 +44,12 @@ export function toBackgroundColumns(background: ChapterBackground | null | undef
   };
 }
 
+/** Opening columns for a write: `undefined` leaves them untouched. */
+export function toOpeningColumns(opening: DraftOpening | undefined) {
+  if (opening === undefined) return {};
+  return { openingText: opening.text, openingVideoUrl: opening.videoUrl };
+}
+
 /** Maps a chapter row with its nodes and edges to the DraftChapter representation. */
 export function toDraftChapter(
   row: ChapterModel & { nodes: ChapterNodeModel[]; edges: NodeEdgeModel[] },
@@ -59,6 +66,7 @@ export function toDraftChapter(
     entryNodeId: row.entryNodeId ?? null,
     bossNodeId: row.bossNodeId ?? null,
     background: toChapterBackground(row),
+    opening: { text: row.openingText, videoUrl: row.openingVideoUrl ?? null },
     nodes,
     edges,
   };

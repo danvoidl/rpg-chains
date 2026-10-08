@@ -5,9 +5,11 @@ import {
   RoomPatchSchema,
   TransferMasterInputSchema,
 } from '@rpg-chains/shared-types';
+import { toHistoryFinalData } from '../mappers/history.js';
 import { withFreshAccessCode } from '../services/access-code.js';
 import { readRoomDetail } from '../services/room-detail.js';
 import { lockRoom } from '../services/room-lock.js';
+import { loadProgress } from '../services/room-progress.js';
 import { findRoom, type RoomWithRelations } from '../services/room-query.js';
 
 /**
@@ -114,25 +116,17 @@ export default async function roomMasterRoutes(app: FastifyInstance): Promise<vo
         where: { id: room.campaignVersionId },
       });
       const snapshot = CampaignSnapshotSchema.parse(version.snapshot);
+      const progress = await loadProgress(tx, roomId);
+      const reached = {
+        completed: room.status === 'completed',
+        chaptersCleared: progress.clearedChapterIds.length,
+      };
       await tx.history.createMany({
         data: room.profiles.map((profile) => ({
           roomId,
           userId: profile.userId,
           campaignName: snapshot.name,
-          finalData: {
-            classId: profile.classId,
-            className: snapshot.classes.find((c) => c.id === profile.classId)?.name ?? null,
-            level: profile.level,
-            xp: profile.xp,
-            attributes: {
-              strength: profile.strength,
-              dexterity: profile.dexterity,
-              intelligence: profile.intelligence,
-            },
-            downed: profile.downed,
-            equipment: profile.equipment as Prisma.InputJsonValue,
-            inventory: profile.inventory as Prisma.InputJsonValue,
-          },
+          finalData: toHistoryFinalData(profile, snapshot, reached) as Prisma.InputJsonValue,
         })),
       });
       await tx.room.update({

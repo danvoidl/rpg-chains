@@ -1,13 +1,12 @@
 import type { Room } from '@prisma/client';
 import { deriveStats } from '@rpg-chains/battle-engine';
 import type {
-  BattleNodeOption,
   BattleSummary,
+  CampaignProgressView,
   CampaignSnapshot,
   RoomDetail,
   RoomStatus,
   RoomSummary,
-  ShopNodeOption,
 } from '@rpg-chains/shared-types';
 import { RoomTurnTimersSchema } from '@rpg-chains/shared-types';
 import type { RoomWithRelations } from '../services/room-query.js';
@@ -37,38 +36,6 @@ function className(snapshot: CampaignSnapshot, classId: string): string {
   return snapshot.classes.find((c) => c.id === classId)?.name ?? classId;
 }
 
-/** Every `battle`/`boss` node of the version, in chapter order. */
-function battleNodes(snapshot: CampaignSnapshot): BattleNodeOption[] {
-  const open = new Set(snapshot.questions.filter((q) => q.type === 'open').map((q) => q.id));
-  return snapshot.chapters.flatMap((chapter) =>
-    chapter.nodes.flatMap((node): BattleNodeOption[] =>
-      node.type === 'battle' || node.type === 'boss'
-        ? [
-            {
-              nodeId: node.id,
-              title: node.title,
-              type: node.type,
-              chapterName: chapter.name,
-              participantLimit: node.type === 'battle' ? node.participantLimit : null,
-              needsMaster: node.questionIds.some((id) => open.has(id)),
-            },
-          ]
-        : [],
-    ),
-  );
-}
-
-/** Every `shop` node of the version, in chapter order (provisional list until the map). */
-function shopNodes(snapshot: CampaignSnapshot): ShopNodeOption[] {
-  return snapshot.chapters.flatMap((chapter) =>
-    chapter.nodes.flatMap((node): ShopNodeOption[] =>
-      node.type === 'shop'
-        ? [{ nodeId: node.id, title: node.title, chapterName: chapter.name }]
-        : [],
-    ),
-  );
-}
-
 /** A profile's resources with the ceilings its class, level and points give. */
 function resources(snapshot: CampaignSnapshot, profile: RoomWithRelations['profiles'][number]) {
   const cls = snapshot.classes.find((c) => c.id === profile.classId);
@@ -89,12 +56,13 @@ function resources(snapshot: CampaignSnapshot, profile: RoomWithRelations['profi
 
 /**
  * The room page read model: members (master first if they have no profile yet), the classes of
- * the current version with slot usage, the battles forming or running, and the access code for
- * the master only.
+ * the current version with slot usage, the trail with the room's progress, the battles forming or
+ * running, and the access code for the master only.
  */
 export function toRoomDetail(
   room: RoomWithRelations,
   { version, snapshot }: RoomVersion,
+  progress: CampaignProgressView,
   battles: BattleSummary[],
   viewerId: string,
 ): RoomDetail {
@@ -143,8 +111,8 @@ export function toRoomDetail(
       slotsTaken: taken.get(cls.id) ?? 0,
     })),
     battles,
-    battleNodes: battleNodes(snapshot),
-    shopNodes: shopNodes(snapshot),
+    progress,
+    completedAt: room.completedAt?.toISOString() ?? null,
     turnTimers: RoomTurnTimersSchema.parse(room.turnTimers),
     viewer: { isMaster, hasProfile: room.profiles.some((p) => p.userId === viewerId) },
   };

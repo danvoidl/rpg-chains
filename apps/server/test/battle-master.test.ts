@@ -11,7 +11,7 @@ import {
   type PublicQuestion,
 } from '@rpg-chains/shared-types';
 import { createTestApp, requestAs, resetDatabase, signUp, type TestUser } from './helpers.js';
-import { battleAction, battleCampaign, openBattle } from './battle-fixtures.js';
+import { battleAction, battleCampaign, clearGate, openBattle } from './battle-fixtures.js';
 import { chooseClass, createRoom } from './room-fixtures.js';
 import { next, SocketPool } from './socket-client.js';
 
@@ -45,6 +45,7 @@ async function table(): Promise<Table> {
   const ana = await signUp(app, 'Ana');
   const campaignId = await battleCampaign(app, master);
   const { id: roomId } = await createRoom(app, master, campaignId);
+  await clearGate(app, roomId);
   await chooseClass(app, master, roomId, 'cl-duo');
   await chooseClass(app, ana, roomId, 'cl-duo');
   return { roomId, master, ana };

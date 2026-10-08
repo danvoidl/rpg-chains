@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { BattleSummary, RoomDetail } from '@rpg-chains/shared-types';
 import { createTestApp, requestAs, resetDatabase, signUp, type TestUser } from './helpers.js';
-import { battleAction, battleCampaign, openBattle } from './battle-fixtures.js';
+import { battleAction, battleCampaign, clearGate, openBattle } from './battle-fixtures.js';
 import { chooseClass, createRoom } from './room-fixtures.js';
 
 let app: FastifyInstance;
@@ -30,6 +30,7 @@ async function table(): Promise<Table> {
   const players = [await signUp(app, 'Ana'), await signUp(app, 'Bia')];
   const campaignId = await battleCampaign(app, master);
   const { id: roomId } = await createRoom(app, master, campaignId);
+  await clearGate(app, roomId);
   await chooseClass(app, master, roomId, 'cl-duo');
   await chooseClass(app, players[0]!, roomId, 'cl-duo');
   await chooseClass(app, players[1]!, roomId, 'cl-solo');
@@ -62,11 +63,13 @@ describe('opening a formation', () => {
     expect((await roomDetail(t, t.master)).battles).toEqual([summary]);
   });
 
-  it('offers every battle and boss node of the version, flagging open questions', async () => {
+  it('shows every battle and boss node on the trail, flagging open questions', async () => {
     const t = await table();
     const room = await roomDetail(t, t.players[0]!);
     expect(
-      room.battleNodes.map((n) => [n.nodeId, n.type, n.participantLimit, n.needsMaster]),
+      room.progress.chapters[0]!.nodes.filter((n) => n.type === 'battle' || n.type === 'boss').map(
+        (n) => [n.nodeId, n.type, n.participantLimit, n.needsMaster],
+      ),
     ).toEqual([
       ['n-rat', 'battle', 2, false],
       ['n-boss', 'boss', null, false],
@@ -182,29 +185,5 @@ describe('room guards while a battle is active', () => {
       url: `/api/rooms/${t.roomId}/close`,
     });
     expect([close.statusCode, close.json().error]).toEqual([409, 'battle_in_progress']);
-  });
-});
-
-describe('the master rest (provisional campfire)', () => {
-  it('revives and refills every profile, for the master only, never mid-battle', async () => {
-    const t = await table();
-    const rest = (user: TestUser) =>
-      requestAs(app, user, { method: 'POST', url: `/api/rooms/${t.roomId}/rest` });
-    await app.prisma.campaignProfile.updateMany({
-      where: { roomId: t.roomId },
-      data: { downed: true, currentHp: 0, currentEnergy: 3 },
-    });
-
-    expect((await rest(t.players[0]!)).statusCode).toBe(403);
-    expect((await rest(t.master)).statusCode).toBe(200);
-    const profiles = await app.prisma.campaignProfile.findMany({ where: { roomId: t.roomId } });
-    expect(profiles.map((p) => [p.downed, p.currentHp, p.currentEnergy])).toEqual([
-      [false, 100, 50],
-      [false, 100, 50],
-      [false, 100, 50],
-    ]);
-
-    await formation(t, t.players[0]!);
-    expect((await rest(t.master)).json().error).toBe('battle_in_progress');
   });
 });

@@ -1,16 +1,14 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { Prisma } from '@prisma/client';
-import { eligibleForSignal } from '@rpg-chains/battle-engine';
 import {
   CampaignSnapshotSchema,
-  type BattleState,
   type BattleSummary,
-  type Command,
   type ProfileSheet,
 } from '@rpg-chains/shared-types';
 import { createTestApp, requestAs, resetDatabase, signUp, type TestUser } from './helpers.js';
-import { battleAction, battleCampaign, correctIndex, openBattle } from './battle-fixtures.js';
+import { battleAction, battleCampaign, clearGate, openBattle } from './battle-fixtures.js';
+import { playBattleToEnd, runningState } from './battle-play.js';
 import { chooseClass, createRoom } from './room-fixtures.js';
 
 let app: FastifyInstance;
@@ -54,6 +52,7 @@ async function soloBattle(): Promise<Solo> {
   const campaignId = await battleCampaign(app, master);
   await generousRat(campaignId);
   const { id: roomId } = await createRoom(app, master, campaignId);
+  await clearGate(app, roomId);
   await chooseClass(app, ana, roomId, 'cl-duo');
   const { battleId } = (await openBattle(app, ana, roomId, 'n-rat')).json<BattleSummary>();
   expect((await battleAction(app, ana, battleId, 'start')).statusCode).toBe(200);
@@ -61,50 +60,8 @@ async function soloBattle(): Promise<Solo> {
   return { roomId, battleId, ana, profileId: profile.id };
 }
 
-function stateOf(battleId: string): BattleState {
-  const battle = app.battles.get(battleId);
-  if (battle?.status !== 'running') throw new Error('not running');
-  return battle.state;
-}
-
-/** The command a perfect player sends next, with the actor bound as the server would. */
-function nextCommand(state: BattleState): Command {
-  const { turn, turnToken } = state;
-  switch (turn.stage) {
-    case 'awaiting_signal':
-      return { type: 'TapSignal', turnToken, profileId: [...eligibleForSignal(state)][0]! };
-    case 'awaiting_answer':
-      if (turn.question.type !== 'objective') throw new Error('open question');
-      return {
-        type: 'SubmitObjectiveAnswer',
-        turnToken,
-        profileId: turn.profileId,
-        index: correctIndex(turn.question.questionId),
-      };
-    case 'awaiting_action':
-      return {
-        type: 'ChooseAction',
-        turnToken,
-        profileId: turn.profileId,
-        action: {
-          type: 'attack',
-          targetInstanceId: state.enemies.find((e) => e.currentHp > 0)!.instanceId,
-        },
-      };
-    default:
-      throw new Error(`no move in stage ${turn.stage}`);
-  }
-}
-
-/** Plays the battle to its end through the registry; returns the final state. */
-function playToEnd(battleId: string): BattleState {
-  for (let step = 0; step < 100; step++) {
-    const state = stateOf(battleId);
-    if (state.result !== null) return state;
-    expect(app.battles.apply(battleId, nextCommand(state))).toEqual({ ok: true });
-  }
-  throw new Error('battle did not end');
-}
+const stateOf = (battleId: string) => runningState(app, battleId);
+const playToEnd = (battleId: string) => playBattleToEnd(app, battleId);
 
 async function sheetOf(user: TestUser, roomId: string): Promise<ProfileSheet> {
   const res = await requestAs(app, user, { method: 'GET', url: `/api/rooms/${roomId}/profile` });
@@ -145,14 +102,15 @@ describe('battle rewards reach the profile (Fase 4 plan M3)', () => {
     expect(potions).toBe(reward.items.length);
   });
 
-  it('a defeat costs a fifth of the gold, also to whoever left', async () => {
+  it('a defeat costs a fifth of the gold, also to whoever left, and restores them at the campfire', async () => {
     const { battleId, ana, roomId, profileId } = await soloBattle();
     await app.prisma.campaignProfile.update({ where: { id: profileId }, data: { gold: 50 } });
     // The last one out loses the battle (spec §3.7).
     expect(app.battles.apply(battleId, { type: 'PlayerLeft', profileId })).toEqual({ ok: true });
     expect(stateOf(battleId).result).toBe('defeat');
     await app.battleResolution.settled();
-    expect(await sheetOf(ana, roomId)).toMatchObject({ gold: 40, xp: 0, downed: true });
+    const sheet = await sheetOf(ana, roomId);
+    expect(sheet).toMatchObject({ gold: 40, xp: 0, downed: false, currentHp: sheet.maxHp });
   });
 });
 

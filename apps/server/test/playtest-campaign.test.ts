@@ -19,8 +19,31 @@ afterAll(async () => {
   await app.close();
 });
 
+/** Replaces the room's progress with every node of the chapter cleared except `nodeId`. */
+async function everythingClearedBut(
+  roomId: string,
+  chapterId: string,
+  nodes: RoomDetail['progress']['chapters'][number]['nodes'],
+  nodeId: string,
+): Promise<void> {
+  const others = nodes.filter((n) => n.nodeId !== nodeId);
+  await app.prisma.$transaction([
+    app.prisma.roomNodeClear.deleteMany({ where: { roomId } }),
+    app.prisma.roomNodeClear.createMany({
+      data: others.map((n, i) => ({
+        roomId,
+        chapterId,
+        nodeId: n.nodeId,
+        seq: i + 1,
+        profileIds: [],
+      })),
+    }),
+    app.prisma.room.update({ where: { id: roomId }, data: { progressSeq: others.length } }),
+  ]);
+}
+
 describe('the playtest campaign (Fase 3 plan M5)', () => {
-  it('passes the publish gate with the kit, three battles, a shop and a boss', async () => {
+  it('passes the publish gate with the kit, three battles, a shop, a campfire and a boss', async () => {
     const author = await signUp(app, 'Mestre');
     const { campaignId, version, warnings } = await app.prisma.$transaction((tx) =>
       createPlaytestCampaign(tx, author.id, 'Playtest'),
@@ -43,9 +66,23 @@ describe('the playtest campaign (Fase 3 plan M5)', () => {
       'battle',
       'battle',
       'shop',
+      'campfire',
       'battle',
       'boss',
     ]);
+    expect(snapshot.chapters).toHaveLength(2);
+    expect(snapshot.chapters[1]!.nodes.map((n) => n.type)).toEqual([
+      'narrative',
+      'battle',
+      'battle',
+      'battle',
+      'shop',
+      'campfire',
+      'boss',
+    ]);
+    expect(snapshot.chapters[1]!.nodes[0]!.mandatory).toBe(true);
+    for (const chapter of snapshot.chapters)
+      expect(chapter.opening?.text.length).toBeGreaterThan(0);
     expect(snapshot.villains.every((v) => v.xpReward > 0 && v.drops.length > 0)).toBe(true);
   });
 
@@ -60,9 +97,13 @@ describe('the playtest campaign (Fase 3 plan M5)', () => {
     ).json<RoomDetail>();
     await chooseClass(app, author, roomId, room.classes.find((c) => c.name === 'Guardião')!.id);
 
-    expect(room.battleNodes).toHaveLength(4);
-    for (const node of room.battleNodes) {
+    const [chapter] = room.progress.chapters;
+    const battles = chapter!.nodes.filter((n) => n.type === 'battle' || n.type === 'boss');
+    expect(battles).toHaveLength(4);
+    for (const node of battles) {
       expect(node.needsMaster).toBe(false);
+      // Every other node cleared: this one is unlocked (Fase 5 plan decision 2).
+      await everythingClearedBut(roomId, chapter!.chapterId, chapter!.nodes, node.nodeId);
       const opened = await openBattle(app, author, roomId, node.nodeId);
       expect(opened.statusCode, node.title).toBe(201);
       const { battleId } = opened.json<{ battleId: string }>();

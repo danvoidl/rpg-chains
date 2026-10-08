@@ -129,6 +129,9 @@ model Chapter {
   backgroundImageUrl String?
   backgroundWidth    Int?
   backgroundHeight   Int?
+  /// Shown to each player on first reaching the chapter (Fase 5); empty text and no video = none.
+  openingText        String        @default("")
+  openingVideoUrl    String?
   nodes              ChapterNode[]
   edges              NodeEdge[]
 
@@ -268,8 +271,14 @@ model Room {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   closedAt          DateTime?
+  /// When the room beat the last chapter's boss (spec §7); cleared again if a new chapter arrives.
+  completedAt       DateTime?
+  /// Last sequence number of the room's progress facts; orders "after the campfire" (Fase 5).
+  progressSeq       Int               @default(0)
   profiles          CampaignProfile[]
   history           History[]
+  nodeClears        RoomNodeClear[]
+  chapterStates     RoomChapterState[]
 
   @@index([campaignId])
   @@index([isPublic, status])
@@ -302,6 +311,35 @@ model CampaignProfile {
 
   @@unique([roomId, userId])
   @@index([roomId])
+}
+
+/// A node the room cleared (spec §2.3, Fase 5 plan decisions 1 and 14). Only "cleared" is stored;
+/// "unlocked" is derived by campaign-rules. `profileIds` = who took part, read by the defeat rollback.
+model RoomNodeClear {
+  id         String   @id @default(cuid())
+  roomId     String
+  room       Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  chapterId  String
+  nodeId     String
+  seq        Int
+  profileIds String[]
+  createdAt  DateTime @default(now())
+
+  @@unique([roomId, nodeId])
+  @@index([roomId])
+}
+
+/// Per-chapter facts of a room: the campfire lit last (where a defeat returns) and whether the
+/// chapter's boss was beaten (permanent).
+model RoomChapterState {
+  roomId         String
+  room           Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  chapterId      String
+  campfireNodeId String?
+  campfireSeq    Int?
+  clearedAt      DateTime?
+
+  @@id([roomId, chapterId])
 }
 
 model History {

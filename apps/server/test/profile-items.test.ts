@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Prisma } from '@prisma/client';
 import type { BattleSummary, ProfileSheet } from '@rpg-chains/shared-types';
 import { createTestApp, requestAs, resetDatabase, signUp, type TestUser } from './helpers.js';
-import { battleAction, battleCampaign, openBattle } from './battle-fixtures.js';
+import { battleAction, battleCampaign, clearGate, openBattle } from './battle-fixtures.js';
 import { chooseClass, createRoom } from './room-fixtures.js';
 
 let app: FastifyInstance;
@@ -32,6 +32,7 @@ async function table(): Promise<Table> {
   const bia = await signUp(app, 'Bia');
   const campaignId = await battleCampaign(app, master);
   const { id: roomId } = await createRoom(app, master, campaignId);
+  await clearGate(app, roomId);
   await chooseClass(app, ana, roomId, 'cl-duo');
   await chooseClass(app, bia, roomId, 'cl-duo');
   const profiles = await app.prisma.campaignProfile.findMany({ include: { user: true } });

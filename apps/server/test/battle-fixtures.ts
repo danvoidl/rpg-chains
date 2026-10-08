@@ -30,7 +30,10 @@ function battleNode(
  * The room fixture plus one chapter to fight in (Fase 3 plan M3). Knights (100 HP, sword 10 dmg)
  * against a 15 HP rat without defense that bites for 1: two hits win, nobody falls.
  * Nodes: `n-rat` (limit 2), `n-boss`, `n-open` (an open question), `n-silent` (no questions),
- * `n-camp` (a campfire), `n-shop` (sells the potion, the helmet and the phoenix feather).
+ * `n-camp` (a campfire), `n-shop` (sells the potion, the helmet and the phoenix feather). The entry
+ * is the narrative `n-gate`, with an edge to every other node (Fase 5): until it is cleared only
+ * the gate is unlocked — `clearGate` clears it, which unlocks them all (the boss too: no other
+ * node is mandatory).
  */
 export function battleSnapshot(campaignId: string, version: number): CampaignSnapshot {
   const base = roomSnapshot(campaignId, version);
@@ -41,9 +44,18 @@ export function battleSnapshot(campaignId: string, version: number): CampaignSna
         id: 'ch-1',
         name: 'Cellar',
         underConstruction: false,
-        entryNodeId: 'n-rat',
+        entryNodeId: 'n-gate',
         bossNodeId: 'n-boss',
         nodes: [
+          {
+            type: 'narrative',
+            id: 'n-gate',
+            title: 'Gate',
+            prerequisites: [],
+            mandatory: false,
+            position: at,
+            text: 'The cellar door creaks open.',
+          },
           battleNode('n-rat', ['v-rat'], ['q-1', 'q-2']),
           {
             type: 'boss',
@@ -76,7 +88,10 @@ export function battleSnapshot(campaignId: string, version: number): CampaignSna
             itemIds: ['it-potion', 'it-helmet', 'it-phoenix'],
           },
         ],
-        edges: [],
+        edges: ['n-rat', 'n-boss', 'n-open', 'n-silent', 'n-camp', 'n-shop'].map((to) => ({
+          from: 'n-gate',
+          to,
+        })),
       },
     ],
     villains: [
@@ -128,6 +143,16 @@ export async function battleCampaign(app: FastifyInstance, author: TestUser): Pr
   });
   await publishBattleVersion(app, campaign.id, 1);
   return campaign.id;
+}
+
+/** Clears the fixture's entry narrative in `roomId`, unlocking every other node (Fase 5). */
+export async function clearGate(app: FastifyInstance, roomId: string): Promise<void> {
+  await app.prisma.$transaction([
+    app.prisma.roomNodeClear.create({
+      data: { roomId, chapterId: 'ch-1', nodeId: 'n-gate', seq: 1, profileIds: [] },
+    }),
+    app.prisma.room.update({ where: { id: roomId }, data: { progressSeq: 1 } }),
+  ]);
 }
 
 export function openBattle(app: FastifyInstance, user: TestUser, roomId: string, nodeId: string) {

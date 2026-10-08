@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { ProfileSheet, RoomDetail, ShopView } from '@rpg-chains/shared-types';
 import { createTestApp, requestAs, resetDatabase, signUp, type TestUser } from './helpers.js';
-import { battleCampaign } from './battle-fixtures.js';
+import { battleCampaign, clearGate } from './battle-fixtures.js';
 import { chooseClass, createRoom } from './room-fixtures.js';
 
 let app: FastifyInstance;
@@ -22,6 +22,7 @@ async function shopper(gold: number): Promise<{ roomId: string; ana: TestUser }>
   const ana = await signUp(app, 'Ana');
   const campaignId = await battleCampaign(app, master);
   const { id: roomId } = await createRoom(app, master, campaignId);
+  await clearGate(app, roomId);
   await chooseClass(app, ana, roomId, 'cl-duo');
   await app.prisma.campaignProfile.updateMany({ where: { userId: ana.id }, data: { gold } });
   return { roomId, ana };
@@ -36,14 +37,8 @@ function buy(user: TestUser, roomId: string, itemId: string, quantity: number, n
 }
 
 describe('shops (Fase 4 plan decision 11)', () => {
-  it('lists the shop nodes and shows the wares with the buyer’s own gold', async () => {
+  it('shows the wares with the buyer’s own gold', async () => {
     const { roomId, ana } = await shopper(40);
-    const room = (
-      await requestAs(app, ana, { method: 'GET', url: `/api/rooms/${roomId}` })
-    ).json<RoomDetail>();
-    expect(room.shopNodes).toEqual([
-      { nodeId: 'n-shop', title: 'Merchant', chapterName: 'Cellar' },
-    ]);
 
     const shop = await requestAs(app, ana, {
       method: 'GET',
@@ -88,5 +83,71 @@ describe('shops (Fase 4 plan decision 11)', () => {
       where: { userId: ana.id },
     });
     expect([profile.gold, profile.inventory]).toEqual([0, ['it-helmet']]);
+  });
+
+  describe('Fase 5 gating', () => {
+    async function lockedShop(): Promise<{ roomId: string; ana: TestUser }> {
+      const master = await signUp(app, 'Master');
+      const ana = await signUp(app, 'Ana');
+      const campaignId = await battleCampaign(app, master);
+      const { id: roomId } = await createRoom(app, master, campaignId);
+      await chooseClass(app, ana, roomId, 'cl-duo');
+      await app.prisma.campaignProfile.updateMany({
+        where: { userId: ana.id },
+        data: { gold: 50 },
+      });
+      return { roomId, ana };
+    }
+
+    it('refuses a shop the room has not unlocked, to view and to buy', async () => {
+      const { roomId, ana } = await lockedShop();
+      const view = await requestAs(app, ana, {
+        method: 'GET',
+        url: `/api/rooms/${roomId}/shops/n-shop`,
+      });
+      expect([view.statusCode, view.json()]).toEqual([409, { error: 'node_locked' }]);
+      const bought = await buy(ana, roomId, 'it-potion', 1);
+      expect([bought.statusCode, bought.json()]).toEqual([409, { error: 'node_locked' }]);
+      expect(await app.prisma.roomNodeClear.count({ where: { roomId } })).toBe(0);
+    });
+
+    it('clears the shop on the first visit and keeps the first visitor', async () => {
+      const { roomId, ana } = await shopper(40);
+      const bruno = await signUp(app, 'Bruno');
+      await chooseClass(app, bruno, roomId, 'cl-duo');
+      const url = `/api/rooms/${roomId}/shops/n-shop`;
+      const stateOf = async () => {
+        const room = (
+          await requestAs(app, ana, { method: 'GET', url: `/api/rooms/${roomId}` })
+        ).json<RoomDetail>();
+        return room.progress.chapters[0]!.nodes.find((n) => n.nodeId === 'n-shop')?.state;
+      };
+      expect(await stateOf()).not.toBe('cleared');
+
+      expect((await requestAs(app, ana, { method: 'GET', url })).statusCode).toBe(200);
+      expect(await stateOf()).toBe('cleared');
+      const anaProfile = await app.prisma.campaignProfile.findFirstOrThrow({
+        where: { userId: ana.id },
+      });
+      const brunoProfile = await app.prisma.campaignProfile.findFirstOrThrow({
+        where: { userId: bruno.id },
+      });
+      const clear = () =>
+        app.prisma.roomNodeClear.findFirstOrThrow({ where: { roomId, nodeId: 'n-shop' } });
+      expect((await clear()).profileIds).toEqual([anaProfile.id]);
+
+      expect((await requestAs(app, bruno, { method: 'GET', url })).statusCode).toBe(200);
+      expect((await clear()).profileIds).toEqual([anaProfile.id]);
+      expect(brunoProfile.id).not.toBe(anaProfile.id);
+    });
+
+    it('answers shop_not_found for a node that is not a shop', async () => {
+      const { roomId, ana } = await shopper(40);
+      const res = await requestAs(app, ana, {
+        method: 'GET',
+        url: `/api/rooms/${roomId}/shops/n-rat`,
+      });
+      expect([res.statusCode, res.json()]).toEqual([404, { error: 'shop_not_found' }]);
+    });
   });
 });

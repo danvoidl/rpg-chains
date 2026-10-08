@@ -1,8 +1,11 @@
 import type { FastifyInstance } from 'fastify';
+import { checkNodeEntry, recordNodeCleared } from '@rpg-chains/campaign-rules';
 import { BuyInputSchema, type CampaignSnapshot, type ShopView } from '@rpg-chains/shared-types';
 import { toProfileSheet } from '../mappers/profile-sheet.js';
 import { gearOf } from '../mappers/profile-state.js';
 import { lockOwnedProfile } from '../services/owned-profile.js';
+import { changeProgress, loadProgress } from '../services/room-progress.js';
+import { lockRoom } from '../services/room-lock.js';
 import { findRoom } from '../services/room-query.js';
 import { syncRoomVersion } from '../services/room-version.js';
 
@@ -39,10 +42,20 @@ function toShopView(snapshot: CampaignSnapshot, nodeId: string, gold: number): S
   };
 }
 
+/** The refusal a shop entry check turns into, or null when the shop is open to the room. */
+function refusal(
+  code: ReturnType<typeof checkNodeEntry>,
+): { error: 404 | 409; code: string } | null {
+  if (code === null) return null;
+  if (code === 'node_locked') return { error: 409, code: 'node_locked' };
+  return { error: 404, code: 'shop_not_found' };
+}
+
 /**
- * Shops (spec §6, Fase 4 plan decision 11): any shop node of the room's version (provisional until
- * Fase 5 says where the group is). Each player buys with their own gold — no vote, no stock — at
- * the price of the version current when they buy.
+ * Shops (spec §6, Fase 4 plan decision 11, Fase 5 plan decisions 1 and 3): a shop node opens once
+ * the room has unlocked it, and the first visit clears it for the room (a cleared shop stays
+ * open). Each player buys with their own gold — no vote, no stock — at the price of the version
+ * current when they buy.
  */
 export default async function shopsRoutes(app: FastifyInstance): Promise<void> {
   const preHandler = [app.authenticate];
@@ -52,12 +65,32 @@ export default async function shopsRoutes(app: FastifyInstance): Promise<void> {
     { preHandler },
     async (request, reply) => {
       const userId = request.user!.id;
-      const room = await findRoom(app.prisma, request.params.roomId);
-      const profile = room?.profiles.find((p) => p.userId === userId);
-      if (!room || !profile) return reply.code(404).send({ error: 'not_a_player' });
-      const { snapshot } = await syncRoomVersion(app.prisma, room, app.battles);
-      const view = toShopView(snapshot, request.params.nodeId, profile.gold);
-      return view ?? reply.code(404).send({ error: 'shop_not_found' });
+      const { roomId, nodeId } = request.params;
+
+      const outcome = await app.prisma.$transaction(async (tx) => {
+        if (!(await lockRoom(tx, roomId))) return { error: 404 as const, code: 'not_a_player' };
+        const room = await findRoom(tx, roomId);
+        const profile = room?.profiles.find((p) => p.userId === userId);
+        if (!room || !profile) return { error: 404 as const, code: 'not_a_player' };
+        const { snapshot } = await syncRoomVersion(tx, room, app.battles);
+        const progress = await loadProgress(tx, roomId);
+        const refused = refusal(checkNodeEntry(snapshot, progress, nodeId, ['shop']));
+        if (refused) return refused;
+        const view = toShopView(snapshot, nodeId, profile.gold);
+        if (!view) return { error: 404 as const, code: 'shop_not_found' };
+        // The first visit clears the shop for the room; the first visitor keeps the credit.
+        const firstVisit = !progress.clears.some((c) => c.nodeId === nodeId);
+        if (firstVisit) {
+          await changeProgress(tx, room, snapshot, (p) =>
+            recordNodeCleared(snapshot, p, nodeId, [profile.id]),
+          );
+        }
+        return { error: null, view, firstVisit };
+      });
+
+      if (outcome.error !== null) return reply.code(outcome.error).send({ error: outcome.code });
+      if (outcome.firstVisit) app.roomEvents.changed(roomId);
+      return outcome.view;
     },
   );
 
@@ -73,6 +106,10 @@ export default async function shopsRoutes(app: FastifyInstance): Promise<void> {
         const owned = await lockOwnedProfile(tx, app.battles, roomId, userId);
         if ('error' in owned) return owned;
         const { profile, snapshot } = owned;
+        const refused = refusal(
+          checkNodeEntry(snapshot, await loadProgress(tx, roomId), nodeId, ['shop']),
+        );
+        if (refused) return refused;
         const node = shopNode(snapshot, nodeId);
         if (!node) return { error: 404, code: 'shop_not_found' };
         const item = snapshot.items.find((i) => i.id === itemId);

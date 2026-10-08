@@ -1,12 +1,13 @@
 import type { Prisma } from '@prisma/client';
 import { DROP_CHANCE_TIERS } from '@rpg-chains/game-config';
-import type { Effect } from '@rpg-chains/shared-types';
+import { cellPosition, type Effect, type TrailCell } from '@rpg-chains/shared-types';
 import { importDefaultKit } from './default-kit.js';
 import { publishCampaign } from './publish-campaign.js';
 
 /**
- * The playtest campaign (Fase 3 plan M5, Fase 4 plan M3): the default kit and one chapter — a
- * narrative opening, three battles, a shop and a boss — with objective questions only, for groups
+ * The playtest campaign (Fase 3 plan M5, Fase 4 plan M3): the default kit and two chapters — the
+ * first a narrative opening, three battles, a shop and a boss; the second a narrative, a split of
+ * two battle branches that rejoin, a campfire, a shop and a boss — with objective questions only, for groups
  * of 2–4 at level 1. Villains give XP, gold and drops (the whole chapter is about one level-up);
  * the shop sells potions and armor. The numbers are a first guess for the playtest to correct,
  * and they are campaign content (what an author would type), not system balancing, so they live
@@ -147,6 +148,37 @@ const QUESTIONS: [string, string[], number][] = [
 
 const PARTICIPANT_LIMIT = 4;
 
+/** Node creators bound to one chapter. */
+function chapterBuilders(tx: Prisma.TransactionClient, chapterId: string, questionIds: string[]) {
+  const node = (
+    cell: TrailCell,
+    data: Omit<Prisma.ChapterNodeUncheckedCreateInput, 'chapterId' | 'posX' | 'posY'>,
+  ) => {
+    const { x, y } = cellPosition(cell);
+    return tx.chapterNode.create({ data: { chapterId, posX: x, posY: y, ...data } });
+  };
+  const battle = (title: string, cell: TrailCell, level: number, lineup: string[]) =>
+    node(cell, {
+      type: 'battle',
+      title,
+      mandatory: true,
+      recommendedLevel: level,
+      participantLimit: PARTICIPANT_LIMIT,
+      config: { villainIds: lineup, questionIds },
+    });
+  return { node, battle };
+}
+
+async function connect(
+  tx: Prisma.TransactionClient,
+  chapterId: string,
+  edges: Array<[{ id: string }, { id: string }]>,
+): Promise<void> {
+  await tx.nodeEdge.createMany({
+    data: edges.map(([from, to]) => ({ chapterId, fromId: from.id, toId: to.id })),
+  });
+}
+
 export interface PlaytestCampaign {
   campaignId: string;
   version: number;
@@ -165,7 +197,7 @@ export async function createPlaytestCampaign(
       name,
       authorId,
       description:
-        'Campanha de playtest: três batalhas, uma loja e um chefe, só perguntas objetivas.',
+        'Campanha de playtest: dois capítulos com batalhas, ramos, fogueira, loja e chefe, só perguntas objetivas.',
     },
   });
   const campaignId = campaign.id;
@@ -220,60 +252,150 @@ export async function createPlaytestCampaign(
     questionIds.push(question.id);
   }
 
-  const chapter = await tx.chapter.create({ data: { campaignId, name: 'O Porão das Correntes' } });
-  const node = (
-    data: Omit<Prisma.ChapterNodeUncheckedCreateInput, 'chapterId' | 'posY'> & { posX: number },
-  ) => tx.chapterNode.create({ data: { chapterId: chapter.id, posY: 200, ...data } });
-  const battle = (title: string, posX: number, lineup: string[]) =>
-    node({
-      type: 'battle',
-      title,
-      mandatory: true,
-      recommendedLevel: 1,
-      participantLimit: PARTICIPANT_LIMIT,
-      posX,
-      config: { villainIds: lineup, questionIds },
-    });
-
-  const opening = await node({
-    type: 'narrative',
-    title: 'A descida',
-    mandatory: true,
-    posX: 100,
-    config: {
-      text: 'Uma corrente range no fundo do porão. Algo se mexe no escuro.',
-      videoUrl: null,
+  const chapterOne = await tx.chapter.create({
+    data: {
+      campaignId,
+      name: 'O Porão das Correntes',
+      order: 0,
+      openingText:
+        'O velho forte ergue-se sobre a colina, e sob ele fica o porão onde as correntes ainda se arrastam.',
     },
   });
-  const nodes = [
-    opening,
-    await battle('Ratos no porão', 300, [villainIds.rat, villainIds.rat]),
-    await battle('O bandido', 500, [villainIds.bandit]),
-    await node({
+  const chapterTwo = await tx.chapter.create({
+    data: {
+      campaignId,
+      name: 'A Torre das Correntes',
+      order: 1,
+      openingText:
+        'Vencido o carcereiro, uma escada em espiral leva à torre. Lá em cima, alguém ainda puxa as correntes.',
+    },
+  });
+  const { node, battle } = chapterBuilders(tx, chapterOne.id, questionIds);
+  const second = chapterBuilders(tx, chapterTwo.id, questionIds);
+
+  // Chapter 1: a zig-zag down the trail's grid (Fase 5 plan decision 17), one node per row.
+  const opening = await node(
+    { column: 2, row: 0 },
+    {
+      type: 'narrative',
+      title: 'A descida',
+      mandatory: true,
+      config: {
+        text: 'Uma corrente range no fundo do porão. Algo se mexe no escuro.',
+        videoUrl: null,
+      },
+    },
+  );
+  const rats = await battle('Ratos no porão', { column: 1, row: 1 }, 1, [
+    villainIds.rat,
+    villainIds.rat,
+  ]);
+  const bandit = await battle('O bandido', { column: 2, row: 2 }, 1, [villainIds.bandit]);
+  // After the bandit the trail forks: the shop on one side, the campfire on the other.
+  const shop = await node(
+    { column: 1, row: 3 },
+    {
       type: 'shop',
       title: 'O mercador',
       mandatory: false,
-      posX: 700,
       config: { itemIds: Object.values(itemIds) },
-    }),
-    await battle('A matilha', 900, [villainIds.wolf, villainIds.wolf, villainIds.wolf]),
-    await node({
+    },
+  );
+  const campfire = await node(
+    { column: 3, row: 3 },
+    { type: 'campfire', title: 'As brasas', mandatory: false, config: {} },
+  );
+  const pack = await battle('A matilha', { column: 2, row: 4 }, 1, [
+    villainIds.wolf,
+    villainIds.wolf,
+    villainIds.wolf,
+  ]);
+  const warden = await node(
+    { column: 2, row: 5 },
+    {
       type: 'boss',
       title: 'O Carcereiro',
       mandatory: true,
       recommendedLevel: 1,
-      posX: 1100,
       config: { villainIds: [villainIds.warden], questionIds },
-    }),
-  ];
-  await tx.nodeEdge.createMany({
-    data: nodes
-      .slice(1)
-      .map((to, i) => ({ chapterId: chapter.id, fromId: nodes[i]!.id, toId: to.id })),
-  });
+    },
+  );
+  await connect(tx, chapterOne.id, [
+    [opening, rats],
+    [rats, bandit],
+    [bandit, shop],
+    [bandit, campfire],
+    [shop, pack],
+    [campfire, pack],
+    [pack, warden],
+  ]);
   await tx.chapter.update({
-    where: { id: chapter.id },
-    data: { entryNodeId: opening.id, bossNodeId: nodes.at(-1)!.id },
+    where: { id: chapterOne.id },
+    data: { entryNodeId: opening.id, bossNodeId: warden.id },
+  });
+
+  // Chapter 2: a mandatory narrative, a fork of two battle branches that rejoin (the group can
+  // split), then a fork of campfire / shop, and the boss.
+  const gate = await second.node(
+    { column: 2, row: 0 },
+    {
+      type: 'narrative',
+      title: 'A escada',
+      mandatory: true,
+      config: {
+        text: 'Degraus de pedra sobem em espiral. Dois corredores se abrem no primeiro patamar.',
+        videoUrl: null,
+      },
+    },
+  );
+  const west = await second.battle('O corredor oeste', { column: 1, row: 1 }, 2, [
+    villainIds.bandit,
+    villainIds.rat,
+  ]);
+  const east = await second.battle('O corredor leste', { column: 3, row: 1 }, 2, [
+    villainIds.bandit,
+    villainIds.wolf,
+  ]);
+  const landing = await second.battle('O patamar', { column: 2, row: 2 }, 3, [
+    villainIds.bandit,
+    villainIds.bandit,
+  ]);
+  const restShop = await second.node(
+    { column: 1, row: 3 },
+    {
+      type: 'shop',
+      title: 'O contrabandista',
+      mandatory: false,
+      config: { itemIds: Object.values(itemIds) },
+    },
+  );
+  const restFire = await second.node(
+    { column: 3, row: 3 },
+    { type: 'campfire', title: 'A lareira', mandatory: false, config: {} },
+  );
+  const jailer = await second.node(
+    { column: 2, row: 4 },
+    {
+      type: 'boss',
+      title: 'O Guardião da Torre',
+      mandatory: true,
+      recommendedLevel: 3,
+      config: { villainIds: [villainIds.warden], questionIds },
+    },
+  );
+  await connect(tx, chapterTwo.id, [
+    [gate, west],
+    [gate, east],
+    [west, landing],
+    [east, landing],
+    [landing, restShop],
+    [landing, restFire],
+    [restShop, jailer],
+    [restFire, jailer],
+  ]);
+  await tx.chapter.update({
+    where: { id: chapterTwo.id },
+    data: { entryNodeId: gate.id, bossNodeId: jailer.id },
   });
 
   const published = await publishCampaign(tx, campaignId);

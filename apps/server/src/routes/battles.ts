@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { toPublicQuestion } from '@rpg-chains/battle-engine';
+import { checkNodeEntry } from '@rpg-chains/campaign-rules';
 import { BattleCreateInputSchema, type PublicQuestion } from '@rpg-chains/shared-types';
 import { toBattleSummary } from '../mappers/battle.js';
 import {
@@ -12,6 +13,7 @@ import {
   type Refusal,
 } from '../services/battle-formation.js';
 import { startBattle } from '../services/battle-start.js';
+import { loadProgress } from '../services/room-progress.js';
 import { canView, findRoom } from '../services/room-query.js';
 import { syncRoomVersion } from '../services/room-version.js';
 
@@ -54,7 +56,14 @@ export default async function battlesRoutes(app: FastifyInstance): Promise<void>
       const opener = await candidate(roomId, userId);
       if (!opener) return reply.code(403).send({ error: 'not_a_player' });
       const version = await syncRoomVersion(app.prisma, room, app.battles);
+      const progress = await loadProgress(app.prisma, roomId);
 
+      // Only an unlocked node can be fought, and a won one is closed (Fase 5 plan decisions 2–3).
+      // Unknown and non-battle nodes fall through to `openFormation`'s own refusals.
+      const entry = checkNodeEntry(version.snapshot, progress, nodeId, ['battle', 'boss']);
+      if (entry === 'node_locked' || entry === 'node_cleared') {
+        return reply.code(409).send({ error: entry });
+      }
       const battle = openFormation(app.battles, {
         roomId,
         campaignVersionId: version.id,

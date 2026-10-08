@@ -28,7 +28,7 @@ export default async function roomProfileRoutes(app: FastifyInstance): Promise<v
       if (!canView(room, userId, body.accessCode)) {
         return { error: 404, code: 'room_not_found' } as const;
       }
-      if (room.status !== 'open') return { error: 409, code: 'room_closed' } as const;
+      if (room.status === 'closed') return { error: 409, code: 'room_closed' } as const;
       if (room.profiles.some((p) => p.userId === userId)) {
         return { error: 409, code: 'already_member' } as const;
       }

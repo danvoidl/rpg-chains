@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { CampaignSnapshotSchema, type CampaignSnapshot } from '@rpg-chains/shared-types';
+import { loadProgress, syncCompletion } from './room-progress.js';
 
 interface RoomVersionRef {
   id: string;
@@ -22,9 +23,10 @@ export interface RoomBattles {
 
 /**
  * The snapshot a room plays, rolling it forward first (spec §2.2, Fase 2 plan decision 6): if the
- * campaign has a newer published version and the room is open and not mid-battle, the room's
- * pointer moves to it. Lazy — it runs when the room is read or joined, never in the background.
- * Safe without further checks because every publish already passed the compatibility gate.
+ * campaign has a newer published version and the room is not closed and not mid-battle, the
+ * room's pointer moves to it. Lazy — it runs when the room is read or joined, never in the
+ * background. Safe without further checks because every publish already passed the compatibility
+ * gate. A completed room that receives a chapter it has not cleared is open again (spec §7).
  */
 export async function syncRoomVersion(
   tx: Prisma.TransactionClient,
@@ -34,7 +36,8 @@ export async function syncRoomVersion(
   let current = await tx.campaignVersion.findUniqueOrThrow({
     where: { id: room.campaignVersionId },
   });
-  if (room.status === 'open' && !battles.hasActive(room.id)) {
+  let rolled = false;
+  if (room.status !== 'closed' && !battles.hasActive(room.id)) {
     const latest = await tx.campaignVersion.findFirstOrThrow({
       where: { campaignId: room.campaignId },
       orderBy: { version: 'desc' },
@@ -42,11 +45,10 @@ export async function syncRoomVersion(
     if (latest.version > current.version) {
       await tx.room.update({ where: { id: room.id }, data: { campaignVersionId: latest.id } });
       current = latest;
+      rolled = true;
     }
   }
-  return {
-    id: current.id,
-    version: current.version,
-    snapshot: CampaignSnapshotSchema.parse(current.snapshot),
-  };
+  const snapshot = CampaignSnapshotSchema.parse(current.snapshot);
+  if (rolled) await syncCompletion(tx, room, snapshot, await loadProgress(tx, room.id));
+  return { id: current.id, version: current.version, snapshot };
 }

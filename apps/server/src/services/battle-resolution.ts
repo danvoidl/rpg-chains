@@ -1,20 +1,25 @@
-import type { CampaignProfile, PrismaClient } from '@prisma/client';
+import type { CampaignProfile, Prisma, PrismaClient } from '@prisma/client';
 import {
   consumedItems,
   profileOutcomes,
   settleProfile,
   type SettledProfile,
 } from '@rpg-chains/battle-engine';
-import { CampaignProfileSchema } from '@rpg-chains/shared-types';
+import { recordNodeCleared, rollbackDefeat } from '@rpg-chains/campaign-rules';
+import { CampaignProfileSchema, CampaignSnapshotSchema } from '@rpg-chains/shared-types';
 import type { BattleListener, BattleRegistry, RunningBattle } from './battle-registry.js';
+import { changeProgress } from './room-progress.js';
 import { lockRoom } from './room-lock.js';
 
 /**
- * The end of a battle (Fase 3 plan decision 11, Fase 4 plan M3): once `BattleResolved` is
- * folded, each participant's profile is settled — HP, energy and downed flag as the battle ended,
- * used consumables out, and the victory's XP, gold and drops in (or a defeat's gold loss) — as a
- * delta on the profile read under the room lock, in one transaction, and only then does the battle leave the registry — so the room cannot roll forward
- * to a newer version, or close, before the profiles are written.
+ * The end of a battle (Fase 3 plan decision 11, Fase 4 plan M3, Fase 5 plan decision 5): once
+ * `BattleResolved` is folded, each participant's profile is settled — HP, energy and downed flag
+ * as the battle ended, used consumables out, and the victory's XP, gold and drops in (or a
+ * defeat's gold loss and the return to the campfire) — as a delta on the profile read under the
+ * room lock; and the room's progress records it — a victory clears the node, a defeat undoes what
+ * the defeated cleared since the chapter's campfire. All in one transaction, and only then does
+ * the battle leave the registry — so the room cannot roll forward to a newer version, or close,
+ * before the profiles and the progress are written.
  */
 export class BattleResolution implements BattleListener {
   private readonly writing = new Map<string, Promise<void>>();
@@ -56,6 +61,11 @@ export class BattleResolution implements BattleListener {
       const rows = await tx.campaignProfile.findMany({
         where: { id: { in: outcomes.map((o) => o.profileId) } },
       });
+      await this.recordProgress(
+        tx,
+        battle,
+        outcomes.map((o) => o.profileId),
+      );
       for (const outcome of outcomes) {
         const row = rows.find((r) => r.id === outcome.profileId);
         const cls = row && content.classes.find((c) => c.id === row.classId);
@@ -81,6 +91,31 @@ export class BattleResolution implements BattleListener {
         });
       }
     });
+  }
+
+  /**
+   * The battle's node in the room's progress, under the lock already held. The battle's version is
+   * the room's: a room never rolls forward while a battle is active.
+   */
+  private async recordProgress(
+    tx: Prisma.TransactionClient,
+    battle: RunningBattle,
+    profileIds: string[],
+  ): Promise<void> {
+    const [room, version] = await Promise.all([
+      tx.room.findUniqueOrThrow({
+        where: { id: battle.roomId },
+        select: { id: true, status: true },
+      }),
+      tx.campaignVersion.findUniqueOrThrow({ where: { id: battle.campaignVersionId } }),
+    ]);
+    const snapshot = CampaignSnapshotSchema.parse(version.snapshot);
+    const nodeId = battle.node.id;
+    await changeProgress(tx, room, snapshot, (progress) =>
+      battle.state.result === 'victory'
+        ? recordNodeCleared(snapshot, progress, nodeId, profileIds)
+        : rollbackDefeat(snapshot, progress, nodeId, profileIds),
+    );
   }
 }
 
