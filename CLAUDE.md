@@ -331,3 +331,8 @@ not duplicate it here; drop notes made obsolete by the current setup.**
   failed with 403). → Check `ss -ltnp | grep 3001` right before testing; run the API with
   `BETTER_AUTH_URL=http://localhost:3001 WEB_ORIGIN=http://localhost:3000 pnpm --filter
 @rpg-chains/server dev` in a background shell when the preview tool refuses.
+- **A LAN playtest broke two things localhost hides**: `crypto.randomUUID` is undefined outside a
+  secure context (HTTPS or localhost) — use `lib/random-id.ts` in browser code; and uploads stored
+  `http://localhost:9000/...` URLs (`S3_PUBLIC_BASE_URL`) that phones cannot load. → For a LAN
+  playtest point `S3_ENDPOINT`/`S3_PUBLIC_BASE_URL` at the LAN IP before uploading, and test the
+  web over the LAN IP, not just localhost.

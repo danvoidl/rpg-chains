@@ -407,7 +407,7 @@ chefe final → campanha concluída, encerrar, histórico dos dois. Suíte e2e 1
 
 ### M6 — Playtest
 
-**Status (2026-10-08): guia pronto** — [phase-5-playtest.md](phase-5-playtest.md). Falta jogar.
+**Status (2026-10-08): feito.** Guia em [phase-5-playtest.md](phase-5-playtest.md); playtest jogado em 2026-10-08. Correções que ele trouxe: o editor gerava ids com `crypto.randomUUID`, que não existe fora de contexto seguro (o jogo pelo IP da rede) — agora `lib/random-id.ts`; o nó novo nascia fora da vista — o canvas agora vai até ele.
 
 - Guia de playtest da Fase 5. Perguntas: o mapa deixa claro o que fazer? A volta à fogueira
   dói na medida certa ou frustra? O grupo se divide nos ramos? Ajustes de regra voltam para a
