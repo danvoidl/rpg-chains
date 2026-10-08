@@ -338,6 +338,19 @@ compra e venda de item estão nos testes de servidor, e a troca pela interface n
   batalha (antes o texto do autor era só um `title`) e na ficha, com custo, recarga e o nível que
   libera.
 
+**Impressões (2026-10-08):** o ritmo de subida de nível está bom — o resto depende dos números de
+cada campanha, que são do autor. O ritmo do turno também agradou. Físico × mágico foi discutido e
+**não entra agora**: os atributos já escalam o dano pela arma e pelas habilidades com `scaling`, só
+não apareciam na tela; se as classes ainda parecerem iguais depois de mais jogo, vira fase própria
+(depois da Fase 5). Duas habilidades do Sacerdote (Graça Plena, Bênção Contínua) são percentuais e
+não escalam com nada — primeiro lugar a ajustar se ele parecer fraco em nível alto.
+
+**Pendente, para lembrar o usuário:** tempos do turno vindos da campanha. Hoje só o mestre da sala
+ajusta (`Room.turnTimers`). Proposta: o autor define os tempos padrão na campanha (aditivo e
+opcional no snapshot, mudável como balanceamento), a sala nasce com eles e o mestre continua
+ajustando — plataforma → campanha → mestre. Talvez depois um tempo opcional por pergunta. O tempo
+de escolher a ação ficaria só com o mestre.
+
 - Playtest com pessoas: ritmo da subida de nível (a curva de 100 × nível com as recompensas do
   seed), se o ouro rende o bastante na loja, se drop raro "parece" raro, e se a troca é fácil de
   usar. Ajustes vão para `game-config`.
