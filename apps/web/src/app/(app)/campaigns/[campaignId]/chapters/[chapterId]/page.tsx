@@ -4,7 +4,13 @@ import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { contentPools, validateChapter } from '@rpg-chains/campaign-rules';
-import type { CampaignDraft, DraftChapter, DraftGraph, NodeType } from '@rpg-chains/shared-types';
+import type {
+  CampaignDraft,
+  DraftChapter,
+  DraftGraph,
+  NodeType,
+  TrailPosition,
+} from '@rpg-chains/shared-types';
 import { ApiError } from '@/lib/api';
 import { useCampaignDraft } from '@/features/campaigns/draft-api';
 import { useChapter, useSaveGraph } from '@/features/chapters/api';
@@ -18,13 +24,13 @@ import {
   toggleEdge,
   updateNode,
 } from '@/features/chapters/graph-ops';
+import { dropPosition, newNodePosition, snapAllToGrid } from '@/features/chapters/grid-placement';
 import { IssuesPanel } from '@/features/chapters/issues-panel';
 import { createNode, NODE_TYPE_LABELS } from '@/features/chapters/node-defaults';
 import { nodeLabels } from '@/features/chapters/node-labels';
 import { NodePropertiesPanel } from '@/features/chapters/node-properties-panel';
 
 const NODE_TYPES: NodeType[] = ['battle', 'boss', 'shop', 'campfire', 'narrative'];
-const ROW_GAP = 120;
 
 function toGraph(chapter: DraftChapter): DraftGraph {
   return {
@@ -65,6 +71,7 @@ function ChapterEditor({ campaignId, chapter, draft }: ChapterEditorProps) {
   const [graph, setGraph] = useState<DraftGraph>(() => toGraph(chapter));
   const [savedJson, setSavedJson] = useState(() => JSON.stringify(toGraph(chapter)));
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
 
   const isDirty = JSON.stringify(graph) !== savedJson;
@@ -91,11 +98,17 @@ function ChapterEditor({ campaignId, chapter, draft }: ChapterEditorProps) {
   };
 
   const handleAddNode = (type: NodeType) => {
-    const lowest = graph.nodes.reduce((max, n) => Math.max(max, n.position.y), -ROW_GAP);
-    const node = createNode(type, { x: 0, y: lowest + ROW_GAP }, graph.nodes);
+    const node = createNode(type, newNodePosition(graph.nodes), graph.nodes);
     edit((g) => addNode(g, node));
     setSelectedId(node.id);
+    setFocusId(node.id);
   };
+
+  // A drop on a taken cell puts the node back where the drag started: one node per cell.
+  const handleDrop = (id: string, position: TrailPosition, from: TrailPosition) =>
+    edit((g) => moveNode(g, id, dropPosition(g.nodes, id, position) ?? from));
+
+  const offGrid = issues.some((i) => i.code === 'node_off_grid');
 
   const handleDeleteNodes = (ids: string[]) => {
     edit((g) => removeNodes(g, ids));
@@ -143,6 +156,16 @@ function ChapterEditor({ campaignId, chapter, draft }: ChapterEditorProps) {
           </button>
         ))}
 
+        {offGrid && (
+          <button
+            type="button"
+            onClick={() => edit((g) => ({ ...g, nodes: snapAllToGrid(g.nodes) }))}
+            className="rounded-md border border-amber-400 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-100"
+          >
+            Encaixar na grade
+          </button>
+        )}
+
         <button
           type="button"
           onClick={handleSave}
@@ -171,11 +194,14 @@ function ChapterEditor({ campaignId, chapter, draft }: ChapterEditorProps) {
       <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
         <GraphCanvas
           graph={graph}
+          background={chapter.background}
           labels={labels}
           selectedId={selectedId}
+          focusId={focusId}
           issueNodeIds={issueNodeIds}
           onSelect={setSelectedId}
           onMove={(id, position) => edit((g) => moveNode(g, id, position))}
+          onDrop={handleDrop}
           onConnect={(from, to) => edit((g) => connect(g, from, to))}
           onDeleteNodes={handleDeleteNodes}
           onDeleteEdges={(edges) => edit((g) => disconnect(g, edges))}

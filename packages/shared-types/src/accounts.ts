@@ -25,6 +25,7 @@ export type RoomStatus = z.infer<typeof RoomStatusSchema>;
 /** Living instance of a campaign version (spec §2.1, §7). */
 export const RoomSchema = z.object({
   id: IdSchema,
+  name: z.string().min(1),
   campaignId: IdSchema,
   /** Current applied published version; advances to newer compatible versions at safe boundaries (decision 5). */
   campaignVersionId: IdSchema,
@@ -58,6 +59,8 @@ export const CampaignProfileSchema = z.object({
   level: z.number().int().positive(),
   xp: z.number().int().nonnegative(),
   availablePoints: z.number().int().nonnegative(),
+  /** Private to the player (spec §6): never shown to the rest of the room. */
+  gold: z.number().int().nonnegative(),
   attributes: InvestedAttributesSchema,
   currentHp: z.number().nonnegative(),
   currentEnergy: z.number().nonnegative(),
@@ -66,11 +69,3 @@ export const CampaignProfileSchema = z.object({
   inventory: z.array(IdSchema),
 });
 export type CampaignProfile = z.infer<typeof CampaignProfileSchema>;
-
-/** Shared party gold and items, distributed by vote (spec §6). */
-export const GroupBagSchema = z.object({
-  roomId: IdSchema,
-  gold: z.number().int().nonnegative(),
-  items: z.array(IdSchema),
-});
-export type GroupBag = z.infer<typeof GroupBagSchema>;

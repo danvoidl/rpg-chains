@@ -5,3 +5,4 @@ export * from './relevance.js';
 export * from './combat.js';
 export * from './classes.js';
 export * from './skills.js';
+export * from './economy.js';

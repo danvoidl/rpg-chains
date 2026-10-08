@@ -39,6 +39,7 @@ function initialValues(item?: Item): ItemFormValues {
     return {
       category: 'equipment',
       name: '',
+      price: 0,
       slot: 'weapon',
       requirements: {},
       defenseBonus: 0,
@@ -80,11 +81,11 @@ export function ItemForm({ defaultValues, submitLabel, onSubmit, isSubmitting }:
   >;
 
   const changeCategory = (next: ItemInput['category']) => {
-    const name = getValues('name');
+    const [name, price] = getValues(['name', 'price']);
     reset(
       next === 'consumable'
-        ? { category: 'consumable', name, effect: defaultEffect('heal') }
-        : { ...initialValues(), name },
+        ? { category: 'consumable', name, price, effect: defaultEffect('heal') }
+        : { ...initialValues(), name, price },
     );
   };
 
@@ -96,7 +97,7 @@ export function ItemForm({ defaultValues, submitLabel, onSubmit, isSubmitting }:
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <div>
           <label htmlFor="item-name" className={labelClass}>
             Nome
@@ -117,6 +118,19 @@ export function ItemForm({ defaultValues, submitLabel, onSubmit, isSubmitting }:
             <option value="equipment">Equipamento</option>
             <option value="consumable">Consumível</option>
           </select>
+        </div>
+        <div>
+          <label htmlFor="item-price" className={labelClass}>
+            Preço (ouro)
+          </label>
+          <input
+            id="item-price"
+            type="number"
+            min={0}
+            {...register('price', { valueAsNumber: true })}
+            className={inputClass}
+          />
+          {errors.price && <p className={errorClass}>{errors.price.message}</p>}
         </div>
       </div>
 

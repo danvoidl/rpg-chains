@@ -18,7 +18,7 @@
           "recommendedLevel": null,
           "participantLimit": null,
           "position": {
-            "x": 0,
+            "x": 160,
             "y": 0
           },
           "prerequisites": [],
@@ -35,7 +35,7 @@
           "recommendedLevel": 1,
           "participantLimit": 3,
           "position": {
-            "x": -100,
+            "x": 80,
             "y": 100
           },
           "prerequisites": ["n-entry"],
@@ -51,7 +51,7 @@
           "recommendedLevel": null,
           "participantLimit": null,
           "position": {
-            "x": 100,
+            "x": 240,
             "y": 100
           },
           "prerequisites": [],
@@ -64,7 +64,7 @@
           "recommendedLevel": 2,
           "participantLimit": null,
           "position": {
-            "x": 0,
+            "x": 160,
             "y": 200
           },
           "prerequisites": ["n-a"],
@@ -121,6 +121,14 @@
           "baseDamage": 10,
           "targetType": "single",
           "cooldownRounds": 0
+        }
+      ],
+      "xpReward": 30,
+      "goldReward": 15,
+      "drops": [
+        {
+          "itemId": "it-sword",
+          "chance": 0.12
         }
       ]
     }

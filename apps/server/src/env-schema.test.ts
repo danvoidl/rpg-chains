@@ -15,6 +15,7 @@ const valid = {
   S3_FORCE_PATH_STYLE: 'true',
   S3_PUBLIC_BASE_URL: 'http://localhost:9000/rpg-chains-media',
   MEDIA_MAX_UPLOAD_BYTES: '5242880',
+  MEDIA_MAX_VIDEO_BYTES: '52428800',
 };
 
 describe('EnvSchema', () => {
@@ -42,5 +43,11 @@ describe('EnvSchema', () => {
   it('rejects a missing S3_BUCKET', () => {
     const { S3_BUCKET: _omitted, ...rest } = valid;
     expect(() => EnvSchema.parse(rest)).toThrow();
+  });
+
+  it('leaves BATTLE_SEED unset unless given, and rejects a non-integer', () => {
+    expect(EnvSchema.parse(valid).BATTLE_SEED).toBeUndefined();
+    expect(EnvSchema.parse({ ...valid, BATTLE_SEED: '42' }).BATTLE_SEED).toBe(42);
+    expect(() => EnvSchema.parse({ ...valid, BATTLE_SEED: '4.2' })).toThrow();
   });
 });

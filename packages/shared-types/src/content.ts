@@ -1,16 +1,19 @@
 import { z } from 'zod';
-import { MAX_SKILLS_PER_CLASS } from '@rpg-chains/game-config';
+import { MAX_DROP_CHANCE, MAX_SKILLS_PER_CLASS } from '@rpg-chains/game-config';
 import { IdSchema, AttributeSchema } from './common.js';
 import { EffectSchema } from './effects.js';
 
 /** Minimum attribute requirements to equip an item; one or two attributes (spec §4.1). */
-const RequirementsSchema = z.object({
+export const RequirementsSchema = z.object({
   strength: z.number().int().nonnegative().optional(),
   dexterity: z.number().int().nonnegative().optional(),
   intelligence: z.number().int().nonnegative().optional(),
 });
 
 /* ------------------------------------------------------------------ items ---- */
+
+/** Shop price in gold (spec §6). Additive with a default, so older snapshots stay valid. */
+const Price = z.number().int().nonnegative().default(0);
 
 export const SlotSchema = z.enum(['weapon', 'helmet', 'chest', 'boots', 'bracers', 'rings']);
 export type Slot = z.infer<typeof SlotSchema>;
@@ -23,6 +26,7 @@ export const ItemEquipmentSchema = z.object({
   id: IdSchema,
   name: z.string().min(1),
   slot: SlotSchema,
+  price: Price,
   requirements: RequirementsSchema.default({}),
   defenseBonus: z.number().nonnegative().default(0),
   weapon: z
@@ -39,6 +43,7 @@ export const ItemConsumableSchema = z.object({
   category: z.literal('consumable'),
   id: IdSchema,
   name: z.string().min(1),
+  price: Price,
   effect: EffectSchema,
 });
 
@@ -105,6 +110,16 @@ export const VillainAttackSchema = z.object({
 });
 export type VillainAttack = z.infer<typeof VillainAttackSchema>;
 
+/**
+ * An item a villain may drop, with its chance as a fraction of 1 (spec §6). Never certain: capped
+ * at `MAX_DROP_CHANCE`, which also holds after the relevance multiplier (spec §4.5).
+ */
+export const VillainDropSchema = z.object({
+  itemId: IdSchema,
+  chance: z.number().positive().max(MAX_DROP_CHANCE),
+});
+export type VillainDrop = z.infer<typeof VillainDropSchema>;
+
 export const VillainSchema = z.object({
   id: IdSchema,
   name: z.string().min(1),
@@ -117,6 +132,13 @@ export const VillainSchema = z.object({
     defense: z.number().nonnegative(),
   }),
   attacks: z.array(VillainAttackSchema).min(1),
+  /**
+   * What defeating one instance is worth to each participant before the relevance multiplier
+   * (spec §6). Additive with defaults, so older snapshots stay valid and give no reward.
+   */
+  xpReward: z.number().int().nonnegative().default(0),
+  goldReward: z.number().int().nonnegative().default(0),
+  drops: z.array(VillainDropSchema).default([]),
 });
 export type Villain = z.infer<typeof VillainSchema>;
 
@@ -175,6 +197,16 @@ export const ChapterBackgroundSchema = z.object({
   height: z.number().int().positive(),
 });
 export type ChapterBackground = z.infer<typeof ChapterBackgroundSchema>;
+
+/**
+ * What a player sees on first reaching a chapter, and may replay (spec §2.3, Fase 5 plan
+ * decision 11). Text and art: changing it is always a compatible publish.
+ */
+export const ChapterOpeningSchema = z.object({
+  text: z.string().default(''),
+  videoUrl: z.string().url().optional(),
+});
+export type ChapterOpening = z.infer<typeof ChapterOpeningSchema>;
 
 /** Graph node in a chapter (spec §2.3). Discriminated by `type`. */
 export const ChapterNodeSchema = z.discriminatedUnion('type', [
@@ -244,6 +276,7 @@ export const ChapterSchema = z.object({
   entryNodeId: IdSchema,
   bossNodeId: IdSchema,
   background: ChapterBackgroundSchema.optional(),
+  opening: ChapterOpeningSchema.optional(),
   nodes: z.array(ChapterNodeSchema),
   edges: z.array(EdgeSchema),
 });

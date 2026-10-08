@@ -41,6 +41,12 @@ export function toSnapshotNode(node: DraftNode): Record<string, unknown> {
   }
 }
 
+/** An opening with neither text nor video is no opening. */
+function toSnapshotOpening({ text, videoUrl }: DraftChapter['opening']) {
+  if (text.trim() === '' && videoUrl === null) return undefined;
+  return { text, videoUrl: videoUrl ?? undefined };
+}
+
 export function toSnapshotChapter(chapter: DraftChapter): Record<string, unknown> {
   return {
     id: chapter.id,
@@ -49,6 +55,7 @@ export function toSnapshotChapter(chapter: DraftChapter): Record<string, unknown
     entryNodeId: chapter.entryNodeId ?? undefined,
     bossNodeId: chapter.bossNodeId ?? undefined,
     background: chapter.background ?? undefined,
+    opening: toSnapshotOpening(chapter.opening),
     nodes: chapter.nodes.map(toSnapshotNode),
     edges: chapter.edges.map(({ from, to }) => ({ from, to })),
   };
@@ -67,6 +74,9 @@ export function toSnapshotVillain(villain: DraftVillain): Record<string, unknown
       defense: villain.defense,
     },
     attacks: villain.attacks,
+    xpReward: villain.xpReward,
+    goldReward: villain.goldReward,
+    drops: villain.drops,
   };
 }
 
@@ -100,4 +110,14 @@ export function publishableChapters(chapters: readonly DraftChapter[]): DraftCha
   return chapters
     .filter((chapter) => !chapter.underConstruction)
     .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+}
+
+/** Chapters under construction, in author order: only their name enters a snapshot. */
+export function upcomingChapters(
+  chapters: readonly DraftChapter[],
+): Array<{ id: string; name: string }> {
+  return chapters
+    .filter((chapter) => chapter.underConstruction)
+    .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
+    .map(({ id, name }) => ({ id, name }));
 }

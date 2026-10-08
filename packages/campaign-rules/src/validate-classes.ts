@@ -10,7 +10,7 @@ import {
   type DraftSkill,
   type Item,
 } from '@rpg-chains/shared-types';
-import { ALLOWED_TARGETS } from './effect-targets.js';
+import { ALLOWED_TARGETS } from '@rpg-chains/shared-types';
 import { formatPath, type DraftIssue } from './issues.js';
 import { toSnapshotClass } from './snapshot-mapping.js';
 

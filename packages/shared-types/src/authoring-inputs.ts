@@ -6,8 +6,10 @@ import {
   ItemConsumableSchema,
   ItemEquipmentSchema,
   VillainAttackSchema,
+  VillainDropSchema,
   refineWeaponStats,
 } from './content.js';
+import { DraftOpeningSchema } from './draft.js';
 import { EffectSchema } from './effects.js';
 
 /**
@@ -31,12 +33,15 @@ const ChapterFieldsSchema = z.object({
   underConstruction: z.boolean(),
   /** Map image behind the graph; `null` removes it. */
   background: ChapterBackgroundSchema.nullable(),
+  /** What players see on reaching the chapter (Fase 5 plan decision 11); empty text = none. */
+  opening: DraftOpeningSchema,
 });
 
 export const ChapterInputSchema = ChapterFieldsSchema.partial({
   order: true,
   underConstruction: true,
   background: true,
+  opening: true,
 });
 export type ChapterInput = z.infer<typeof ChapterInputSchema>;
 
@@ -57,6 +62,9 @@ export const VillainInputSchema = z.object({
   intelligence: z.number().int().nonnegative(),
   defense: z.number().int().nonnegative(),
   attacks: z.array(VillainAttackInputSchema).optional(),
+  xpReward: z.number().int().nonnegative().optional(),
+  goldReward: z.number().int().nonnegative().optional(),
+  drops: z.array(VillainDropSchema).optional(),
 });
 export type VillainInput = z.infer<typeof VillainInputSchema>;
 

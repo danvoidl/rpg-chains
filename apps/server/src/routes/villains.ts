@@ -1,8 +1,6 @@
-import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
-import type { Prisma } from '@prisma/client';
 import { VillainInputSchema } from '@rpg-chains/shared-types';
-import { toDraftVillain } from '../mappers/villain.js';
+import { toDraftVillain, toVillainData } from '../mappers/villain.js';
 
 /** Villain authoring routes scoped to a campaign. */
 export default async function villainsRoutes(app: FastifyInstance): Promise<void> {
@@ -19,22 +17,8 @@ export default async function villainsRoutes(app: FastifyInstance): Promise<void
   app.post<{ Params: { campaignId: string } }>('/', { preHandler }, async (request, reply) => {
     const { campaignId } = request.params;
     const body = VillainInputSchema.parse(request.body);
-    const attacks = (body.attacks ?? []).map((attack) => ({
-      ...attack,
-      id: attack.id ?? randomUUID(),
-    }));
     const row = await app.prisma.villain.create({
-      data: {
-        campaignId,
-        name: body.name,
-        imageUrl: body.imageUrl ?? null,
-        hp: body.hp,
-        strength: body.strength,
-        dexterity: body.dexterity,
-        intelligence: body.intelligence,
-        defense: body.defense,
-        attacks: attacks as Prisma.InputJsonValue,
-      },
+      data: { campaignId, ...toVillainData(body) },
     });
     return reply.code(201).send(toDraftVillain(row));
   });
@@ -51,22 +35,9 @@ export default async function villainsRoutes(app: FastifyInstance): Promise<void
       if (!existing) {
         return reply.code(404).send({ error: 'villain_not_found' });
       }
-      const attacks = (body.attacks ?? []).map((attack) => ({
-        ...attack,
-        id: attack.id ?? randomUUID(),
-      }));
       const row = await app.prisma.villain.update({
         where: { id: villainId },
-        data: {
-          name: body.name,
-          imageUrl: body.imageUrl ?? null,
-          hp: body.hp,
-          strength: body.strength,
-          dexterity: body.dexterity,
-          intelligence: body.intelligence,
-          defense: body.defense,
-          attacks: attacks as Prisma.InputJsonValue,
-        },
+        data: toVillainData(body),
       });
       return reply.code(200).send(toDraftVillain(row));
     },

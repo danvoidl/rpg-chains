@@ -39,7 +39,7 @@ function node(type: DraftNode['type'], overrides: Partial<DraftNode> = {}): Draf
   return { ...base, type, config, ...overrides } as DraftNode;
 }
 
-/** Authors a publishable campaign through the REST API: entry → battle → boss. */
+/** Authors a publishable campaign through the REST API: entry → battle → campfire → boss. */
 async function authorCampaign(user: TestUser) {
   const post = async (url: string, payload: object) => {
     const res = await requestAs(app, user, { method: 'POST', url, payload });
@@ -57,6 +57,9 @@ async function authorCampaign(user: TestUser) {
     intelligence: 2,
     defense: 4,
     attacks: [{ name: 'Lash', baseDamage: 10, targetType: 'single', cooldownRounds: 0 }],
+    // Inside the reward guide of the level 1 and 2 nodes, so the kit publishes warning-free.
+    xpReward: 30,
+    goldReward: 15,
   });
   const question = await post(`${base}/questions`, {
     type: 'objective',
@@ -77,13 +80,16 @@ async function authorCampaign(user: TestUser) {
     recommendedLevel: 2,
     config: { villainIds: [villain.id], questionIds: [] },
   } as Partial<DraftNode>);
+  // A campfire before the boss, so a defeat has somewhere to return (no chapter warning).
+  const camp = node('campfire');
   const graph: DraftGraph = {
     entryNodeId: entry.id,
     bossNodeId: boss.id,
-    nodes: [entry, battle, boss],
+    nodes: [entry, battle, camp, boss],
     edges: [
       { from: entry.id, to: battle.id },
-      { from: battle.id, to: boss.id },
+      { from: battle.id, to: camp.id },
+      { from: camp.id, to: boss.id },
     ],
   };
   return { base, chapterId: chapter.id, graph };

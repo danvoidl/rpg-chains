@@ -27,8 +27,7 @@ O sistema se organiza em três camadas conceituais que precisam permanecer disti
 | **Habilidade**         | Ação criada pelo autor a partir de um tipo de efeito genérico, com alvo, magnitude, duração, custo e cooldown.                                          |
 | **Pergunta**           | Desafio de combate. Tipo objetivo (validação automática) ou aberto (julgado pelo mestre).                                                               |
 | **Sala**               | Instância de jogo. Pública ou privada com código. Tem dono/mestre transferível.                                                                         |
-| **Perfil de Campanha** | Personagem do jogador na sala. Nível, atributos, HP, energia, equipamentos, inventário.                                                                 |
-| **Bolsa do Grupo**     | Ouro e itens compartilhados da sala, distribuídos por votação.                                                                                          |
+| **Perfil de Campanha** | Personagem do jogador na sala. Nível, atributos, HP, energia, ouro, equipamentos, inventário.                                                           |
 | **Batalha Ativa**      | Estado transitório de uma luta em andamento. Fonte da verdade no servidor.                                                                              |
 | **Histórico**          | Registro permanente de campanhas encerradas e do personagem do usuário nelas.                                                                           |
 
@@ -38,7 +37,7 @@ O criador da campanha e o dono da sala são pessoas diferentes, e o criador não
 
 Ao contrário de um modelo de sala congelada, as salas em andamento **acompanham** a última versão publicada: cada sala guarda um ponteiro para a versão que está jogando e o avança automaticamente para a mais recente **em ponto seguro** — entre batalhas ou numa fogueira, nunca no meio de uma batalha (uma batalha em andamento termina na versão em que começou, o que preserva o determinismo do replay descrito na seção 3). Não há ação do mestre: o autor "empurra" publicando, e as salas rolam para frente sozinhas, recebendo conteúdo novo e correções sem perder progresso.
 
-Como o autor não enxerga as salas de terceiros, quem garante que esse avanço é seguro não é o julgamento dele, e sim um **portão de compatibilidade** na publicação. A partir da segunda publicação, cada versão é validada contra a anterior e só é aceita se for **retrocompatível** — mudanças aditivas e correções não-quebrantes passam; mudanças que invalidariam um personagem em jogo são recusadas, e a publicação falha listando as violações. A regra vale sempre após o primeiro publish, exista ou não uma sala viva, para dar previsibilidade ao autor; o primeiro publish avisa esse contrato. Capítulos marcados como "em construção" permanecem no rascunho e não entram na versão publicada, o que dispensa qualquer mecanismo separado para eles — e são o palco natural para preparar um capítulo antes de liberá-lo.
+Como o autor não enxerga as salas de terceiros, quem garante que esse avanço é seguro não é o julgamento dele, e sim um **portão de compatibilidade** na publicação. A partir da segunda publicação, cada versão é validada contra a anterior e só é aceita se for **retrocompatível** — mudanças aditivas e correções não-quebrantes passam; mudanças que invalidariam um personagem em jogo são recusadas, e a publicação falha listando as violações. A regra vale sempre após o primeiro publish, exista ou não uma sala viva, para dar previsibilidade ao autor; o primeiro publish avisa esse contrato. Capítulos marcados como "em construção" permanecem no rascunho e não entram na versão publicada com conteúdo, o que dispensa qualquer mecanismo separado para eles — e são o palco natural para preparar um capítulo antes de liberá-lo. Da versão publicada eles levam só o nome, para que os jogadores vejam no fim da trilha que há capítulos a caminho. Como capítulos novos só entram depois dos já publicados, um capítulo em construção precisa ficar depois de todos os publicados na ordem da campanha.
 
 #### 2.2.1 O que a publicação permite e proíbe após o primeiro publish
 
@@ -46,7 +45,7 @@ O critério é o que um personagem em jogo (Perfil de Campanha) e o log de batal
 
 **Permitido** (a versão nova rola para a sala com segurança):
 
-- Adicionar conteúdo: capítulos, nós, arestas, classes, vilões, ataques, perguntas, itens e habilidades a uma classe.
+- Adicionar conteúdo: capítulos (sempre depois dos já publicados), nós, arestas, classes, vilões, ataques, perguntas, itens e habilidades a uma classe.
 - Editar texto e arte: enunciados, nomes, descrições, ícones, imagens e vídeos.
 - Corrigir uma pergunta: alternativas e resposta correta.
 - Balancear números de vilão, habilidade e item: vida, atributos, dano base, custo de energia, cooldown, nível de desbloqueio e a magnitude/duração do efeito de uma habilidade. É seguro porque o perfil não guarda os números da habilidade — o motor os lê da versão vigente no momento do uso, e o avanço nunca acontece no meio de uma batalha.
@@ -58,6 +57,7 @@ O critério é o que um personagem em jogo (Perfil de Campanha) e o log de batal
 - Alterar os atributos-base de uma classe (vida e energia base, ganho por nível, arma base), pois eles definem os valores derivados de personagens que já existem.
 - Reduzir o limite de vagas de uma classe.
 - Remover uma habilidade de uma classe — o conjunto é só-adição; rebalancear uma habilidade existente é permitido.
+- Reordenar os capítulos publicados ou inserir um capítulo antes deles — a sala avança de capítulo em capítulo, na ordem.
 - Quebrar a estrutura do grafo: remover um nó ou aresta de modo a tornar inalcançável um nó antes alcançável, ou remover o nó de entrada ou o de chefe.
 
 Curva de XP, constante de dano e fator de relevância vivem na configuração da plataforma (seção 4), não no conteúdo autoral, e portanto não fazem parte deste versionamento; alterá-los é um evento de plataforma, não de publicação de campanha.
@@ -68,9 +68,17 @@ Cada capítulo é um grafo direcionado em forma de árvore invertida: múltiplos
 
 Os nós de batalha respeitam um limite de participantes definido pelo criador. Salas de chefe não têm limite. Os jogadores escolhem livremente de qual nó participar, respeitando a lotação, e uma vez dentro de uma batalha não podem trocar até que ela termine.
 
-O capítulo é concluído quando todas as batalhas obrigatórias forem vencidas. O chefe, porém, só é liberado quando o mestre da sala decidir liberá-lo, mesmo que os pré-requisitos já estejam cumpridos.
+**Progresso e desbloqueio.** O progresso no grafo é da sala, não de cada jogador: quem chega depois encontra o mapa como o grupo o deixou. Cada nó está bloqueado, liberado ou concluído. Uma batalha (ou o chefe) é concluída com a vitória; uma narrativa, quando alguém a lê e segue em frente; uma loja, na primeira vez que alguém a abre; uma fogueira, quando alguém a acende. As arestas são o caminho e os pré-requisitos são a trava: um nó é liberado quando alguma aresta que chega nele vem de um nó concluído (a entrada do capítulo já começa liberada) **e** todos os seus pré-requisitos estão concluídos. O chefe, além disso, só é liberado quando todos os nós obrigatórios do capítulo — de qualquer tipo, não só batalhas — estiverem concluídos; isso acontece automaticamente, sem liberação manual pelo mestre nem decisão do grupo. Uma batalha vencida não pode ser lutada de novo; só a volta à fogueira depois de uma derrota a reabre (seção 3.7).
 
-**Mapa de fundo (fase futura, contrato já preparado).** Um capítulo pode ter uma imagem de fundo — tipicamente um mapa — e cada nó é posicionado num ponto dessa imagem. As posições dos nós são coordenadas absolutas em pixels de um "mundo" com largura × altura lógicas definidas junto com a imagem; a imagem é sempre escalada para esse tamanho, então trocar o mapa por outra resolução não desloca os nós. Trocar ou remover o mapa e renomear nós são edições de arte/texto, permitidas pelo portão de compatibilidade.
+**Capítulos.** O capítulo é concluído quando o chefe é vencido, e isso libera a entrada do capítulo seguinte, na ordem da campanha. Capítulos já concluídos continuam abertos: suas lojas e fogueiras podem ser usadas e suas batalhas opcionais não feitas podem ser jogadas. A conclusão é permanente — uma versão nova que acrescente nós a um capítulo concluído não o reabre.
+
+**Fogueira.** Qualquer jogador da sala, fora de batalha, pode acender uma fogueira liberada, quantas vezes quiser. Ela reergue os caídos e restaura HP e energia de todos os jogadores da sala que não estão em batalha, e passa a ser o ponto de volta do capítulo em caso de derrota (seção 3.7).
+
+**Trilha.** O jogador vê a campanha como uma trilha, no estilo do Duolingo: uma coluna estreita e de largura fixa que só cresce para baixo, igual no celular e no computador — no computador ela fica centralizada, com o resto da sala nas laterais. Todos os capítulos ficam numa só rolagem, um abaixo do outro, cada um com seu cabeçalho (nome e abertura): os concluídos acima, o atual em vista, os bloqueados em cinza e, no fim, os capítulos em construção. Os nós aparecem com o estado de cada um, e tocar num nó abre a ação dele; as arestas valem para o desbloqueio mas não são desenhadas. Para a trilha funcionar em qualquer tela, todo capítulo tem a mesma largura e o editor encaixa cada nó numa grade de cinco colunas, com quantas linhas o autor quiser — vários nós na mesma linha formam ramos e trechos horizontais. O autor vê no editor exatamente o que o jogador verá.
+
+**Abertura.** Cada capítulo pode ter uma abertura — um texto e um vídeo — que cada jogador vê ao chegar nele pela primeira vez e pode rever quando quiser. A abertura da campanha é a do primeiro capítulo. Os nós de narrativa também podem ter vídeo.
+
+**Mapa de fundo (contrato preparado, editor em fase futura).** Um capítulo pode ter uma imagem de fundo — tipicamente um mapa — e cada nó é posicionado num ponto dessa imagem. As posições dos nós são coordenadas absolutas em pixels de um "mundo" com a largura fixa da trilha e altura definida junto com a imagem; a imagem é sempre escalada para esse tamanho, então trocar o mapa por outra resolução não desloca os nós. Trocar ou remover o mapa e renomear nós são edições de arte/texto, permitidas pelo portão de compatibilidade.
 ---
 
 ## 3. Sistema de combate
@@ -87,11 +95,21 @@ Existem dois tipos de pergunta. As **objetivas** são de múltipla escolha e val
 
 Como há um só mestre e o grupo pode se dividir em ramos simultâneos, perguntas abertas ficam restritas a batalhas de caminho único e a chefes. Ramos paralelos usam obrigatoriamente perguntas objetivas, de modo que várias batalhas possam correr ao mesmo tempo sem depender da atenção do mestre. O editor de campanha valida essa regra e avisa o criador quando ele configurar uma pergunta aberta num nó que pertence a um ramo paralelo.
 
+**O mestre conduz as perguntas.** Numa batalha com pergunta aberta e o mestre presente, no início de cada turno do grupo ele escolhe o que exibir: uma pergunta aberta do nó, uma pergunta escrita na hora, ou uma objetiva do nó sorteada pelo sistema (se o nó tiver). O turno espera a escolha dele, sem prazo. Perguntas escritas na hora valem só para aquela batalha: não entram no banco da campanha.
+
+Como só o mestre julga perguntas abertas, **uma batalha que tem pergunta aberta só pode começar com o mestre ativo (conectado) na sala**. Batalhas só com perguntas objetivas não dependem dele e podem ser jogadas na sua ausência.
+
+**O mestre como jogador.** O mestre pode ter um Perfil de Campanha, mas **não entra como combatente numa batalha que tenha pergunta aberta** — ali ele é o juiz, e não pode julgar a própria resposta. Em batalhas só com perguntas objetivas ele luta como qualquer jogador. Enquanto houver uma batalha com pergunta aberta em andamento, o papel de mestre não pode ser transferido.
+
+**Queda do mestre no meio de uma batalha com pergunta aberta.** A batalha não é perdida: enquanto o mestre estiver ausente, o turno do grupo passa a usar as perguntas objetivas daquele nó, se houver. Se o nó só tiver perguntas abertas, a batalha **pausa** no início do turno do grupo — inimigos também não agem — até o mestre voltar ou a batalha ser cancelada. Uma resposta aberta já enviada continua aguardando o julgamento.
+
 ### 3.3 Rotação da campainha
 
 Um jogador que agiu numa rodada fica bloqueado do sinal na rodada seguinte. Isso garante rotação sem impedir que o grupo escolha quem age em momentos críticos. Jogadores mortos ou desconectados saem da lista de elegíveis; se em algum momento não restar nenhum jogador elegível, o bloqueio é ignorado e todos os vivos voltam a poder responder.
 
-Habilidades que não causam dano — provocar, curar, reerguer, aplicar buff — contam como a ação da rodada da mesma forma que um ataque, e portanto também bloqueiam quem as usou na rodada seguinte.
+Habilidades que não causam dano — provocar, curar, reerguer, aplicar buff — contam como a ação da rodada da mesma forma que um ataque, e portanto também bloqueiam quem as usou na rodada seguinte. Errar a resposta não é agir: quem erra não fica bloqueado.
+
+**Tempo limite.** Cada etapa do turno do grupo tem um prazo, com um padrão da plataforma que o mestre da sala pode ajustar dentro de limites (o ajuste vale a partir da batalha seguinte): se ninguém tocar no sinal, se quem tocou não responder ou se quem acertou não escolher a ação a tempo, o turno do grupo é perdido e a vez passa ao próximo inimigo. A resposta de uma pergunta aberta tem um prazo próprio, mais longo, porque precisa ser digitada. O julgamento do mestre e a escolha da pergunta não têm prazo. Isso impede que um jogador ausente congele a batalha.
 
 ### 3.4 Ações disponíveis
 
@@ -101,7 +119,7 @@ Buffs e curas consomem a ação normalmente. Isso é intencional: um buff de dan
 
 ### 3.5 Ataques inimigos
 
-Cada vilão tem uma lista de ataques configurável pelo criador da campanha, contendo dano base, tipo de alvo (único ou área) e frequência ou cooldown. Ataques de alvo único selecionam aleatoriamente entre os jogadores vivos da batalha; ataques em área atingem todos.
+Cada vilão tem uma lista de ataques configurável pelo criador da campanha, contendo dano base, tipo de alvo (único ou área) e frequência ou cooldown. Ataques de alvo único selecionam aleatoriamente entre os jogadores vivos da batalha; ataques em área atingem todos. A cada turno, o vilão sorteia um ataque entre os que estão fora de cooldown (se todos estiverem, usa o de menor cooldown restante); o cooldown de um ataque de vilão é contado nos turnos daquele vilão.
 
 ### 3.6 Provocação
 
@@ -113,9 +131,11 @@ _Parâmetro de ajuste: se em testes a provocação se mostrar fraca diante de fi
 
 Um jogador com HP zerado fica caído: não age, não responde ao sinal e não pode ser alvo. O estado de caído é gravado no Perfil de Campanha, não na sessão — sair e reconectar não ressuscita ninguém.
 
-Habilidades com efeito de reerguer devolvem aliados caídos ao combate, gastando a ação do grupo — cabe ao autor da campanha decidir quais classes têm acesso a elas, e se alguma tem. Fora de combate, nós de fogueira reerguem todos os caídos e restauram HP e energia.
+Habilidades com efeito de reerguer devolvem aliados caídos ao combate, gastando a ação do grupo — cabe ao autor da campanha decidir quais classes têm acesso a elas, e se alguma tem. Fora de combate, nós de fogueira reerguem todos os caídos e restauram HP e energia. Ao cair, o personagem perde todos os efeitos ativos (cooldowns são mantidos); ao ser reerguido, volta com a porcentagem de vida definida pela habilidade. Cura comum não afeta caídos.
 
-Se todos os jogadores de uma batalha caírem, a batalha é perdida e o grupo é devolvido automaticamente à última fogueira ativada, sem necessidade de percorrer o caminho. O snapshot da fogueira restaura **apenas o estado de combate**: HP, energia, caídos reerguidos e reset dos nós de batalha do capítulo atual. Nível, experiência, equipamentos e inventário nunca regridem. O custo da derrota é o tempo e uma fração do ouro da bolsa.
+HP, energia e o estado de caído **persistem entre batalhas**: ao fim de cada batalha, vitória ou derrota, os valores de cada participante — inclusive de quem saiu por desconexão, no momento da saída — são gravados no Perfil de Campanha. Quem está caído não pode entrar numa batalha.
+
+Se todos os jogadores de uma batalha caírem, a batalha é perdida e o grupo é devolvido automaticamente à última fogueira ativada, sem necessidade de percorrer o caminho. Os participantes da batalha perdida são restaurados como numa fogueira — HP e energia cheios, caídos reerguidos — e o progresso do capítulo volta àquela fogueira **apenas no que eles fizeram**: voltam a ficar em aberto os nós do capítulo concluídos depois que a fogueira foi acesa e de que algum deles tomou parte. O que outro subgrupo concluiu sem eles continua concluído, assim como tudo o que veio antes da fogueira e os outros capítulos. Sem fogueira acesa no capítulo, o ponto de volta é a entrada dele. Nível, experiência, equipamentos e inventário nunca regridem. O custo da derrota é o tempo e uma fração do ouro de cada participante da batalha — inclusive de quem saiu antes do fim, para que abandonar não seja a saída barata.
 
 ---
 
@@ -125,13 +145,17 @@ Se todos os jogadores de uma batalha caírem, a batalha é perdida e o grupo é 
 
 Os atributos investíveis são três, e a defesa passa a ser um valor derivado — vinda majoritariamente de equipamento, com contribuição menor de Força. Isso evita que investir em defesa seja sempre a escolha ótima.
 
-| Atributo         | Função                                           | Ganho por ponto                                 |
-| ---------------- | ------------------------------------------------ | ----------------------------------------------- |
-| **Força**        | Requisito de armas e armaduras pesadas           | +4 vida, +2 defesa, +1,5 dano com armas pesadas |
-| **Destreza**     | Requisito de armas e armaduras leves             | +2 vida, +1 defesa, +2 dano com armas leves     |
-| **Inteligência** | Requisito de habilidades e capacidade de energia | +3 energia, +2 poder de habilidade              |
+| Atributo         | Função                                           | Ganho por ponto    |
+| ---------------- | ------------------------------------------------ | ------------------ |
+| **Força**        | Requisito de armas e armaduras pesadas           | +4 vida, +2 defesa |
+| **Destreza**     | Requisito de armas e armaduras leves             | +2 vida, +1 defesa |
+| **Inteligência** | Requisito de habilidades e capacidade de energia | +3 energia         |
 
 Cada equipamento exige um valor mínimo de um ou dois atributos para ser equipado, o que direciona a construção do personagem sem travá-la.
+
+O dano que um atributo acrescenta **não é um ganho fixo do atributo**: ele vem da escala declarada em cada arma (seção 4.2) e em cada habilidade de magnitude escalável (seção 5.3). Do mesmo modo, a inteligência não tem um "poder de habilidade" implícito — uma habilidade só cresce com a inteligência se o autor a declarar escalando com ela, o que deixa visível no editor exatamente quanto cada habilidade escala.
+
+A defesa do personagem é `soma da defesa do equipamento + Força × 2 + Destreza × 1`, calculada com os atributos já modificados por buffs e debuffs, e depois ajustada pelos modificadores de defesa. Buffs de atributo afetam dano e defesa, mas **não** vida e energia máximas, que ficam fixas durante a batalha (só a redução de vida máxima mexe nesse teto).
 
 ### 4.2 Fórmula de dano
 
@@ -141,9 +165,11 @@ Redução%  = Defesa / (Defesa + 120)
 DanoFinal = DanoBruto × (1 − Redução%)
 ```
 
+A ordem completa da resolução é: dano bruto → modificadores de dano de quem ataca, `(bruto + saldoFixo) × (1 + saldoPercentual)` (seção 5.5) → redução pela defesa efetiva do alvo → absorção pelo escudo → vida. O resultado é arredondado para baixo, com **mínimo de 1** quando o dano bruto é positivo. Habilidades de dano passam pela mesma cadeia, inclusive pelos buffs de dano. O dano é determinístico: não há crítico nem variação aleatória.
+
 A curva de redução tem retorno decrescente natural e nunca atinge 100%, dispensando teto artificial. Para referência: 60 de defesa reduz cerca de 33% do dano, 120 reduz 50% e 240 reduz 67%.
 
-Vilões usam a mesma fórmula, com atributos próprios definidos pelo criador da campanha.
+Vilões usam a mesma redução por defesa. O dano bruto de um ataque de vilão é o **dano base daquele ataque**; força, destreza e inteligência do vilão não entram no cálculo por enquanto, e só a defesa dele é lida. Se o playtest pedir, ataques de vilão podem ganhar atributo e escala opcionais — uma mudança aditiva e compatível.
 
 ### 4.3 Vida e energia
 
@@ -162,13 +188,13 @@ A energia é recuperada por ataques básicos (cerca de 10 por ataque), por habil
 
 ### 4.4 Nível
 
-Cada nível concede **3 pontos de atributo livres** mais o ganho fixo de vida e energia da classe. O nível máximo sugerido é 20, com a curva de experiência seguindo `XP para o próximo nível = 100 × nível atual` — cem de experiência para sair do nível 1, mil e novecentos para sair do 19, num total de dezenove mil pontos ao longo da campanha inteira.
+Cada nível concede **3 pontos de atributo livres** mais o ganho fixo de vida e energia da classe. O jogador distribui os pontos quando quiser, fora de batalha, e o ponto gasto é permanente (não há redistribuição). Quando subir de nível ou investir pontos aumenta a vida ou a energia máximas, a vida e a energia atuais sobem o mesmo tanto: subir de nível não cura por completo, mas também não perde o ganho. Um personagem caído continua caído. Uma batalha pode render vários níveis de uma vez; no nível máximo a experiência para de acumular. O nível máximo sugerido é 20, com a curva de experiência seguindo `XP para o próximo nível = 100 × nível atual` — cem de experiência para sair do nível 1, mil e novecentos para sair do 19, num total de dezenove mil pontos ao longo da campanha inteira.
 
 As quatro habilidades de classe são desbloqueadas progressivamente. O padrão do sistema é liberá-las nos níveis 1, 4, 8 e 13, mas o autor pode definir níveis próprios de desbloqueio por classe.
 
 ### 4.5 Fator de relevância — balanceamento de recompensas
 
-O problema do jogador que entra tarde e o problema do farm excessivo são o mesmo fenômeno visto de lados opostos, e podem ser resolvidos por um único mecanismo. Cada nó carrega um nível recomendado, e a diferença entre ele e o nível do jogador determina um multiplicador aplicado a experiência, ouro e chance de drop.
+O problema do jogador que entra tarde e o problema do farm excessivo são o mesmo fenômeno visto de lados opostos, e podem ser resolvidos por um único mecanismo. Cada nó carrega um nível recomendado, e a diferença entre ele e o nível do jogador determina um multiplicador aplicado a experiência, ouro e chance de drop. O multiplicador é **de cada jogador**: numa mesma batalha, cada participante recebe as recompensas com o fator do próprio nível.
 
 Seja `Δ = NívelRecomendadoDoNó − NívelDoJogador`:
 
@@ -178,7 +204,7 @@ Se Δ = 0:  multiplicador = 1,0
 Se Δ < 0:  multiplicador = máximo(0,05 ; 1 + 0,20 × Δ)
 ```
 
-Na prática, um jogador oito níveis abaixo do conteúdo recebe o triplo de recompensa, alcançando o grupo em poucas batalhas sem que ninguém precise repetir conteúdo por ele. Já um jogador cinco níveis acima recebe praticamente nada — a experiência despenca, o ouro seca e os drops somem —, o que torna o farm de conteúdo antigo inútil por si só, sem precisar de bloqueio explícito.
+Na prática, um jogador oito níveis abaixo do conteúdo recebe o triplo de recompensa, alcançando o grupo em poucas batalhas sem que ninguém precise repetir conteúdo por ele. Já um jogador cinco níveis acima recebe praticamente nada — a experiência despenca, o ouro seca e os drops somem —, o que torna o farm de conteúdo antigo inútil por si só, sem precisar de bloqueio explícito. Mesmo com o multiplicador, a chance de um drop nunca passa de um teto definido na configuração da plataforma: nenhum item cai sempre.
 
 Microcapítulos repetíveis podem ser criados nos capítulos anteriores especificamente para dar aos jogadores atrasados um lugar onde subir de nível, e o mesmo fator garante que veteranos não tenham motivo para farmá-los.
 
@@ -215,7 +241,7 @@ O percentual é um **multiplicador vivo**, não um valor congelado: `+10% de dan
 | Tipo                       | O que faz                                                            | Parâmetros relevantes                  |
 | -------------------------- | -------------------------------------------------------------------- | -------------------------------------- |
 | **Dano**                   | Causa dano usando a fórmula da seção 4.2                             | Magnitude, atributo de escala, alvo    |
-| **Dano contínuo**          | Aplica dano no início do turno do alvo por N rodadas                 | Magnitude por rodada, duração          |
+| **Dano contínuo**          | Aplica dano ao fim de cada rodada do grupo, por N rodadas            | Magnitude por rodada, duração          |
 | **Cura**                   | Restaura vida                                                        | Magnitude, alvo                        |
 | **Cura contínua**          | Restaura vida por rodada durante N rodadas                           | Magnitude por rodada, duração          |
 | **Reerguer**               | Devolve um aliado caído ao combate                                   | Percentual de vida recuperada          |
@@ -238,6 +264,10 @@ O empilhamento tem **duas políticas**, por tipo de efeito. **Modificadores de a
 
 A assimetria é deliberada. Modificadores de atributo compõem-se de forma aditiva e previsível, e o único abuso possível — empilhar o mesmo buff — é problema de balanceamento que o autor resolve com os custos. Já os efeitos de controle e duração não têm esse freio: somar a duração de dois atordoamentos de aliados diferentes tornaria a batalha impossível (seção 5.6), e esse abuso viria da coordenação de várias fontes, não da magnitude de uma habilidade — algo que o autor não teria como conter. Para esses, o sistema garante o teto substituindo em vez de acumular.
 
+**Relógio dos efeitos.** Toda duração e todo cooldown de habilidade contam em **rodadas do grupo** — uma rodada é um turno do grupo. Ao fim de cada turno do grupo (ação executada, resposta errada ou tempo esgotado), os efeitos contínuos (dano e cura) aplicam um tique em todos os alvos, durações e cooldowns decrementam e os efeitos que chegam a zero expiram. Um relógio só faz a duração valer o mesmo independentemente do tamanho da fila de inimigos: um dano contínuo de 3 rodadas causa 3 tiques mesmo contra 3 vilões. **A rodada em que um efeito é aplicado, ou em que uma habilidade é usada, não conta:** uma duração de N rodadas cobre as N rodadas seguintes (um buff de 3 rodadas vale para as próximas 3 ações do grupo; um dano contínuo de 3 rodadas tica ao fim delas), e um cooldown de N rodadas deixa a habilidade indisponível nas N rodadas seguintes — usada na rodada 5 com cooldown 3, ela volta na rodada 9. Três efeitos contam outra coisa, por natureza: **atordoar** conta turnos perdidos do próprio alvo, **provocar** conta ataques inimigos redirecionados, e o cooldown dos **ataques de vilão** conta turnos daquele vilão (seção 3.5).
+
+O que `percent` significa em cada tipo de efeito está fixado em `docs/phase-1b-kit-draft.md`; em particular, dano percentual é uma porcentagem do dano bruto do ataque básico de quem lança.
+
 ### 5.6 Validação no editor
 
 O editor precisa impedir configurações que quebrem o jogo, e é aqui que a liberdade autoral exige contrapeso. Habilidades com custo de energia zero e cooldown zero devem ser bloqueadas, assim como magnitudes fora das faixas recomendadas sem confirmação explícita do autor. Efeitos de atordoar e de redução de vida máxima merecem limite de duração, porque encadeados podem tornar uma batalha impossível ou trivial.
@@ -248,15 +278,19 @@ Vale também exibir ao autor uma estimativa de dano por rodada da classe que ele
 
 ## 6. Economia e itens
 
-Ouro e itens obtidos em batalha vão para a **bolsa do grupo**, não para inventários pessoais. A distribuição acontece por votação de maioria simples entre os jogadores presentes na sala.
+**Recompensas.** Cada vilão define quanta experiência e quanto ouro vale e uma tabela de drops: os itens que ele pode deixar cair, cada um com uma chance. Uma batalha vale a soma dos inimigos que a compõem. Só a vitória dá recompensa, e ela é **de cada participante**: todos que estavam na batalha no fim — inclusive os caídos — recebem a experiência e o ouro inteiros, multiplicados pelo próprio fator de relevância (seção 4.5), e cada um sorteia os drops para si. Nada é dividido pelo tamanho do grupo, para que jogar junto nunca renda menos. Quem saiu da batalha antes do fim não recebe nada.
 
-Compras em nós de loja funcionam por **lote**: o grupo monta uma lista de compras coletiva e vota uma única vez sobre ela, evitando dezenas de votações consecutivas. A loja não tem estoque limitado.
+**Drops são raros.** Nenhum drop é garantido. O autor escolhe a chance de cada item a partir de faixas — comum, incomum e rara —, e a chance final, já com o fator de relevância, tem um teto. Itens simples ficam nas faixas comuns e itens bons nas raras; o ouro, e portanto a loja, é a fonte principal de equipamento.
 
-A compra e a repartição são etapas separadas. Tudo que é comprado entra primeiro na bolsa do grupo, junto com o que caiu dos inimigos, e só depois o grupo decide, item a item, para quem cada coisa vai. Essa transferência da bolsa compartilhada para o inventário individual é o momento em que o item deixa de ser coletivo e passa a pertencer ao personagem. Separar as duas etapas permite que o grupo compre em massa sem precisar decidir destinatários no calor da votação, e que remaneje o que já está na bolsa a qualquer momento.
+**Ouro e itens são de cada jogador.** Não há bolsa do grupo: o ouro e os itens que um jogador ganha ou compra são dele, e o ouro de cada um é privado. Os itens ficam no inventário pessoal até serem equipados ou consumidos.
 
-A distinção que rege toda a economia é entre **aquisição** e **uso**. Adquirir — comprar na loja ou retirar um item da bolsa do grupo — é decisão coletiva e passa por votação, porque o recurso pertence ao grupo. Depois que um item foi atribuído a um jogador, ele passa a ser propriedade daquele personagem: equipar, desequipar, trocar entre os próprios slots e consumir poções são ações livres, sem votação e sem restrição.
+**Troca entre jogadores.** Jogadores da mesma sala podem dar, vender e trocar ouro e itens entre si por meio de uma **oferta**: quem oferece diz o que dá (ouro e/ou itens) e o que pede em troca (ouro e/ou itens do outro). Um presente é uma oferta que não pede nada; uma venda dá um item e pede ouro; uma troca dá item por item, com ou sem ouro na diferença. **Toda oferta precisa do aceite do outro jogador**, inclusive o presente. Ao aceitar, os dois lados são conferidos de novo e tudo se move de uma vez — nunca pela metade; se um dos lados já não tem o que prometeu, a troca é recusada sem revelar quanto ouro falta. Só entram itens do inventário (um item equipado precisa ser desequipado antes), e ninguém troca enquanto está numa batalha.
 
-Slots de equipamento: arma, capacete, peitoral, botas, braceletes e anéis. Consumíveis ficam em inventário pessoal e usá-los consome a ação do grupo. Todos os itens são de raridade "normal" nesta versão; um sistema de tiers e troca entre jogadores fica para depois.
+**Loja.** Nos nós de loja, cada jogador compra com o próprio ouro, sem votação. A loja não tem estoque limitado, e o preço é o do item na versão da campanha que a sala está jogando.
+
+**Uso.** Equipar, desequipar, trocar entre os próprios slots e consumir são ações livres do dono, fora de batalha. Equipar exige os requisitos de atributo do item (seção 4.1); o slot de arma só é trocado, nunca esvaziado. Fora de batalha, só fazem efeito os consumíveis que não dependem de combate: curar e restaurar energia do próprio personagem, e reerguer um aliado caído da sala. Os demais consumíveis só são usados em batalha, onde gastam a ação do grupo.
+
+Slots de equipamento: arma, capacete, peitoral, botas, braceletes e anéis. Todos os itens são de raridade "normal" nesta versão (a raridade de um drop é só a sua chance); um sistema de tiers e a venda de itens à loja ficam para depois.
 
 Jogadores começam apenas com a arma base de sua classe.
 
@@ -268,7 +302,7 @@ A sala é criada por um usuário a partir de qualquer campanha publicada. Ele se
 
 Ao entrar pela primeira vez, o jogador escolhe a classe entre as que a campanha oferece e que ainda tenham vaga, o que define seus valores base de vida e energia. Um jogador que entra numa sala já avançada começa no nível 1; o fator de relevância da seção 4.5 é o que torna essa entrada tardia viável.
 
-Quando o chefe final é derrotado, a campanha é marcada como cumprida, mas o encerramento efetivo da sala é decisão do mestre. É no encerramento que o histórico é gravado: campanha concluída e os dados finais do personagem de cada participante.
+Quando o chefe do último capítulo é derrotado, a sala é marcada como concluída, mas o encerramento efetivo é decisão do mestre: até lá a sala continua jogável — lojas, trocas e batalhas opcionais — e, se a campanha publicar um capítulo novo, a sala o recebe e volta a estar em andamento. É no encerramento que o histórico é gravado: a campanha, se foi concluída, e os dados finais do personagem de cada participante. Cada jogador vê no próprio histórico as campanhas encerradas de que participou.
 
 Em caso de queda de conexão, o jogador é removido da batalha em andamento e não pode retornar a ela; o grupo pode reiniciar a batalha. Ao reconectar, ele volta normalmente à sala, com seu perfil intacto, incluindo o estado de caído se estava caído.
 
@@ -286,9 +320,9 @@ Em caso de queda de conexão, o jogador é removido da batalha em andamento e n�
 
 **Fase 3 — Motor de combate.** É a parte de maior risco técnico e a que mais depende de teste com pessoas reais. Fila de iniciativa, sinal com rotação, dois modos de pergunta, HP e energia, resolução dos efeitos do catálogo com duração e empilhamento, cooldowns, alvo dos inimigos, fórmula de dano, morte e reerguer.
 
-**Fase 4 — Progressão e economia.** XP, nível, distribuição de pontos, desbloqueio de habilidades, fator de relevância, loot, bolsa do grupo, votação, loja por lote, inventário e equipamentos.
+**Fase 4 — Progressão e economia.** XP, nível, distribuição de pontos, desbloqueio de habilidades, fator de relevância, loot, ouro, troca entre jogadores, loja, inventário e equipamentos.
 
-**Fase 5 — Fluxo de capítulo.** Vídeos de abertura, desbloqueio por conclusão, liberação manual do chefe, fogueiras e snapshot, conclusão de campanha, histórico.
+**Fase 5 — Fluxo de capítulo.** Vídeos de abertura, desbloqueio por conclusão (inclusive do chefe), fogueiras e snapshot, conclusão de campanha, histórico.
 
 **Fase 6 — Robustez ao vivo.** Sincronização em tempo real, tratamento de desconexão, reinício de batalha, garantia de que todo o estado de combate resida no servidor.
 
@@ -298,4 +332,4 @@ Recomendo um protótipo vertical logo após a Fase 0: uma campanha fixa, um cap�
 
 ## 9. Pendências em aberto
 
-As decisões estruturais estão fechadas. Resta um ponto de detalhamento, que é trabalho de balanceamento e não de arquitetura: a montagem concreta das quatro habilidades de cada classe do kit padrão, usando o catálogo da seção 5.4.
+As habilidades do kit padrão foram definidas em `docs/phase-1b-kit-draft.md`. O papel do mestre como jogador e a queda do mestre no meio de uma batalha com pergunta aberta foram decididos no plano da Fase 3 (`docs/phase-3-plan.md`) e estão na seção 3.2. Não há pendências de regra em aberto.

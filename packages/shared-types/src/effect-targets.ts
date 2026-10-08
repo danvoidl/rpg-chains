@@ -1,11 +1,11 @@
-import type { Effect, EffectType, Target } from '@rpg-chains/shared-types';
+import type { Effect, EffectType, Target } from './effects.js';
 
 const ENEMIES = ['enemy', 'all_enemies'] as const satisfies readonly Target[];
 const ALLIES = ['self', 'ally', 'all_allies'] as const satisfies readonly Target[];
 
 /**
- * Targets that make sense for each effect type (game rule, used by the editor's target select and
- * the publish gate). Provoke has no target: it always redirects onto the caster (spec §3.6).
+ * Targets that make sense for each effect type (game rule shared by the editor's target select,
+ * the publish gate and the battle engine). Provoke has no target: it always redirects onto the caster (spec §3.6).
  */
 export const ALLOWED_TARGETS: Record<Exclude<EffectType, 'provoke'>, readonly Target[]> = {
   damage: ENEMIES,

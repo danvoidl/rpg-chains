@@ -210,6 +210,8 @@ describe('villains REST routes', () => {
       expect(created.intelligence).toBe(10);
       expect(created.defense).toBe(8);
       expect(created.attacks).toEqual([]);
+      // Rewards default to nothing (spec §6).
+      expect(created).toMatchObject({ xpReward: 0, goldReward: 0, drops: [] });
 
       // 2. Create second villain with imageUrl and attacks
       const createRes2 = await requestAs(app, user, {
@@ -303,6 +305,51 @@ describe('villains REST routes', () => {
       });
       expect(listEmpty.statusCode).toBe(200);
       expect(listEmpty.json()).toEqual([]);
+    });
+
+    it('stores the rewards and drop table, and refuses a certain drop', async () => {
+      const user = await signUp(app, 'Author');
+      const cRes = await requestAs(app, user, {
+        method: 'POST',
+        url: '/api/campaigns',
+        payload: { name: 'My Campaign' },
+      });
+      const url = `/api/campaigns/${cRes.json<{ id: string }>().id}/villains`;
+      const body = {
+        name: 'Rat',
+        hp: 15,
+        strength: 0,
+        dexterity: 0,
+        intelligence: 0,
+        defense: 0,
+        xpReward: 20,
+        goldReward: 8,
+        drops: [{ itemId: 'it-tail', chance: 0.35 }],
+      };
+
+      const created = await requestAs(app, user, { method: 'POST', url, payload: body });
+      expect(created.statusCode, created.body).toBe(201);
+      const villain = created.json<DraftVillain>();
+      expect(villain).toMatchObject({
+        xpReward: 20,
+        goldReward: 8,
+        drops: [{ itemId: 'it-tail', chance: 0.35 }],
+      });
+
+      const updated = await requestAs(app, user, {
+        method: 'PUT',
+        url: `${url}/${villain.id}`,
+        payload: { ...body, drops: [] },
+      });
+      expect(updated.json<DraftVillain>().drops).toEqual([]);
+
+      // No drop is ever certain: over MAX_DROP_CHANCE is refused.
+      const certain = await requestAs(app, user, {
+        method: 'POST',
+        url,
+        payload: { ...body, drops: [{ itemId: 'it-tail', chance: 1 }] },
+      });
+      expect(certain.statusCode).toBe(400);
     });
 
     it('assigns randomUUID to attacks without id, and preserves existing attack id on PUT', async () => {

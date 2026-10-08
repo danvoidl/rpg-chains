@@ -33,5 +33,15 @@ export function warningMessage(warning: DraftWarning): string {
       return `Duração de ${warning.value} rodadas fora da faixa recomendada (${band}).`;
     case 'total_slots_low':
       return `As classes somam ${warning.value} vagas; o recomendado é pelo menos ${warning.band.min} para caber um grupo inteiro.`;
+    case 'battle_xp_out_of_band':
+      return `Os vilões da batalha somam ${warning.value} de experiência, fora da faixa recomendada para o nível do nó (${band}).`;
+    case 'battle_gold_out_of_band':
+      return `Os vilões da batalha somam ${warning.value} de ouro, fora da faixa recomendada para o nível do nó (${band}).`;
+    case 'drop_chance_high':
+      return `Chance de drop de ${Math.round(warning.value * 100)}%, acima da faixa comum (${Math.round(warning.band.max * 100)}%): drops devem ser raros.`;
+    case 'chapter_without_campfire':
+      return 'Capítulo com batalhas e nenhuma fogueira: toda derrota volta para a entrada.';
+    case 'item_price_missing':
+      return 'Item vendido numa loja sem preço.';
   }
 }

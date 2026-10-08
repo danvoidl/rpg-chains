@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import type { DraftVillain, VillainInput } from '@rpg-chains/shared-types';
+import type { DraftVillain, Item, VillainInput } from '@rpg-chains/shared-types';
 import {
   useVillains,
   useCreateVillain,
   useUpdateVillain,
   useDeleteVillain,
 } from '@/features/villains/api';
+import { useItems } from '@/features/items/api';
 import { VillainForm } from '@/features/villains/villain-form';
 
 /** Villains authoring page: list, create, edit, and delete campaign villains. */
@@ -17,6 +18,7 @@ export default function VillainsPage() {
   const campaignId = params.campaignId as string;
 
   const { data: villains, isLoading } = useVillains(campaignId);
+  const items = useItems(campaignId).data ?? [];
   const createVillain = useCreateVillain(campaignId);
 
   const [editingVillain, setEditingVillain] = useState<DraftVillain | null>(null);
@@ -43,6 +45,7 @@ export default function VillainsPage() {
                 key={villain.id}
                 villain={villain}
                 campaignId={campaignId}
+                items={items}
                 onEdit={() => setEditingVillain(villain)}
                 isEditing={editingVillain?.id === villain.id}
                 onEditSubmit={() => setEditingVillain(null)}
@@ -70,6 +73,7 @@ export default function VillainsPage() {
 
           <VillainForm
             key={formKey}
+            items={items}
             submitLabel="Criar vilão"
             onSubmit={handleCreate}
             isSubmitting={createVillain.isPending}
@@ -83,6 +87,7 @@ export default function VillainsPage() {
 interface VillainListItemProps {
   villain: DraftVillain;
   campaignId: string;
+  items: Item[];
   onEdit: () => void;
   isEditing: boolean;
   onEditSubmit: () => void;
@@ -92,6 +97,7 @@ interface VillainListItemProps {
 function VillainListItem({
   villain,
   campaignId,
+  items,
   onEdit,
   isEditing,
   onEditSubmit,
@@ -140,6 +146,7 @@ function VillainListItem({
 
           <VillainForm
             defaultValues={villain}
+            items={items}
             submitLabel="Salvar vilão"
             onSubmit={handleUpdate}
             isSubmitting={updateVillain.isPending}

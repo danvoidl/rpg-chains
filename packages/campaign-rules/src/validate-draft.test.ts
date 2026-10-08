@@ -111,6 +111,18 @@ describe('validateDraft (publish validation gate)', () => {
     ]);
   });
 
+  it('requires known items in villain drops and caps their chance (spec §6)', () => {
+    const draft = validDraft();
+    draft.villains[0]!.drops = [
+      { itemId: 'it-ghost', chance: 0.1 },
+      { itemId: 'it-sword', chance: 1 },
+    ];
+    expect(validateDraft(draft)).toEqual([
+      expect.objectContaining({ code: 'schema', path: 'villains[0].drops[1].chance' }),
+      expect.objectContaining({ code: 'missing_reference', path: 'villains[0].drops[0].itemId' }),
+    ]);
+  });
+
   it('reports a boss that is not mandatory via the snapshot schema', () => {
     const draft = validDraft();
     node(draft, 'n-boss').mandatory = false;
@@ -121,5 +133,46 @@ describe('validateDraft (publish validation gate)', () => {
         nodeId: 'n-boss',
       }),
     ]);
+  });
+
+  it('refuses a node that can never be unlocked (Fase 5 plan decision 8)', () => {
+    const draft = validDraft();
+    // n-a waits for the boss, which waits for the mandatory n-a.
+    node(draft, 'n-a').prerequisites = ['n-boss'];
+    const issues = validateDraft(draft);
+    expect(issues.map((i) => [i.code, i.nodeId])).toEqual([
+      ['node_never_unlocks', 'n-a'],
+      ['node_never_unlocks', 'n-boss'],
+    ]);
+  });
+
+  it('keeps a chapter under construction after every finished one (Fase 5 plan decision 18)', () => {
+    const draft = validDraft();
+    // ch-2 (under construction) moves before ch-1.
+    draft.chapters[1]!.order = -1;
+    const issues = validateDraft(draft);
+    expect(issues.map((i) => [i.code, i.chapterId, i.path])).toEqual([
+      ['chapter_under_construction_not_last', 'ch-2', 'chapters[1].underConstruction'],
+    ]);
+  });
+
+  it('keeps every node on a cell of the trail grid (Fase 5 plan decision 17)', () => {
+    const draft = validDraft();
+    node(draft, 'n-a').position = { x: 100, y: 100 };
+    node(draft, 'n-b').position = { x: 400, y: 100 };
+    expect(validateDraft(draft).map((i) => [i.code, i.nodeId, i.path])).toEqual([
+      ['node_off_grid', 'n-a', 'chapters[0].nodes[1].position'],
+      ['node_off_grid', 'n-b', 'chapters[0].nodes[2].position'],
+    ]);
+  });
+
+  it('draws the background map at the trail width', () => {
+    const draft = validDraft();
+    chapter(draft).background = { imageUrl: 'https://cdn.test/map.png', width: 800, height: 600 };
+    expect(validateDraft(draft).map((i) => [i.code, i.path])).toEqual([
+      ['background_width_mismatch', 'chapters[0].background.width'],
+    ]);
+    chapter(draft).background = { imageUrl: 'https://cdn.test/map.png', width: 400, height: 600 };
+    expect(validateDraft(draft)).toEqual([]);
   });
 });

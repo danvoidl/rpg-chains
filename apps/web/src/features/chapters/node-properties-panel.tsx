@@ -1,6 +1,7 @@
 'use client';
 
 import { useId } from 'react';
+import { VideoUpload } from '@/components/video-upload';
 import type { DraftGraph, DraftNode, DraftVillain, Question } from '@rpg-chains/shared-types';
 
 const inputClass =
@@ -219,24 +220,16 @@ export function NodePropertiesPanel({
               }
             />
           </div>
-          <div>
-            <label htmlFor={`${uid}-video`} className={labelClass}>
-              URL do vídeo
-            </label>
-            <input
-              id={`${uid}-video`}
-              type="text"
-              className={inputClass}
-              value={node.config.videoUrl ?? ''}
-              onChange={(e) =>
-                onUpdate((n) =>
-                  n.type === 'narrative'
-                    ? { ...n, config: { ...n.config, videoUrl: e.target.value.trim() || null } }
-                    : n,
-                )
-              }
-            />
-          </div>
+          <VideoUpload
+            id={`${uid}-video`}
+            label="Vídeo"
+            value={node.config.videoUrl ?? null}
+            onChange={(url) =>
+              onUpdate((n) =>
+                n.type === 'narrative' ? { ...n, config: { ...n.config, videoUrl: url } } : n,
+              )
+            }
+          />
         </>
       )}
 

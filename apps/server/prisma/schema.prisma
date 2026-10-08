@@ -129,6 +129,9 @@ model Chapter {
   backgroundImageUrl String?
   backgroundWidth    Int?
   backgroundHeight   Int?
+  /// Shown to each player on first reaching the chapter (Fase 5); empty text and no video = none.
+  openingText        String        @default("")
+  openingVideoUrl    String?
   nodes              ChapterNode[]
   edges              NodeEdge[]
 
@@ -209,6 +212,10 @@ model Villain {
   intelligence Int
   defense      Int
   attacks      Json     @default("[]")
+  /// Rewards per defeated instance (spec §6); `drops` is [{ itemId, chance }] (VillainDropSchema).
+  xpReward     Int      @default(0)
+  goldReward   Int      @default(0)
+  drops        Json     @default("[]")
 
   @@index([campaignId])
 }
@@ -232,6 +239,8 @@ model Item {
   category     String
   name         String
   slot         String?
+  /// Shop price in gold (spec §6).
+  price        Int      @default(0)
   requirements Json     @default("{}")
   defenseBonus Int      @default(0)
   weapon       Json?
@@ -246,6 +255,7 @@ model Item {
 
 model Room {
   id                String            @id @default(cuid())
+  name              String
   campaignId        String
   campaign          Campaign          @relation(fields: [campaignId], references: [id])
   /// Current applied version; advances to newer compatible versions at safe points (decision 5).
@@ -256,46 +266,80 @@ model Room {
   masterId          String
   master            User              @relation(fields: [masterId], references: [id])
   status            String            @default("open")
+  /// The master's turn timer adjustments (RoomTurnTimersSchema); `{}` = platform defaults.
+  turnTimers        Json              @default("{}")
   createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  closedAt          DateTime?
+  /// When the room beat the last chapter's boss (spec §7); cleared again if a new chapter arrives.
+  completedAt       DateTime?
+  /// Last sequence number of the room's progress facts; orders "after the campfire" (Fase 5).
+  progressSeq       Int               @default(0)
   profiles          CampaignProfile[]
-  bag               GroupBag?
   history           History[]
+  nodeClears        RoomNodeClear[]
+  chapterStates     RoomChapterState[]
 
   @@index([campaignId])
+  @@index([isPublic, status])
 }
 
 /// A player's durable character in a room (spec §2.1, §3.7). classId references into the
 /// room's current snapshot — validated at creation, not an FK; the publish compatibility gate
 /// keeps it valid as the room rolls forward to newer versions (decision 5).
 model CampaignProfile {
-  id              String  @id @default(cuid())
+  id              String   @id @default(cuid())
   roomId          String
-  room            Room    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room            Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
   userId          String
-  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   classId         String
-  level           Int     @default(1)
-  xp              Int     @default(0)
-  availablePoints Int     @default(0)
-  strength        Int     @default(0)
-  dexterity       Int     @default(0)
-  intelligence    Int     @default(0)
+  level           Int      @default(1)
+  xp              Int      @default(0)
+  availablePoints Int      @default(0)
+  /// Private to the player (spec §6); rewards, shop and trades move it.
+  gold            Int      @default(0)
+  strength        Int      @default(0)
+  dexterity       Int      @default(0)
+  intelligence    Int      @default(0)
   currentHp       Int
   currentEnergy   Int
-  downed          Boolean @default(false)
-  equipment       Json    @default("{}")
-  inventory       Json    @default("[]")
+  downed          Boolean  @default(false)
+  equipment       Json     @default("{}")
+  inventory       Json     @default("[]")
+  createdAt       DateTime @default(now())
 
   @@unique([roomId, userId])
   @@index([roomId])
 }
 
-model GroupBag {
-  id     String @id @default(cuid())
-  roomId String @unique
-  room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  gold   Int    @default(0)
-  items  Json   @default("[]")
+/// A node the room cleared (spec §2.3, Fase 5 plan decisions 1 and 14). Only "cleared" is stored;
+/// "unlocked" is derived by campaign-rules. `profileIds` = who took part, read by the defeat rollback.
+model RoomNodeClear {
+  id         String   @id @default(cuid())
+  roomId     String
+  room       Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  chapterId  String
+  nodeId     String
+  seq        Int
+  profileIds String[]
+  createdAt  DateTime @default(now())
+
+  @@unique([roomId, nodeId])
+  @@index([roomId])
+}
+
+/// Per-chapter facts of a room: the campfire lit last (where a defeat returns) and whether the
+/// chapter's boss was beaten (permanent).
+model RoomChapterState {
+  roomId         String
+  room           Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  chapterId      String
+  campfireNodeId String?
+  campfireSeq    Int?
+  clearedAt      DateTime?
+
+  @@id([roomId, chapterId])
 }
 
 model History {

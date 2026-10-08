@@ -1,0 +1,357 @@
+{
+  "schemaVersion": 1,
+  "campaignId": "camp-catalog",
+  "version": 1,
+  "name": "Effect catalog",
+  "description": "Stage B: every one of the 13 effect types as a level-1 skill, plus consumables.",
+  "chapters": [
+    {
+      "id": "ch-catalog",
+      "name": "Training grounds",
+      "underConstruction": false,
+      "entryNodeId": "n-dummies",
+      "bossNodeId": "n-dummy-boss",
+      "nodes": [
+        {
+          "type": "battle",
+          "id": "n-dummies",
+          "title": "Dummies",
+          "prerequisites": [],
+          "mandatory": true,
+          "recommendedLevel": 1,
+          "participantLimit": 4,
+          "position": { "x": 100, "y": 100 },
+          "villainIds": ["v-dummy", "v-dummy"],
+          "questionIds": ["q-cat-1", "q-cat-2"]
+        },
+        {
+          "type": "boss",
+          "id": "n-dummy-boss",
+          "title": "Training master",
+          "prerequisites": ["n-dummies"],
+          "mandatory": true,
+          "recommendedLevel": 1,
+          "position": { "x": 300, "y": 100 },
+          "villainIds": ["v-dummy"],
+          "questionIds": ["q-cat-1", "q-cat-2"]
+        }
+      ],
+      "edges": [{ "from": "n-dummies", "to": "n-dummy-boss" }]
+    }
+  ],
+  "classes": [
+    {
+      "id": "cl-cat-strike",
+      "name": "Striker",
+      "description": "Offensive effects on enemies.",
+      "baseHp": 100,
+      "baseEnergy": 60,
+      "hpPerLevel": 8,
+      "energyPerLevel": 5,
+      "maxSlots": 4,
+      "baseWeaponId": "it-cat-blade",
+      "skills": [
+        {
+          "id": "sk-cat-damage",
+          "name": "Strike",
+          "text": "",
+          "energyCost": 15,
+          "cooldownRounds": 2,
+          "unlockLevel": 1,
+          "effect": {
+            "type": "damage",
+            "target": "enemy",
+            "magnitude": { "mode": "fixed", "value": 20 }
+          }
+        },
+        {
+          "id": "sk-cat-dot",
+          "name": "Bleed",
+          "text": "",
+          "energyCost": 15,
+          "cooldownRounds": 2,
+          "unlockLevel": 1,
+          "effect": {
+            "type": "damage_over_time",
+            "target": "enemy",
+            "magnitudePerRound": { "mode": "fixed", "value": 5 },
+            "duration": 3
+          }
+        },
+        {
+          "id": "sk-cat-debuff",
+          "name": "Sunder",
+          "text": "",
+          "energyCost": 15,
+          "cooldownRounds": 2,
+          "unlockLevel": 1,
+          "effect": {
+            "type": "debuff_attribute",
+            "target": "enemy",
+            "attribute": "defense",
+            "magnitude": { "mode": "percent", "percent": 20 },
+            "duration": 2
+          }
+        },
+        {
+          "id": "sk-cat-max-hp",
+          "name": "Wither",
+          "text": "",
+          "energyCost": 15,
+          "cooldownRounds": 2,
+          "unlockLevel": 1,
+          "effect": {
+            "type": "max_hp_reduction",
+            "target": "enemy",
+            "magnitude": { "mode": "percent", "percent": 10 },
+            "duration": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "cl-cat-control",
+      "name": "Warden",
+      "description": "Control and protection.",
+      "baseHp": 110,
+      "baseEnergy": 50,
+      "hpPerLevel": 10,
+      "energyPerLevel": 4,
+      "maxSlots": 4,
+      "baseWeaponId": "it-cat-mace",
+      "skills": [
+        {
+          "id": "sk-cat-stun",
+          "name": "Bash",
+          "text": "",
+          "energyCost": 15,
+          "cooldownRounds": 2,
+          "unlockLevel": 1,
+          "effect": { "type": "stun", "target": "enemy", "duration": 1 }
+        },
+        {
+          "id": "sk-cat-provoke",
+          "name": "Taunt",
+          "text": "",
+          "energyCost": 15,
+          "cooldownRounds": 2,
+          "unlockLevel": 1,
+          "effect": { "type": "provoke", "duration": 1 }
+        },
+        {
+          "id": "sk-cat-dispel",
+          "name": "Cleanse",
+          "text": "",
+          "energyCost": 15,
+          "cooldownRounds": 2,
+          "unlockLevel": 1,
+          "effect": { "type": "dispel", "target": "ally", "amount": 1, "removes": "debuffs" }
+        },
+        {
+          "id": "sk-cat-shield",
+          "name": "Bulwark",
+          "text": "",
+          "energyCost": 15,
+          "cooldownRounds": 2,
+          "unlockLevel": 1,
+          "effect": {
+            "type": "shield",
+            "target": "self",
+            "magnitude": { "mode": "fixed", "value": 30 },
+            "duration": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "cl-cat-support",
+      "name": "Mender",
+      "description": "Healing and recovery.",
+      "baseHp": 80,
+      "baseEnergy": 70,
+      "hpPerLevel": 5,
+      "energyPerLevel": 8,
+      "maxSlots": 4,
+      "baseWeaponId": "it-cat-staff",
+      "skills": [
+        {
+          "id": "sk-cat-heal",
+          "name": "Mend",
+          "text": "",
+          "energyCost": 15,
+          "cooldownRounds": 2,
+          "unlockLevel": 1,
+          "effect": {
+            "type": "heal",
+            "target": "ally",
+            "magnitude": { "mode": "scaling", "base": 20, "attribute": "intelligence", "scale": 2 }
+          }
+        },
+        {
+          "id": "sk-cat-hot",
+          "name": "Renew",
+          "text": "",
+          "energyCost": 15,
+          "cooldownRounds": 2,
+          "unlockLevel": 1,
+          "effect": {
+            "type": "heal_over_time",
+            "target": "all_allies",
+            "magnitudePerRound": { "mode": "percent", "percent": 6 },
+            "duration": 3
+          }
+        },
+        {
+          "id": "sk-cat-revive",
+          "name": "Raise",
+          "text": "",
+          "energyCost": 15,
+          "cooldownRounds": 2,
+          "unlockLevel": 1,
+          "effect": { "type": "revive", "target": "ally", "healthPercent": 40 }
+        },
+        {
+          "id": "sk-cat-energy",
+          "name": "Focus",
+          "text": "",
+          "energyCost": 15,
+          "cooldownRounds": 2,
+          "unlockLevel": 1,
+          "effect": {
+            "type": "restore_energy",
+            "target": "ally",
+            "magnitude": { "mode": "fixed", "value": 20 }
+          }
+        }
+      ]
+    },
+    {
+      "id": "cl-cat-buff",
+      "name": "Herald",
+      "description": "Group stat modifiers.",
+      "baseHp": 85,
+      "baseEnergy": 65,
+      "hpPerLevel": 6,
+      "energyPerLevel": 7,
+      "maxSlots": 4,
+      "baseWeaponId": "it-cat-staff",
+      "skills": [
+        {
+          "id": "sk-cat-buff",
+          "name": "Rally",
+          "text": "",
+          "energyCost": 15,
+          "cooldownRounds": 2,
+          "unlockLevel": 1,
+          "effect": {
+            "type": "buff_attribute",
+            "target": "all_allies",
+            "attribute": "damage",
+            "magnitude": { "mode": "percent", "percent": 15 },
+            "duration": 3
+          }
+        }
+      ]
+    }
+  ],
+  "villains": [
+    {
+      "id": "v-dummy",
+      "name": "Training dummy",
+      "hp": 200,
+      "attributes": { "strength": 0, "dexterity": 0, "intelligence": 0, "defense": 0 },
+      "attacks": [
+        {
+          "id": "a-swing",
+          "name": "Swing",
+          "baseDamage": 5,
+          "targetType": "single",
+          "cooldownRounds": 0
+        },
+        {
+          "id": "a-spin",
+          "name": "Spin",
+          "baseDamage": 4,
+          "targetType": "area",
+          "cooldownRounds": 2
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "type": "objective",
+      "id": "q-cat-1",
+      "prompt": "3 × 3 = ?",
+      "options": ["6", "9", "12"],
+      "correctIndex": 1
+    },
+    {
+      "type": "objective",
+      "id": "q-cat-2",
+      "prompt": "Opposite of hot?",
+      "options": ["Cold", "Warm"],
+      "correctIndex": 0
+    }
+  ],
+  "items": [
+    {
+      "category": "equipment",
+      "id": "it-cat-blade",
+      "name": "Blade",
+      "slot": "weapon",
+      "requirements": {},
+      "defenseBonus": 0,
+      "weapon": {
+        "weaponType": "light",
+        "baseDamage": 12,
+        "scalingAttribute": "dexterity",
+        "scale": 2
+      }
+    },
+    {
+      "category": "equipment",
+      "id": "it-cat-mace",
+      "name": "Mace",
+      "slot": "weapon",
+      "requirements": {},
+      "defenseBonus": 0,
+      "weapon": {
+        "weaponType": "heavy",
+        "baseDamage": 10,
+        "scalingAttribute": "strength",
+        "scale": 1.5
+      }
+    },
+    {
+      "category": "equipment",
+      "id": "it-cat-staff",
+      "name": "Staff",
+      "slot": "weapon",
+      "requirements": {},
+      "defenseBonus": 0,
+      "weapon": {
+        "weaponType": "light",
+        "baseDamage": 7,
+        "scalingAttribute": "intelligence",
+        "scale": 1
+      }
+    },
+    {
+      "category": "consumable",
+      "id": "it-cat-potion",
+      "name": "Healing potion",
+      "effect": { "type": "heal", "target": "self", "magnitude": { "mode": "fixed", "value": 30 } }
+    },
+    {
+      "category": "consumable",
+      "id": "it-cat-tonic",
+      "name": "Energy tonic",
+      "effect": {
+        "type": "restore_energy",
+        "target": "self",
+        "magnitude": { "mode": "fixed", "value": 20 }
+      }
+    }
+  ]
+}

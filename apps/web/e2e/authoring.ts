@@ -16,6 +16,8 @@ export async function createVillain(
   campaignId: string,
   name: string,
   withImage: boolean,
+  hp = 120,
+  goldReward = 0,
 ) {
   await openTab(page, campaignId, 'villains', 'Vilões');
   await page.getByLabel('Nome', { exact: true }).fill(name);
@@ -23,7 +25,7 @@ export async function createVillain(
     await page.getByLabel('Imagem').setInputFiles(path.join(here, 'assets/villain.png'));
     await expect(page.getByRole('img', { name: 'Imagem' })).toBeVisible();
   }
-  await page.getByLabel('Vida').fill('120');
+  await page.getByLabel('Vida').fill(String(hp));
   await page.getByLabel('Força').fill('5');
   await page.getByLabel('Destreza').fill('3');
   await page.getByLabel('Inteligência').fill('2');
@@ -34,6 +36,7 @@ export async function createVillain(
   await page.getByLabel('Nome do ataque').fill('Chicotada');
   await page.getByLabel('Dano base').fill('10');
   await page.getByLabel('Recarga (rodadas)').fill('0');
+  if (goldReward > 0) await page.getByLabel('Ouro', { exact: true }).fill(String(goldReward));
   await page.getByRole('button', { name: 'Criar vilão' }).click();
   await expect(page.getByText(name).first()).toBeVisible();
 }
@@ -45,6 +48,14 @@ export async function createObjectiveQuestion(page: Page, campaignId: string, pr
   await page.getByLabel('Alternativa 1', { exact: true }).fill('3');
   await page.getByLabel('Alternativa 2', { exact: true }).fill('4');
   await page.getByLabel('Resposta correta').selectOption({ label: 'Alternativa 2' });
+  await page.getByRole('button', { name: /Criar pergunta/ }).click();
+  await expect(page.getByText(prompt).first()).toBeVisible();
+}
+
+export async function createOpenQuestion(page: Page, campaignId: string, prompt: string) {
+  await openTab(page, campaignId, 'questions', 'Banco de perguntas');
+  await page.getByLabel('Tipo', { exact: true }).selectOption('open');
+  await page.getByLabel('Enunciado').fill(prompt);
   await page.getByRole('button', { name: /Criar pergunta/ }).click();
   await expect(page.getByText(prompt).first()).toBeVisible();
 }
@@ -76,11 +87,25 @@ export async function importDefaultKit(page: Page, campaignId: string) {
 
 /**
  * A publishable campaign body: one villain, one objective question and a chapter graph
- * Narrativa (entry) → Batalha → Chefe, saved. Classes are up to the caller.
+ * Narrativa (entry) → Batalha → Chefe, saved. Classes are up to the caller. `villainHp` makes the
+ * villain quick to beat in battle flows; `goldReward` makes it pay out; `openQuestion` adds an
+ * open question to the battle node (a single-path node, so the publish gate allows it).
  */
-export async function buildPublishableChapter(page: Page, campaignId: string) {
-  await createVillain(page, campaignId, 'Guardião das Correntes', true);
+export async function buildPublishableChapter(
+  page: Page,
+  campaignId: string,
+  options: { villainHp?: number; goldReward?: number; openQuestion?: string } = {},
+) {
+  await createVillain(
+    page,
+    campaignId,
+    'Guardião das Correntes',
+    true,
+    options.villainHp ?? 120,
+    options.goldReward ?? 0,
+  );
   await createObjectiveQuestion(page, campaignId, 'Quanto é 2 + 2?');
+  if (options.openQuestion) await createOpenQuestion(page, campaignId, options.openQuestion);
 
   await openTab(page, campaignId, 'chapters', 'Capítulos');
   await page.getByLabel('Nome do capítulo').fill('A Primeira Corrente');
@@ -94,6 +119,9 @@ export async function buildPublishableChapter(page: Page, campaignId: string) {
   await page.getByLabel('Limite de participantes').fill('3');
   await page.getByRole('group', { name: 'Vilões' }).getByLabel('Guardião das Correntes').fill('1');
   await page.getByRole('group', { name: 'Perguntas' }).getByLabel('Quanto é 2 + 2?').check();
+  if (options.openQuestion) {
+    await page.getByRole('group', { name: 'Perguntas' }).getByLabel(options.openQuestion).check();
+  }
   await page.getByRole('button', { name: 'Adicionar Chefe' }).click();
   await page.getByRole('button', { name: 'Definir como chefe' }).click();
   await page.getByLabel('Nível recomendado').fill('2');
@@ -104,6 +132,79 @@ export async function buildPublishableChapter(page: Page, campaignId: string) {
   await selectNode(page, 'Batalha 1');
   await page.getByRole('group', { name: 'Liga para' }).getByLabel('Chefe 1').check();
 
+  await expect(page.getByText('Nenhum problema — capítulo pronto para publicar.')).toBeVisible();
+  await saveGraph(page);
+}
+
+/** Titles of a trail chapter's nodes; `battle` and `campfire` are optional. */
+export interface TrailChapterNodes {
+  narrative: string;
+  battle?: string;
+  campfire?: string;
+  boss: string;
+}
+
+/**
+ * A chapter with named nodes in a line — narrative (entry) → battle → campfire → boss — on the
+ * trail grid, with an optional opening text (Fase 5). Needs the villain and the objective
+ * question of `buildPublishableChapter` already in the campaign; the boss gets the question too,
+ * so it can be fought.
+ */
+export async function buildTrailChapter(
+  page: Page,
+  campaignId: string,
+  name: string,
+  nodes: TrailChapterNodes,
+  opening?: string,
+) {
+  await openTab(page, campaignId, 'chapters', 'Capítulos');
+  await page.getByLabel('Nome do capítulo').fill(name);
+  await page.getByRole('button', { name: 'Criar capítulo' }).click();
+  const row = page.getByRole('listitem').filter({ hasText: name });
+  if (opening) {
+    await row.getByText('Abertura', { exact: true }).click();
+    await row.getByLabel('Texto de abertura').fill(opening);
+    await row.getByRole('button', { name: 'Salvar abertura' }).click();
+    await expect(row.getByRole('status').filter({ hasText: 'Abertura salva' })).toBeVisible();
+  }
+  await row.getByRole('link', { name: 'Abrir editor' }).click();
+
+  const fight = async (title: string, level: string) => {
+    await page.getByLabel('Nome do nó').fill(title);
+    await page.getByLabel('Nível recomendado').fill(level);
+    await page
+      .getByRole('group', { name: 'Vilões' })
+      .getByLabel('Guardião das Correntes')
+      .fill('1');
+    await page.getByRole('group', { name: 'Perguntas' }).getByLabel('Quanto é 2 + 2?').check();
+  };
+
+  await page.getByRole('button', { name: 'Adicionar Narrativa' }).click();
+  await page.getByRole('button', { name: 'Definir como entrada' }).click();
+  await page.getByLabel('Nome do nó').fill(nodes.narrative);
+  if (nodes.battle) {
+    await page.getByRole('button', { name: 'Adicionar Batalha' }).click();
+    await fight(nodes.battle, '1');
+    await page.getByLabel('Limite de participantes').fill('3');
+  }
+  if (nodes.campfire) {
+    await page.getByRole('button', { name: 'Adicionar Fogueira' }).click();
+    await page.getByLabel('Nome do nó').fill(nodes.campfire);
+  }
+  await page.getByRole('button', { name: 'Adicionar Chefe' }).click();
+  await page.getByRole('button', { name: 'Definir como chefe' }).click();
+  await fight(nodes.boss, '1');
+
+  const line = [nodes.narrative, nodes.battle, nodes.campfire, nodes.boss].filter(
+    (title): title is string => Boolean(title),
+  );
+  for (const [i, title] of line.slice(0, -1).entries()) {
+    await selectNode(page, title);
+    await page
+      .getByRole('group', { name: 'Liga para' })
+      .getByLabel(line[i + 1]!)
+      .check();
+  }
   await expect(page.getByText('Nenhum problema — capítulo pronto para publicar.')).toBeVisible();
   await saveGraph(page);
 }

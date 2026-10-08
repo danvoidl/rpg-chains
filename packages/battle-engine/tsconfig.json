@@ -7,5 +7,5 @@
   },
   "references": [{ "path": "../shared-types" }, { "path": "../game-config" }],
   "include": ["src/**/*.ts"],
-  "exclude": ["dist", "node_modules", "**/*.test.ts"]
+  "exclude": ["dist", "node_modules", "**/*.test.ts", "src/fixtures/**"]
 }

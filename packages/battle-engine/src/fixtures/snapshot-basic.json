@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "campaignId": "camp-basic",
+  "version": 1,
+  "name": "Basic battle",
+  "description": "Stage A slice: basic attacks only, one villain, objective questions.",
+  "chapters": [
+    {
+      "id": "ch-basic",
+      "name": "First fight",
+      "underConstruction": false,
+      "entryNodeId": "n-battle",
+      "bossNodeId": "n-boss",
+      "nodes": [
+        {
+          "type": "battle",
+          "id": "n-battle",
+          "title": "Rat cellar",
+          "prerequisites": [],
+          "mandatory": true,
+          "recommendedLevel": 1,
+          "participantLimit": 4,
+          "position": { "x": 100, "y": 100 },
+          "villainIds": ["v-rat"],
+          "questionIds": ["q-obj-1", "q-obj-2", "q-obj-3"]
+        },
+        {
+          "type": "boss",
+          "id": "n-boss",
+          "title": "Rat king",
+          "prerequisites": ["n-battle"],
+          "mandatory": true,
+          "recommendedLevel": 1,
+          "position": { "x": 300, "y": 100 },
+          "villainIds": ["v-rat", "v-rat"],
+          "questionIds": ["q-obj-1", "q-obj-2", "q-obj-3"]
+        }
+      ],
+      "edges": [{ "from": "n-battle", "to": "n-boss" }]
+    }
+  ],
+  "classes": [
+    {
+      "id": "cl-fencer",
+      "name": "Fencer",
+      "description": "Light weapon, scales with dexterity.",
+      "baseHp": 90,
+      "baseEnergy": 50,
+      "hpPerLevel": 7,
+      "energyPerLevel": 5,
+      "maxSlots": 4,
+      "baseWeaponId": "it-rapier",
+      "skills": []
+    },
+    {
+      "id": "cl-brute",
+      "name": "Brute",
+      "description": "Heavy weapon, scales with strength.",
+      "baseHp": 120,
+      "baseEnergy": 40,
+      "hpPerLevel": 12,
+      "energyPerLevel": 3,
+      "maxSlots": 4,
+      "baseWeaponId": "it-hammer",
+      "skills": []
+    }
+  ],
+  "villains": [
+    {
+      "id": "v-rat",
+      "name": "Giant rat",
+      "hp": 30,
+      "attributes": { "strength": 0, "dexterity": 0, "intelligence": 0, "defense": 10 },
+      "attacks": [
+        {
+          "id": "a-bite",
+          "name": "Bite",
+          "baseDamage": 6,
+          "targetType": "single",
+          "cooldownRounds": 0
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "type": "objective",
+      "id": "q-obj-1",
+      "prompt": "2 + 2 = ?",
+      "options": ["3", "4", "5"],
+      "correctIndex": 1
+    },
+    {
+      "type": "objective",
+      "id": "q-obj-2",
+      "prompt": "Capital of France?",
+      "options": ["Paris", "Rome", "Madrid", "Berlin"],
+      "correctIndex": 0
+    },
+    {
+      "type": "objective",
+      "id": "q-obj-3",
+      "prompt": "How many sides does a triangle have?",
+      "options": ["2", "3", "4"],
+      "correctIndex": 1
+    }
+  ],
+  "items": [
+    {
+      "category": "equipment",
+      "id": "it-rapier",
+      "name": "Rapier",
+      "slot": "weapon",
+      "requirements": {},
+      "defenseBonus": 0,
+      "weapon": {
+        "weaponType": "light",
+        "baseDamage": 12,
+        "scalingAttribute": "dexterity",
+        "scale": 2
+      }
+    },
+    {
+      "category": "equipment",
+      "id": "it-hammer",
+      "name": "Hammer",
+      "slot": "weapon",
+      "requirements": {},
+      "defenseBonus": 0,
+      "weapon": {
+        "weaponType": "heavy",
+        "baseDamage": 10,
+        "scalingAttribute": "strength",
+        "scale": 1.5
+      }
+    }
+  ]
+}

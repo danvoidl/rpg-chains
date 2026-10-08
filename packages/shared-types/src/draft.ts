@@ -6,6 +6,7 @@ import {
   ItemSchema,
   QuestionSchema,
   VillainAttackSchema,
+  VillainDropSchema,
 } from './content.js';
 import { EffectSchema } from './effects.js';
 
@@ -59,12 +60,20 @@ export const DraftGraphSchema = z.object({
 });
 export type DraftGraph = z.infer<typeof DraftGraphSchema>;
 
+/** A chapter's opening as stored in the draft (`Chapter.openingText`/`openingVideoUrl`). */
+export const DraftOpeningSchema = z.object({
+  text: z.string(),
+  videoUrl: z.string().url().nullable(),
+});
+export type DraftOpening = z.infer<typeof DraftOpeningSchema>;
+
 export const DraftChapterSchema = DraftGraphSchema.extend({
   id: IdSchema,
   name: z.string(),
   order: z.number().int(),
   underConstruction: z.boolean(),
   background: ChapterBackgroundSchema.nullable().default(null),
+  opening: DraftOpeningSchema.default({ text: '', videoUrl: null }),
 });
 export type DraftChapter = z.infer<typeof DraftChapterSchema>;
 
@@ -79,6 +88,9 @@ export const DraftVillainSchema = z.object({
   intelligence: z.number().int(),
   defense: z.number().int(),
   attacks: z.array(VillainAttackSchema),
+  xpReward: z.number().int(),
+  goldReward: z.number().int(),
+  drops: z.array(VillainDropSchema),
 });
 export type DraftVillain = z.infer<typeof DraftVillainSchema>;
 

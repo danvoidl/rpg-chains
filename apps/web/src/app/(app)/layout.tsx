@@ -42,6 +42,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
             >
               Campanhas
             </Link>
+            <Link href="/rooms" className="text-lg font-semibold text-gray-900 hover:text-blue-600">
+              Salas
+            </Link>
+            <Link
+              href="/history"
+              className="text-lg font-semibold text-gray-900 hover:text-blue-600"
+            >
+              Histórico
+            </Link>
           </div>
 
           <div className="flex items-center space-x-4">

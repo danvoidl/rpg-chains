@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CampaignSnapshotSchema } from './snapshot.js';
-import { ItemSchema } from './content.js';
+import { MAX_DROP_CHANCE } from '@rpg-chains/game-config';
+import { ChapterOpeningSchema, ItemSchema, VillainSchema } from './content.js';
 
 const emptySnapshot = {
   schemaVersion: 1,
@@ -47,5 +48,50 @@ describe('ItemSchema structural gate', () => {
       weapon: { weaponType: 'light', baseDamage: 10, scalingAttribute: 'dexterity', scale: 2 },
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe('economy fields (Fase 4 plan decision 14)', () => {
+  const rat = {
+    id: 'v1',
+    name: 'Rat',
+    hp: 15,
+    attributes: { strength: 0, dexterity: 0, intelligence: 0, defense: 0 },
+    attacks: [{ id: 'a1', name: 'Bite', baseDamage: 1, targetType: 'single', cooldownRounds: 0 }],
+  };
+  const potion = {
+    category: 'consumable',
+    id: 'i1',
+    name: 'Potion',
+    effect: { type: 'heal', target: 'self', magnitude: { mode: 'fixed', value: 5 } },
+  };
+
+  it('keeps a snapshot published before them valid, with no reward and no price', () => {
+    const parsed = CampaignSnapshotSchema.parse({
+      ...emptySnapshot,
+      villains: [rat],
+      items: [potion],
+    });
+    expect(parsed.villains[0]).toMatchObject({ xpReward: 0, goldReward: 0, drops: [] });
+    expect(parsed.items[0]!.price).toBe(0);
+  });
+
+  it('caps a drop chance below certainty', () => {
+    const villain = (chance: number) => ({ ...rat, drops: [{ itemId: 'i1', chance }] });
+    expect(VillainSchema.safeParse(villain(MAX_DROP_CHANCE)).success).toBe(true);
+    expect(VillainSchema.safeParse(villain(1)).success).toBe(false);
+    expect(VillainSchema.safeParse(villain(0)).success).toBe(false);
+  });
+});
+
+describe('chapter flow fields (Fase 5 plan decisions 11 and 18)', () => {
+  it('keeps a snapshot published before them valid, with no opening and nothing upcoming', () => {
+    const parsed = CampaignSnapshotSchema.parse(emptySnapshot);
+    expect(parsed.upcomingChapters).toEqual([]);
+  });
+
+  it('accepts a chapter opening with an optional video', () => {
+    expect(ChapterOpeningSchema.parse({})).toEqual({ text: '' });
+    expect(() => ChapterOpeningSchema.parse({ videoUrl: 'not a url' })).toThrow();
   });
 });
