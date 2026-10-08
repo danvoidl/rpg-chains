@@ -1,6 +1,8 @@
 import {
   ChapterNodeSchema,
+  TRAIL_WIDTH,
   VillainSchema,
+  isOnTrailGrid,
   isSinglePathNode,
   reachableNodeIds,
   type CampaignDraft,
@@ -9,6 +11,7 @@ import {
 } from '@rpg-chains/shared-types';
 import type { ZodIssue } from 'zod';
 import { formatPath, type DraftIssue } from './issues.js';
+import { neverUnlockingNodes } from './progress/unlock.js';
 import { publishableChapters, toSnapshotNode, toSnapshotVillain } from './snapshot-mapping.js';
 import { validateClasses } from './validate-classes.js';
 
@@ -112,6 +115,16 @@ export function validateChapter(
     });
   }
 
+  // The map is drawn at the trail's width (Fase 5 plan decision 17).
+  if (chapter.background && chapter.background.width !== TRAIL_WIDTH) {
+    issues.push({
+      code: 'background_width_mismatch',
+      path: at('background', 'width'),
+      message: `The background map must be ${TRAIL_WIDTH} wide, the trail's width`,
+      chapterId,
+    });
+  }
+
   const cyclic = hasCycle(chapter);
   if (cyclic) {
     issues.push({
@@ -132,6 +145,20 @@ export function validateChapter(
         }
       : null;
   const reachable = graph ? reachableNodeIds(graph) : null;
+  // Reachable by edges yet stuck behind prerequisites (spec §2.3, Fase 5 plan decision 8). A
+  // prerequisite on an unknown node is already a missing_reference, so it does not count here.
+  const stuck =
+    graph && !cyclic
+      ? new Set(
+          neverUnlockingNodes({
+            ...graph,
+            nodes: graph.nodes.map((n) => ({
+              ...n,
+              prerequisites: n.prerequisites.filter((id) => nodeIds.has(id)),
+            })),
+          }),
+        )
+      : new Set<string>();
 
   chapter.nodes.forEach((node, n) => {
     const ids = { chapterId, nodeId: node.id };
@@ -144,6 +171,20 @@ export function validateChapter(
         code: 'unreachable_node',
         path: at('nodes', n),
         message: 'Node is not reachable from the entry',
+      });
+    }
+    if (reachable?.has(node.id) && stuck.has(node.id)) {
+      push({
+        code: 'node_never_unlocks',
+        path: at('nodes', n, 'prerequisites'),
+        message: 'Node can never be unlocked: its prerequisites or the boss rule can never be met',
+      });
+    }
+    if (!isOnTrailGrid(node.position)) {
+      push({
+        code: 'node_off_grid',
+        path: at('nodes', n, 'position'),
+        message: 'Node is not on a cell of the trail grid',
       });
     }
     if (node.type === 'boss' && node.id !== chapter.bossNodeId) {
@@ -247,6 +288,27 @@ export function validateChapter(
 }
 
 /**
+ * A chapter under construction must come after every finished one (spec §2.2, Fase 5 plan
+ * decision 18): publishing it later appends it, never inserts it before chapters rooms passed.
+ */
+function underConstructionOrder(draft: CampaignDraft): DraftIssue[] {
+  const ordered = [...draft.chapters].sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+  const lastFinished = ordered.map((chapter) => !chapter.underConstruction).lastIndexOf(true);
+  return ordered.slice(0, Math.max(0, lastFinished)).flatMap((chapter) =>
+    chapter.underConstruction
+      ? [
+          {
+            code: 'chapter_under_construction_not_last' as const,
+            path: formatPath(['chapters', draft.chapters.indexOf(chapter), 'underConstruction']),
+            message: 'A chapter under construction must come after every finished chapter',
+            chapterId: chapter.id,
+          },
+        ]
+      : [],
+  );
+}
+
+/**
  * The publish validation gate (Fase 1 plan, M3): every blocking problem of the draft, empty
  * when it can be published. Chapters under construction are skipped — they never publish.
  */
@@ -264,6 +326,7 @@ export function validateDraft(draft: CampaignDraft): DraftIssue[] {
       message: 'At least one finished chapter is required',
     });
   }
+  issues.push(...underConstructionOrder(draft));
   const pools = contentPools(draft);
   draft.chapters.forEach((chapter, index) => {
     if (publishable.has(chapter.id)) issues.push(...validateChapter(chapter, pools, index));

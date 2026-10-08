@@ -23,6 +23,7 @@ import type {
   ModifiableStat,
 } from '@rpg-chains/shared-types';
 import { isAreaEffect } from '@rpg-chains/shared-types';
+import { chapterWarnings } from './chapter-warnings.js';
 import { economyWarnings } from './economy-warnings.js';
 import { formatPath, type DraftWarning, type DraftWarningCode } from './issues.js';
 
@@ -238,7 +239,7 @@ export function classWarnings(cls: DraftClass, index: number): DraftWarning[] {
 /**
  * Non-blocking balancing warnings of the whole draft (Fase 1b plan, decision 2): values outside
  * the recommended bands in `game-config`, too few class slots for a whole group (spec §5.2), and
- * the economy checks of `economyWarnings` (Fase 4).
+ * the economy checks of `economyWarnings` (Fase 4) and the chapter checks of `chapterWarnings` (Fase 5).
  * Publishing is allowed; the editor asks the author to confirm.
  */
 export function draftWarnings(draft: CampaignDraft): DraftWarning[] {
@@ -254,6 +255,6 @@ export function draftWarnings(draft: CampaignDraft): DraftWarning[] {
       band: { min: MIN_RECOMMENDED_TOTAL_SLOTS, max: Number.MAX_SAFE_INTEGER },
     });
   }
-  warnings.push(...economyWarnings(draft));
+  warnings.push(...economyWarnings(draft), ...chapterWarnings(draft));
   return warnings;
 }

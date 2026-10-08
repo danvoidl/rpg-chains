@@ -10,6 +10,8 @@ describe('draftToSnapshot', () => {
     expect(CampaignSnapshotSchema.parse(result.snapshot)).toEqual(result.snapshot);
     expect(result.snapshot.version).toBe(3);
     expect(result.snapshot.chapters.map((c) => c.id)).toEqual(['ch-1']);
+    // Chapters under construction enter only by name (Fase 5 plan decision 18).
+    expect(result.snapshot.upcomingChapters).toEqual([{ id: 'ch-2', name: 'Under construction' }]);
     expect(result.snapshot.classes.map((c) => c.id)).toEqual(['cl-knight']);
     expect(result.snapshot.items.map((i) => i.id)).toEqual(['it-sword']);
   });
@@ -41,7 +43,7 @@ describe('draftToSnapshot', () => {
       mandatory: true,
       recommendedLevel: 1,
       participantLimit: 3,
-      position: { x: -100, y: 100 },
+      position: { x: 80, y: 100 },
       villainIds: ['v-1'],
       questionIds: ['q-obj'],
     });
@@ -88,9 +90,23 @@ describe('draftToSnapshot', () => {
     }
   });
 
+  it('carries the chapter opening, and leaves an empty one out (Fase 5 plan decision 11)', () => {
+    const draft = validDraft();
+    draft.chapters[0]!.opening = { text: 'A corrente range.', videoUrl: 'https://cdn.test/o.mp4' };
+    const result = draftToSnapshot(draft, 1);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.snapshot.chapters[0]!.opening).toEqual({
+      text: 'A corrente range.',
+      videoUrl: 'https://cdn.test/o.mp4',
+    });
+    const withoutOpening = draftToSnapshot(validDraft(), 1);
+    if (!withoutOpening.ok) throw new Error('expected ok');
+    expect(withoutOpening.snapshot.chapters[0]!.opening).toBeUndefined();
+  });
+
   it('carries the chapter background map (prepared for the map editor)', () => {
     const draft = validDraft();
-    const background = { imageUrl: 'https://cdn.test/map.png', width: 2048, height: 1536 };
+    const background = { imageUrl: 'https://cdn.test/map.png', width: 400, height: 1200 };
     draft.chapters[0]!.background = background;
     const result = draftToSnapshot(draft, 1);
     if (!result.ok) throw new Error('expected ok');

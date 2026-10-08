@@ -6,6 +6,10 @@ export type DraftIssueCode =
   | 'boss_wrong_type'
   | 'extra_boss'
   | 'unreachable_node'
+  | 'node_never_unlocks'
+  | 'node_off_grid'
+  | 'background_width_mismatch'
+  | 'chapter_under_construction_not_last'
   | 'cycle'
   | 'battle_incomplete'
   | 'no_villains'
@@ -48,7 +52,8 @@ export type DraftWarningCode =
   | 'battle_xp_out_of_band'
   | 'battle_gold_out_of_band'
   | 'drop_chance_high'
-  | 'item_price_missing';
+  | 'item_price_missing'
+  | 'chapter_without_campfire';
 
 /**
  * A non-blocking balancing warning: publishing is allowed, the editor asks the author to confirm.

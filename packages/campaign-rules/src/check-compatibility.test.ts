@@ -208,6 +208,27 @@ describe('checkCompatibility — forbidden (spec §2.2.1), one fixture per rule'
     expect(rules(prev, next)).toEqual([]);
   });
 
+  it('refuses reordering published chapters or inserting one before them (Fase 5 plan decision 7)', () => {
+    const prev = published();
+    prev.chapters.push({ ...structuredClone(prev.chapters[0]!), id: 'ch-b', nodes: [], edges: [] });
+
+    const swapped = structuredClone(prev);
+    swapped.chapters.reverse();
+    expect(rules(prev, swapped)).toEqual([
+      'chapter_order_changed:ch-1',
+      'chapter_order_changed:ch-b',
+    ]);
+
+    const inserted = structuredClone(prev);
+    inserted.chapters.splice(1, 0, { ...structuredClone(prev.chapters[1]!), id: 'ch-new' });
+    expect(rules(prev, inserted)).toEqual(['chapter_order_changed:ch-b']);
+
+    const appended = structuredClone(prev);
+    appended.chapters.push({ ...structuredClone(prev.chapters[1]!), id: 'ch-new' });
+    appended.upcomingChapters = [{ id: 'ch-later', name: 'Later' }];
+    expect(rules(prev, appended)).toEqual([]);
+  });
+
   it('refuses changing the entry or the boss node', () => {
     const next = published();
     const chapter = next.chapters[0]!;

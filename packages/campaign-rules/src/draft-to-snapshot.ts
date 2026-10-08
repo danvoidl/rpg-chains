@@ -10,6 +10,7 @@ import {
   toSnapshotChapter,
   toSnapshotClass,
   toSnapshotVillain,
+  upcomingChapters,
 } from './snapshot-mapping.js';
 import { validateDraft } from './validate-draft.js';
 
@@ -19,7 +20,7 @@ export type DraftToSnapshotResult =
 /**
  * Serializes the draft into the immutable snapshot of `version` (spec §2.2). Runs the
  * validation gate first; a final `CampaignSnapshotSchema` parse failure also refuses the
- * publish. Chapters under construction are left out.
+ * publish. Chapters under construction enter only by name (`upcomingChapters`).
  */
 export function draftToSnapshot(draft: CampaignDraft, version: number): DraftToSnapshotResult {
   const issues = validateDraft(draft);
@@ -32,6 +33,7 @@ export function draftToSnapshot(draft: CampaignDraft, version: number): DraftToS
     name: draft.name,
     description: draft.description,
     chapters: publishableChapters(draft.chapters).map(toSnapshotChapter),
+    upcomingChapters: upcomingChapters(draft.chapters),
     classes: draft.classes.map(toSnapshotClass),
     villains: draft.villains.map(toSnapshotVillain),
     questions: draft.questions,

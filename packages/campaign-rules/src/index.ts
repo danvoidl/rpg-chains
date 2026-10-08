@@ -9,3 +9,4 @@ export * from './validate-classes.js';
 export * from './draft-warnings.js';
 export * from './economy-warnings.js';
 export * from './default-kit.js';
+export * from './progress/index.js';

@@ -15,13 +15,14 @@ export type CompatibilityRule =
   | 'item_kind_changed'
   | 'graph_entry_changed'
   | 'graph_boss_changed'
-  | 'graph_reachability_broken';
+  | 'graph_reachability_broken'
+  | 'chapter_order_changed';
 
 export type ReferencedEntity = 'class' | 'skill' | 'question' | 'item' | 'villain' | 'node';
 
 export interface CompatibilityViolation {
   rule: CompatibilityRule;
-  entityType: ReferencedEntity;
+  entityType: ReferencedEntity | 'chapter';
   entityId: string;
   message: string;
 }
@@ -173,6 +174,31 @@ function graphChanges(prev: CampaignSnapshot, next: CampaignSnapshot): Compatibi
 }
 
 /**
+ * Published chapters keep their order and new ones only come after them (spec §2.2.1, Fase 5
+ * plan decision 7): a room plays chapter after chapter, so one inserted before or a reorder would
+ * send rooms back. Deleted chapters are reported through their nodes.
+ */
+function chapterOrderChanges(
+  prev: CampaignSnapshot,
+  next: CampaignSnapshot,
+): CompatibilityViolation[] {
+  const nextIds = next.chapters.map((c) => c.id);
+  const kept = prev.chapters.map((c) => c.id).filter((id) => nextIds.includes(id));
+  return kept.flatMap((id, index) =>
+    nextIds[index] === id
+      ? []
+      : [
+          {
+            rule: 'chapter_order_changed' as const,
+            entityType: 'chapter' as const,
+            entityId: id,
+            message: `Published chapter "${id}" must keep its place; new chapters go after it`,
+          },
+        ],
+  );
+}
+
+/**
  * The compatibility gate (spec §2.2.1): every reason `next` would break a room currently
  * playing `prev`. Empty means the new version may roll forward into live rooms. Additive
  * changes, text/art edits, question fixes and number rebalancing are all allowed.
@@ -186,5 +212,6 @@ export function checkCompatibility(
     ...classChanges(prev, next),
     ...itemChanges(prev, next),
     ...graphChanges(prev, next),
+    ...chapterOrderChanges(prev, next),
   ];
 }
