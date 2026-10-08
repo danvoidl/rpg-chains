@@ -135,3 +135,76 @@ export async function buildPublishableChapter(
   await expect(page.getByText('Nenhum problema — capítulo pronto para publicar.')).toBeVisible();
   await saveGraph(page);
 }
+
+/** Titles of a trail chapter's nodes; `battle` and `campfire` are optional. */
+export interface TrailChapterNodes {
+  narrative: string;
+  battle?: string;
+  campfire?: string;
+  boss: string;
+}
+
+/**
+ * A chapter with named nodes in a line — narrative (entry) → battle → campfire → boss — on the
+ * trail grid, with an optional opening text (Fase 5). Needs the villain and the objective
+ * question of `buildPublishableChapter` already in the campaign; the boss gets the question too,
+ * so it can be fought.
+ */
+export async function buildTrailChapter(
+  page: Page,
+  campaignId: string,
+  name: string,
+  nodes: TrailChapterNodes,
+  opening?: string,
+) {
+  await openTab(page, campaignId, 'chapters', 'Capítulos');
+  await page.getByLabel('Nome do capítulo').fill(name);
+  await page.getByRole('button', { name: 'Criar capítulo' }).click();
+  const row = page.getByRole('listitem').filter({ hasText: name });
+  if (opening) {
+    await row.getByText('Abertura', { exact: true }).click();
+    await row.getByLabel('Texto de abertura').fill(opening);
+    await row.getByRole('button', { name: 'Salvar abertura' }).click();
+    await expect(row.getByRole('status').filter({ hasText: 'Abertura salva' })).toBeVisible();
+  }
+  await row.getByRole('link', { name: 'Abrir editor' }).click();
+
+  const fight = async (title: string, level: string) => {
+    await page.getByLabel('Nome do nó').fill(title);
+    await page.getByLabel('Nível recomendado').fill(level);
+    await page
+      .getByRole('group', { name: 'Vilões' })
+      .getByLabel('Guardião das Correntes')
+      .fill('1');
+    await page.getByRole('group', { name: 'Perguntas' }).getByLabel('Quanto é 2 + 2?').check();
+  };
+
+  await page.getByRole('button', { name: 'Adicionar Narrativa' }).click();
+  await page.getByRole('button', { name: 'Definir como entrada' }).click();
+  await page.getByLabel('Nome do nó').fill(nodes.narrative);
+  if (nodes.battle) {
+    await page.getByRole('button', { name: 'Adicionar Batalha' }).click();
+    await fight(nodes.battle, '1');
+    await page.getByLabel('Limite de participantes').fill('3');
+  }
+  if (nodes.campfire) {
+    await page.getByRole('button', { name: 'Adicionar Fogueira' }).click();
+    await page.getByLabel('Nome do nó').fill(nodes.campfire);
+  }
+  await page.getByRole('button', { name: 'Adicionar Chefe' }).click();
+  await page.getByRole('button', { name: 'Definir como chefe' }).click();
+  await fight(nodes.boss, '1');
+
+  const line = [nodes.narrative, nodes.battle, nodes.campfire, nodes.boss].filter(
+    (title): title is string => Boolean(title),
+  );
+  for (const [i, title] of line.slice(0, -1).entries()) {
+    await selectNode(page, title);
+    await page
+      .getByRole('group', { name: 'Liga para' })
+      .getByLabel(line[i + 1]!)
+      .check();
+  }
+  await expect(page.getByText('Nenhum problema — capítulo pronto para publicar.')).toBeVisible();
+  await saveGraph(page);
+}

@@ -1,5 +1,6 @@
 import { test, expect, createCampaign, signUp } from './fixtures';
 import { buildPublishableChapter, importDefaultKit, publish } from './authoring';
+import { continueNarrative, formBattle } from './trail';
 
 // Two browser contexts, authoring and a battle; `next dev` compiles each route on first visit.
 test.describe.configure({ timeout: 240_000 });
@@ -34,7 +35,8 @@ test('the master picks an open question, the player writes an answer, the master
   await signUp(player);
   await player.goto(roomUrl);
   await player.getByRole('button', { name: 'Escolher Penitente' }).click();
-  await player.getByRole('button', { name: 'Abrir formação: Batalha' }).click();
+  await continueNarrative(player);
+  await formBattle(player);
   const formation = player.getByRole('listitem', { name: 'Batalha 1' });
   await formation.getByRole('button', { name: 'Iniciar batalha' }).click();
 

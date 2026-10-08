@@ -1,32 +1,12 @@
-import type { Page } from '@playwright/test';
 import { test, expect, createCampaign, signUp } from './fixtures';
 import { buildPublishableChapter, importDefaultKit, publish } from './authoring';
+import { playToVictory } from './battle-turns';
+import { continueNarrative, formBattle } from './trail';
 
 // Two browser contexts, authoring and a whole battle; `next dev` compiles each route on first visit.
 test.describe.configure({ timeout: 240_000 });
 
 const VILLAIN = 'Guardião das Correntes';
-
-/** Which page may tap the signal now, or 'over' once the battle shows its result. */
-async function nextTurn(pages: Page[]): Promise<number | 'over'> {
-  let found: number | 'over' | null = null;
-  await expect
-    .poll(
-      async () => {
-        for (const [index, p] of pages.entries()) {
-          if (await p.getByRole('status').filter({ hasText: 'Vitória!' }).isVisible())
-            return (found = 'over');
-          if (await p.getByRole('button', { name: 'Tocar o sinal' }).isVisible()) {
-            return (found = index);
-          }
-        }
-        return null;
-      },
-      { timeout: 20_000 },
-    )
-    .not.toBeNull();
-  return found!;
-}
 
 test('two players beat the villain taking turns, earn gold and trade it', async ({
   page,
@@ -60,7 +40,8 @@ test('two players beat the villain taking turns, earn gold and trade it', async 
   await page2.getByRole('button', { name: 'Escolher Penitente' }).click();
 
   // One opens the formation, the other joins it live, the first starts: both go to the battle.
-  await page.getByRole('button', { name: 'Abrir formação: Batalha' }).click();
+  await continueNarrative(page);
+  await formBattle(page);
   const formation2 = page2.getByRole('listitem', { name: 'Batalha 1' });
   await formation2.getByRole('button', { name: 'Entrar' }).click();
   await expect(page.getByRole('listitem', { name: 'Batalha 1' })).toContainText('(2/3)');
@@ -75,18 +56,7 @@ test('two players beat the villain taking turns, earn gold and trade it', async 
 
   // Play until the villain falls; whoever acted sits out the next signal (bell rotation).
   const pages = [page, page2];
-  const tappers: number[] = [];
-  for (let turn = 0; turn < 12; turn++) {
-    const who = await nextTurn(pages);
-    if (who === 'over') break;
-    const p = pages[who]!;
-    tappers.push(who);
-    await p.getByRole('button', { name: 'Tocar o sinal' }).click();
-    await p.getByRole('button', { name: '4', exact: true }).click();
-    await p.getByRole('button', { name: `Atacar ${VILLAIN}` }).click();
-  }
-  for (const p of pages)
-    await expect(p.getByRole('status').filter({ hasText: 'Vitória!' })).toBeVisible();
+  const tappers = await playToVictory(pages, VILLAIN);
   expect(new Set(tappers)).toEqual(new Set([0, 1]));
   expect(tappers.slice(1).every((who, i) => who !== tappers[i])).toBe(true);
   // Each participant got the whole reward (Fase 4 plan decision 2): nothing is split.
@@ -98,7 +68,8 @@ test('two players beat the villain taking turns, earn gold and trade it', async 
   // Back in the room: the battle is gone and the profiles carry the damage taken.
   await page.getByRole('link', { name: 'Voltar à sala' }).click();
   await expect(page.getByRole('listitem', { name: 'Batalha 1' })).toBeHidden();
-  await expect(page.getByRole('button', { name: 'Abrir formação: Batalha' })).toBeEnabled();
+  // The won battle is closed on the trail (Fase 5 plan decision 3).
+  await expect(page.getByRole('button', { name: 'Batalha 1 (vencido)' })).toBeVisible();
   const resources = await page.getByText(/^Vida \d+\/\d+/).allTextContents();
   const hurt = resources.some((text) => {
     const [, current, max] = /Vida (\d+)\/(\d+)/.exec(text)!;

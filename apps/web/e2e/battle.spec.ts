@@ -1,5 +1,6 @@
 import { test, expect, createCampaign } from './fixtures';
 import { buildPublishableChapter, importDefaultKit, publish } from './authoring';
+import { continueNarrative, formBattle } from './trail';
 
 // Authoring, a room and a battle in one flow; `next dev` compiles each route on first visit.
 test.describe.configure({ timeout: 180_000 });
@@ -24,8 +25,10 @@ test('a player forms a battle, is taken to it, answers, attacks and uses a skill
   });
   await page.getByRole('button', { name: 'Escolher Guardião' }).click();
 
-  // Open a formation on the battle node and start it: the room takes the fighter to the battle.
-  await page.getByRole('button', { name: 'Abrir formação: Batalha' }).click();
+  // The entry narrative unlocks the battle; a formation opens from the battle node's balloon and
+  // starting it takes the fighter to the battle.
+  await continueNarrative(page);
+  await formBattle(page);
   const formation = page.getByRole('listitem', { name: 'Batalha' });
   await expect(formation.getByText('em formação')).toBeVisible();
   await formation.getByRole('button', { name: 'Iniciar batalha' }).click();
@@ -67,14 +70,14 @@ test('a player forms a battle, is taken to it, answers, attacks and uses a skill
   await page.screenshot({ path: 'test-results/battle-page.png', fullPage: true });
   await page.getByRole('button', { name: 'Atacar Guardião das Correntes' }).click();
 
-  // Leaving the battle page takes the fighter out (spec §7); alone, that loses the battle.
+  // Leaving the battle page takes the fighter out (spec §7); alone, that loses the battle. A defeat
+  // returns to the chapter entry (no campfire lit): the fighter is restored, and the narrative they
+  // continued is undone, which locks the battle again (spec §3.7).
   await page.goto(page.url().replace(/\/battles\/[^/]+$/, ''));
   const me = page.getByRole('listitem').filter({ hasText: 'E2E Author' }).first();
-  await expect(me.getByText('caído')).toBeVisible();
   await expect(page.getByRole('listitem', { name: 'Batalha' })).toBeHidden();
-
-  // The master's provisional rest revives and refills the group.
-  await page.getByRole('button', { name: 'Descansar o grupo' }).click();
-  await expect(me.getByText('caído')).toBeHidden();
   await expect(me.getByText(/Vida 120\/120/)).toBeVisible();
+  await expect(me.getByText('caído')).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Narrativa 1 (liberado)' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Batalha 1 (bloqueado)' })).toBeVisible();
 });
