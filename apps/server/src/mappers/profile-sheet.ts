@@ -2,6 +2,7 @@ import type { CampaignProfile } from '@prisma/client';
 import {
   baseDefense,
   deriveStats,
+  rawDamage,
   meetsRequirements,
   usableOutOfBattle,
 } from '@rpg-chains/battle-engine';
@@ -52,6 +53,21 @@ export function toProfileSheet(row: CampaignProfile, snapshot: CampaignSnapshot)
     return sum + (item?.category === 'equipment' ? item.defenseBonus : 0);
   }, 0);
   const { maxHp, maxEnergy } = deriveStats(cls, row.level, attributes);
+  const weapon = snapshot.items.find((i) => i.id === equipment.weapon);
+  const attack =
+    weapon?.category === 'equipment' && weapon.weapon
+      ? {
+          weaponName: weapon.name,
+          damage: rawDamage(
+            weapon.weapon.baseDamage,
+            attributes[weapon.weapon.scalingAttribute],
+            weapon.weapon.scale,
+          ),
+          baseDamage: weapon.weapon.baseDamage,
+          scalingAttribute: weapon.weapon.scalingAttribute,
+          scale: weapon.weapon.scale,
+        }
+      : null;
 
   return {
     profileId: row.id,
@@ -68,13 +84,18 @@ export function toProfileSheet(row: CampaignProfile, snapshot: CampaignSnapshot)
     currentEnergy: row.currentEnergy,
     maxEnergy,
     defense: baseDefense(equipmentDefense, attributes),
+    attack,
     downed: row.downed,
     equipment: sheetItems(snapshot, equipped, attributes),
     inventory: sheetItems(snapshot, inventory, attributes),
     skills: cls.skills.map((skill) => ({
       id: skill.id,
       name: skill.name,
+      text: skill.text,
+      energyCost: skill.energyCost,
+      cooldownRounds: skill.cooldownRounds,
       unlockLevel: skill.unlockLevel,
+      effect: skill.effect,
       unlocked: skill.unlockLevel <= row.level,
     })),
   };
