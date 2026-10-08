@@ -5,8 +5,10 @@ import { authClient } from '@/lib/auth-client';
 import { useRoom } from '@/features/rooms/api';
 import { BattlesSection } from '@/features/battles/battles-section';
 import { CharacterSheet } from '@/features/profile/character-sheet';
-import { ShopsSection } from '@/features/shops/shops-section';
 import { TradesSection } from '@/features/trades/trades-section';
+import { CampaignTrail } from '@/features/trail/campaign-trail';
+import Link from 'next/link';
+import { CompletedBanner } from '@/features/rooms/completed-banner';
 import { AbandonSection } from '@/features/rooms/abandon-section';
 import { ClassPicker } from '@/features/rooms/class-picker';
 import { MasterPanel } from '@/features/rooms/master-panel';
@@ -15,8 +17,9 @@ import { roomErrorMessage } from '@/features/rooms/room-error-messages';
 import { useRoomPresence } from '@/features/rooms/room-channel-context';
 
 /**
- * Room page: the viewer's character, members, battles, class picker for newcomers, abandon and
- * master controls.
+ * Room page (Fase 5 plan decision 13): the campaign trail column, with the battles and the class
+ * picker for newcomers; beside it (below it on a phone) the viewer's character, members, trades,
+ * abandon and master controls.
  */
 export default function RoomPage() {
   const params = useParams();
@@ -39,7 +42,7 @@ export default function RoomPage() {
   const isOpen = room.status !== 'closed';
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="space-y-1">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">{room.name}</h1>
@@ -54,25 +57,37 @@ export default function RoomPage() {
         </p>
       </div>
 
-      {room.viewer.hasProfile && <CharacterSheet roomId={room.id} members={room.members} />}
+      {room.status === 'completed' && <CompletedBanner room={room} />}
+      {!isOpen && room.viewer.hasProfile && (
+        <Link href="/history" className="text-sm font-medium text-blue-600 hover:underline">
+          Ver no histórico
+        </Link>
+      )}
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-gray-900">Membros</h2>
-        <MemberList members={room.members} onlineUserIds={onlineUserIds} />
-      </section>
+      <div className="grid gap-8 lg:grid-cols-[400px_minmax(0,1fr)] lg:items-start">
+        <div className="space-y-6">
+          {isOpen && !room.viewer.hasProfile && (
+            <ClassPicker roomId={room.id} classes={room.classes} accessCode={code} />
+          )}
+          {isOpen && session && <BattlesSection room={room} userId={session.user.id} />}
+          {session && <CampaignTrail room={room} userId={session.user.id} />}
+        </div>
 
-      {isOpen && session && <BattlesSection room={room} userId={session.user.id} />}
-      {isOpen && room.viewer.hasProfile && <ShopsSection room={room} />}
-      {isOpen && room.viewer.hasProfile && session && (
-        <TradesSection room={room} userId={session.user.id} />
-      )}
-      {isOpen && !room.viewer.hasProfile && (
-        <ClassPicker roomId={room.id} classes={room.classes} accessCode={code} />
-      )}
-      {isOpen && room.viewer.hasProfile && <AbandonSection roomId={room.id} />}
-      {isOpen && room.viewer.isMaster && session && (
-        <MasterPanel key={room.id} room={room} userId={session.user.id} />
-      )}
+        <aside className="space-y-6">
+          {room.viewer.hasProfile && <CharacterSheet roomId={room.id} members={room.members} />}
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold text-gray-900">Membros</h2>
+            <MemberList members={room.members} onlineUserIds={onlineUserIds} />
+          </section>
+          {isOpen && room.viewer.hasProfile && session && (
+            <TradesSection room={room} userId={session.user.id} />
+          )}
+          {isOpen && room.viewer.hasProfile && <AbandonSection roomId={room.id} />}
+          {isOpen && room.viewer.isMaster && session && (
+            <MasterPanel key={room.id} room={room} userId={session.user.id} />
+          )}
+        </aside>
+      </div>
     </div>
   );
 }

@@ -4,8 +4,8 @@ const messages: Record<string, string> = {
   // Forming and starting (REST).
   node_busy: 'Já existe uma batalha neste nó.',
   already_in_battle: 'Você já está em outra batalha.',
-  profile_downed: 'Seu personagem está caído. Descanse antes de lutar.',
-  participant_downed: 'Um participante está caído. Descansem antes de lutar.',
+  profile_downed: 'Seu personagem está caído. Acenda uma fogueira antes de lutar.',
+  participant_downed: 'Um participante está caído. Acendam uma fogueira antes de lutar.',
   participant_limit: 'A formação está cheia.',
   node_without_questions: 'Este nó não tem perguntas.',
   open_questions_unsupported: 'Batalhas com pergunta aberta ainda não estão disponíveis.',
@@ -19,6 +19,12 @@ const messages: Record<string, string> = {
   not_a_participant: 'Você não está nesta batalha.',
   not_allowed: 'Você não pode fazer isso.',
   not_master: 'Apenas o mestre pode fazer isso.',
+  // The trail (Fase 5).
+  node_locked: 'Este nó ainda está bloqueado.',
+  node_cleared: 'Este nó já foi concluído.',
+  node_not_found: 'Nó não encontrado nesta versão da campanha.',
+  in_battle: 'Você está numa batalha.',
+  room_closed: 'A sala foi encerrada.',
   // In-battle commands (socket acks).
   stale_turn_token: 'Tarde demais: o turno já mudou.',
   signal_not_open: 'Outro jogador tocou o sinal primeiro.',

@@ -7,6 +7,7 @@ const DELETED_MESSAGES: Record<CompatibilityViolation['entityType'], string> = {
   item: 'Item publicado não pode ser excluído.',
   villain: 'Vilão publicado não pode ser excluído.',
   node: 'Nó publicado não pode ser excluído.',
+  chapter: 'Capítulo publicado não pode ser excluído.',
 };
 
 /** Portuguese message for a compatibility violation, derived from its rule (and entity type). */
@@ -28,5 +29,7 @@ export function violationMessage(v: CompatibilityViolation): string {
       return 'O nó de chefe do capítulo não pode mudar.';
     case 'graph_reachability_broken':
       return 'Nó publicado deixou de ser alcançável.';
+    case 'chapter_order_changed':
+      return 'Capítulos publicados mantêm a ordem; capítulos novos entram depois deles.';
   }
 }

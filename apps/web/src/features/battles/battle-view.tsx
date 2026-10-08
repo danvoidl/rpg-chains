@@ -7,6 +7,7 @@ import { eligibleForSignal } from '@rpg-chains/battle-engine';
 import type { ClientIntent } from '@rpg-chains/shared-types';
 import { battleReasonMessage } from './battle-error-messages';
 import { BattleResult } from './battle-result';
+import { clearedNodeIds } from './result-summary';
 import { CombatantCard } from './combatant-card';
 import { EnemyCard } from './enemy-card';
 import { EventFeed } from './event-feed';
@@ -23,7 +24,11 @@ interface BattleViewProps {
 /** The battle page body: enemies, the group, the turn and the feed (Fase 3 plan M4). */
 export function BattleView({ battleId, roomId, userId }: BattleViewProps) {
   const { view, feed, clock, closed, joinError, send } = useBattleChannel(battleId);
-  const isMaster = useRoom(roomId).data?.viewer.isMaster ?? false;
+  const room = useRoom(roomId).data;
+  const isMaster = room?.viewer.isMaster ?? false;
+  /** The cleared nodes when the battle page first saw the room, before any defeat rolled them back. */
+  const [clearedBefore, setClearedBefore] = useState<Set<string> | null>(null);
+  if (room && clearedBefore === null) setClearedBefore(clearedNodeIds(room.progress));
   const [pending, setPending] = useState(false);
   /** The last refusal, tied to the turn it happened in so it fades when the turn moves on. */
   const [refusal, setRefusal] = useState<{ token: number; text: string } | null>(null);
@@ -85,6 +90,9 @@ export function BattleView({ battleId, roomId, userId }: BattleViewProps) {
             rewards={view.rewards}
             combatants={view.combatants}
             myProfileId={me?.profileId ?? null}
+            nodeId={view.nodeId}
+            progress={room?.progress ?? null}
+            clearedBefore={clearedBefore}
           />
         ) : closed === 'cancelled' ? (
           <div className="space-y-2">

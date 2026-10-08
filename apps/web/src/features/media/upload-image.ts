@@ -1,7 +1,8 @@
 import { ApiError } from '@/lib/api';
 import { config } from '@/lib/config';
 
-type AllowedContentType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
+type AllowedContentType =
+  'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif' | 'video/mp4' | 'video/webm';
 
 interface PresignResponse {
   uploadUrl: string;
@@ -11,10 +12,10 @@ interface PresignResponse {
 }
 
 /**
- * Presigns an S3 upload URL then PUTs the file directly to S3.
+ * Presigns an S3 upload URL (image or video) then PUTs the file directly to S3.
  * Returns the `publicUrl` on success; throws on non-2xx responses.
  */
-export async function uploadImage(file: File): Promise<string> {
+export async function uploadMedia(file: File): Promise<string> {
   const normalizedBase = config.apiUrl.replace(/\/+$/, '');
   const presignRes = await fetch(`${normalizedBase}/api/media/presign`, {
     method: 'POST',
@@ -47,4 +48,9 @@ export async function uploadImage(file: File): Promise<string> {
   }
 
   return publicUrl;
+}
+
+/** Uploads an image; same flow as {@link uploadMedia}. */
+export function uploadImage(file: File): Promise<string> {
+  return uploadMedia(file);
 }

@@ -43,7 +43,11 @@ export function FormationCard({
   const title = battle.nodeTitle || (battle.nodeType === 'boss' ? 'Chefe' : 'Batalha');
 
   return (
-    <li aria-label={title} className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+    <li
+      id={`battle-${battle.battleId}`}
+      aria-label={title}
+      className="scroll-mt-4 space-y-3 rounded-lg border border-gray-200 bg-white p-4"
+    >
       <div className="flex items-center justify-between gap-2">
         <span className="font-medium text-gray-900">{title}</span>
         <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">

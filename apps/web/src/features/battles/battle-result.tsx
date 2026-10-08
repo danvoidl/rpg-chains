@@ -1,5 +1,7 @@
 import Link from 'next/link';
-import type { BattleReward, Combatant } from '@rpg-chains/shared-types';
+import type { BattleReward, CampaignProgressView, Combatant } from '@rpg-chains/shared-types';
+import { nodeName } from '@/features/trail/node-label';
+import { defeatReturnText, findNode, reopenedNodes } from './result-summary';
 
 interface BattleResultProps {
   result: 'victory' | 'defeat';
@@ -8,6 +10,12 @@ interface BattleResultProps {
   combatants: Combatant[];
   /** The viewer's profile in this battle, to highlight their own line. */
   myProfileId: string | null;
+  /** The battle's node, to find its chapter and type in the room's progress. */
+  nodeId: string;
+  /** The room's progress after the battle; null while it is not loaded. */
+  progress: CampaignProgressView | null;
+  /** Cleared node ids when the battle began, to tell what a defeat reopened. */
+  clearedBefore: ReadonlySet<string> | null;
 }
 
 /** The end screen; the profiles already hold the battle's outcome and rewards. */
@@ -17,8 +25,13 @@ export function BattleResult({
   rewards,
   combatants,
   myProfileId,
+  nodeId,
+  progress,
+  clearedBefore,
 }: BattleResultProps) {
   const victory = result === 'victory';
+  const found = progress ? findNode(progress, nodeId) : null;
+  const reopened = progress && clearedBefore ? reopenedNodes(clearedBefore, progress) : [];
   return (
     <div
       role="status"
@@ -30,8 +43,18 @@ export function BattleResult({
       <p className="text-sm text-gray-700">
         {victory
           ? 'O grupo venceu a batalha.'
-          : 'O grupo caiu e perdeu parte do ouro. Descansem antes de lutar de novo.'}
+          : `O grupo caiu e perdeu parte do ouro. ${defeatReturnText(found?.chapter ?? null)}`}
       </p>
+      {!victory && reopened.length > 0 && (
+        <p className="text-sm text-gray-700">
+          Voltaram a ficar abertos: {reopened.map(nodeName).join(', ')}
+        </p>
+      )}
+      {victory && found?.node.type === 'boss' && (
+        <p className="text-sm font-medium text-gray-900">
+          {progress?.completed ? 'Campanha concluída!' : 'Capítulo concluído!'}
+        </p>
+      )}
       {victory && rewards.length > 0 && (
         <RewardList rewards={rewards} combatants={combatants} myProfileId={myProfileId} />
       )}
@@ -50,7 +73,7 @@ function RewardList({
   rewards,
   combatants,
   myProfileId,
-}: Omit<BattleResultProps, 'result' | 'roomId'>) {
+}: Omit<BattleResultProps, 'result' | 'roomId' | 'nodeId' | 'progress' | 'clearedBefore'>) {
   return (
     <ul aria-label="Recompensas" className="mx-auto max-w-md space-y-1 text-left text-sm">
       {rewards.map((reward) => {

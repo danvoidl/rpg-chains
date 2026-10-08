@@ -9,4 +9,5 @@ export const VIOLATION_LABELS: Record<CompatibilityRule, string> = {
   graph_entry_changed: 'Nó de entrada alterado',
   graph_boss_changed: 'Nó de chefe alterado',
   graph_reachability_broken: 'Nó deixou de ser alcançável',
+  chapter_order_changed: 'Ordem dos capítulos alterada',
 };

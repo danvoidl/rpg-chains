@@ -26,6 +26,14 @@ export function issueMessage(issue: DraftIssue): string {
       return 'Só o chefe do capítulo pode ser do tipo Chefe.';
     case 'unreachable_node':
       return 'Nó inalcançável a partir da entrada.';
+    case 'node_never_unlocks':
+      return 'Este nó nunca pode ser liberado: um pré-requisito vem depois dele, ou o chefe espera um obrigatório que só vem depois do chefe.';
+    case 'node_off_grid':
+      return 'Este nó está fora da grade da trilha. Mova-o para uma célula da grade.';
+    case 'background_width_mismatch':
+      return 'O mapa de fundo do capítulo precisa ter 400 de largura, a largura da trilha.';
+    case 'chapter_under_construction_not_last':
+      return 'Capítulo em construção precisa ficar depois de todos os capítulos prontos.';
     case 'cycle':
       return 'O grafo do capítulo tem um ciclo.';
     case 'battle_incomplete':

@@ -39,6 +39,8 @@ export function warningMessage(warning: DraftWarning): string {
       return `Os vilões da batalha somam ${warning.value} de ouro, fora da faixa recomendada para o nível do nó (${band}).`;
     case 'drop_chance_high':
       return `Chance de drop de ${Math.round(warning.value * 100)}%, acima da faixa comum (${Math.round(warning.band.max * 100)}%): drops devem ser raros.`;
+    case 'chapter_without_campfire':
+      return 'Capítulo com batalhas e nenhuma fogueira: toda derrota volta para a entrada.';
     case 'item_price_missing':
       return 'Item vendido numa loja sem preço.';
   }

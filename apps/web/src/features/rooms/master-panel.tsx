@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { RoomDetail } from '@rpg-chains/shared-types';
 import { useCloseRoom, usePatchRoom, useRegenerateCode, useTransferMaster } from './api';
+import { confirmCloseRoom } from './confirm-close-room';
 import { roomErrorMessage } from './room-error-messages';
 import { TurnTimersForm } from './turn-timers-form';
 
@@ -30,7 +31,7 @@ export function MasterPanel({ room, userId }: MasterPanelProps) {
   const error = [patchRoom, regenerate, transfer, closeRoom].find((m) => m.isError)?.error;
 
   const handleClose = () => {
-    if (window.confirm('Encerrar a sala? Ninguém mais poderá jogar nela.')) closeRoom.mutate();
+    if (confirmCloseRoom()) closeRoom.mutate();
   };
 
   return (
