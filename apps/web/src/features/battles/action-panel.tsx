@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import type { Action, Effect } from '@rpg-chains/shared-types';
+import { describeEffect } from '@/features/effects/describe-effect';
+import { combatantUser } from '@/features/effects/effect-user';
 import { targetChoices, type TargetChoice } from './action-targets';
 import { unitName } from './event-text';
 import { optionButton, type TurnProps } from './turn-props';
@@ -72,6 +74,7 @@ export function ActionPanel(props: TurnProps & { profileId: string }) {
   }
 
   const enemies = view.enemies.filter((e) => e.currentHp > 0);
+  const user = combatantUser(me);
   return (
     <div className="space-y-4">
       <p className="text-sm font-medium text-gray-900">Você acertou! Escolha a ação do grupo:</p>
@@ -110,8 +113,7 @@ export function ActionPanel(props: TurnProps & { profileId: string }) {
                 <button
                   key={skill.id}
                   type="button"
-                  title={skill.text || undefined}
-                  className={optionButton}
+                  className={`${optionButton} text-left`}
                   disabled={pending || cooling || broke}
                   onClick={() =>
                     choose(skill.name, skill.effect, (targetId) => ({
@@ -123,6 +125,14 @@ export function ActionPanel(props: TurnProps & { profileId: string }) {
                 >
                   <span className="font-medium">{skill.name}</span>
                   <span className="ml-2 text-xs text-gray-500">{status}</span>
+                  <span className="mt-1 block text-xs font-normal text-gray-600">
+                    {describeEffect(skill.effect, user)}
+                  </span>
+                  {skill.text && (
+                    <span className="block text-xs font-normal italic text-gray-500">
+                      {skill.text}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -149,6 +159,9 @@ export function ActionPanel(props: TurnProps & { profileId: string }) {
                 }
               >
                 {item.name} <span className="text-xs text-gray-500">×{item.quantity}</span>
+                <span className="mt-1 block text-xs font-normal text-gray-600">
+                  {describeEffect(item.effect, user)}
+                </span>
               </button>
             ))}
           </div>

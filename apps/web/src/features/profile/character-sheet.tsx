@@ -8,6 +8,7 @@ import { useProfileSheet } from './api';
 import { EquipmentList } from './equipment-list';
 import { InventoryList } from './inventory-list';
 import { PointsForm } from './points-form';
+import { SkillList } from './skill-list';
 
 interface CharacterSheetProps {
   roomId: string;
@@ -49,6 +50,18 @@ export function CharacterSheet({ roomId, members }: CharacterSheetProps) {
       </div>
       {sheet.downed && <p className="text-sm text-red-700">Caído: precisa descansar.</p>}
 
+      {sheet.attack && (
+        <p className="text-sm text-gray-700">
+          Ataque básico:{' '}
+          <span className="font-medium text-gray-900">
+            {Math.floor(sheet.attack.damage)} de dano
+          </span>{' '}
+          com {sheet.attack.weaponName} ({sheet.attack.baseDamage} +{' '}
+          {ATTRIBUTE_LABELS[sheet.attack.scalingAttribute]} × {sheet.attack.scale}), antes da defesa
+          do alvo.
+        </p>
+      )}
+
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
         {ATTRIBUTES.map((attribute) => (
           <div key={attribute}>
@@ -67,17 +80,7 @@ export function CharacterSheet({ roomId, members }: CharacterSheetProps) {
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900">Habilidades</h3>
-          <ul className="mt-1 space-y-0.5 text-sm">
-            {sheet.skills.map((skill) => (
-              <li key={skill.id} className={skill.unlocked ? 'text-gray-900' : 'text-gray-400'}>
-                {skill.name}
-                {!skill.unlocked && ` (nível ${skill.unlockLevel})`}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <SkillList sheet={sheet} />
         <EquipmentList roomId={roomId} sheet={sheet} />
         <InventoryList roomId={roomId} sheet={sheet} members={members} />
       </div>

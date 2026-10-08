@@ -1,3 +1,4 @@
+import { combatantDefense, outgoingDamage, weaponRawDamage } from '@rpg-chains/battle-engine';
 import type { Combatant } from '@rpg-chains/shared-types';
 import { EffectBadges } from './effect-badges';
 import { ResourceBar } from './resource-bar';
@@ -11,7 +12,10 @@ interface CombatantCardProps {
   isEligible: boolean;
 }
 
-/** A group member: HP, energy and what keeps them out of the signal. */
+/**
+ * A group member: HP, energy, attack and defense as they stand (buffs included), and what keeps
+ * them out of the signal.
+ */
 export function CombatantCard({ combatant, isViewer, isActing, isEligible }: CombatantCardProps) {
   const status = combatant.left
     ? 'saiu'
@@ -48,6 +52,10 @@ export function CombatantCard({ combatant, isViewer, isActing, isEligible }: Com
         max={combatant.maxEnergy}
         color="bg-sky-500"
       />
+      <p className="text-xs text-gray-600">
+        Ataque {Math.floor(outgoingDamage(weaponRawDamage(combatant), combatant))} · Defesa{' '}
+        {Math.floor(combatantDefense(combatant))}
+      </p>
       <EffectBadges effects={combatant.effects} />
     </li>
   );
