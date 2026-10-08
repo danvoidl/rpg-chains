@@ -14,6 +14,7 @@ export * from './progression.js';
 export * from './equipment.js';
 export * from './out-of-battle.js';
 export * from './trade.js';
+export { magnitudeAmount } from './effects/magnitude.js';
 export * from './battle-outcome.js';
 export * from './battle-settlement.js';
 export * from './client-fold.js';

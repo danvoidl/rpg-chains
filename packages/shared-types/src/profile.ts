@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { IdSchema } from './common.js';
 import { InvestedAttributesSchema } from './accounts.js';
-import { RequirementsSchema, SlotSchema } from './content.js';
+import { AttributeSchema } from './common.js';
+import { RequirementsSchema, SkillSchema, SlotSchema } from './content.js';
 import type { EffectType } from './effects.js';
 
 /**
@@ -43,16 +44,30 @@ export const ProfileSheetSchema = z.object({
   maxEnergy: z.number().int().nonnegative(),
   /** Equipment defense + strength × 2 + dexterity × 1 (spec §4.1), out of battle. */
   defense: z.number().nonnegative(),
+  /** The basic attack (spec §4.2): weapon base damage + attribute × scale, out of battle. */
+  attack: z
+    .object({
+      weaponName: z.string(),
+      damage: z.number().nonnegative(),
+      baseDamage: z.number().nonnegative(),
+      scalingAttribute: AttributeSchema,
+      scale: z.number().nonnegative(),
+    })
+    .nullable(),
   downed: z.boolean(),
   equipment: z.array(SheetItemSchema),
   inventory: z.array(SheetItemSchema),
+  /** Every class skill, with what it costs and does, and whether the level unlocked it yet. */
   skills: z.array(
-    z.object({
-      id: IdSchema,
-      name: z.string(),
-      unlockLevel: z.number().int().positive(),
-      unlocked: z.boolean(),
-    }),
+    SkillSchema.pick({
+      id: true,
+      name: true,
+      text: true,
+      energyCost: true,
+      cooldownRounds: true,
+      unlockLevel: true,
+      effect: true,
+    }).extend({ unlocked: z.boolean() }),
   ),
 });
 export type ProfileSheet = z.infer<typeof ProfileSheetSchema>;
