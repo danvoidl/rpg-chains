@@ -6,6 +6,7 @@ export * from './content.js';
 export * from './accounts.js';
 export * from './snapshot.js';
 export * from './graph.js';
+export * from './trail.js';
 
 // Rooms (REST + lobby realtime)
 export * from './rooms.js';
@@ -14,6 +15,8 @@ export * from './profile.js';
 export * from './shop.js';
 export * from './trade.js';
 export * from './room-realtime.js';
+export * from './progress.js';
+export * from './history.js';
 
 // Authoring (draft + REST write payloads)
 export * from './draft.js';

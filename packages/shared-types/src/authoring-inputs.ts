@@ -9,6 +9,7 @@ import {
   VillainDropSchema,
   refineWeaponStats,
 } from './content.js';
+import { DraftOpeningSchema } from './draft.js';
 import { EffectSchema } from './effects.js';
 
 /**
@@ -32,12 +33,15 @@ const ChapterFieldsSchema = z.object({
   underConstruction: z.boolean(),
   /** Map image behind the graph; `null` removes it. */
   background: ChapterBackgroundSchema.nullable(),
+  /** What players see on reaching the chapter (Fase 5 plan decision 11); empty text = none. */
+  opening: DraftOpeningSchema,
 });
 
 export const ChapterInputSchema = ChapterFieldsSchema.partial({
   order: true,
   underConstruction: true,
   background: true,
+  opening: true,
 });
 export type ChapterInput = z.infer<typeof ChapterInputSchema>;
 

@@ -7,14 +7,6 @@ import { RequirementsSchema, SlotSchema } from './content.js';
  * stock limit, at the price of the room's current version.
  */
 
-/** A shop node of the room's version (provisional list until the map, like `battleNodes`). */
-export const ShopNodeOptionSchema = z.object({
-  nodeId: IdSchema,
-  title: z.string(),
-  chapterName: z.string(),
-});
-export type ShopNodeOption = z.infer<typeof ShopNodeOptionSchema>;
-
 export const ShopItemSchema = z.object({
   itemId: IdSchema,
   name: z.string(),

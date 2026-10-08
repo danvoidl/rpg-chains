@@ -198,6 +198,16 @@ export const ChapterBackgroundSchema = z.object({
 });
 export type ChapterBackground = z.infer<typeof ChapterBackgroundSchema>;
 
+/**
+ * What a player sees on first reaching a chapter, and may replay (spec §2.3, Fase 5 plan
+ * decision 11). Text and art: changing it is always a compatible publish.
+ */
+export const ChapterOpeningSchema = z.object({
+  text: z.string().default(''),
+  videoUrl: z.string().url().optional(),
+});
+export type ChapterOpening = z.infer<typeof ChapterOpeningSchema>;
+
 /** Graph node in a chapter (spec §2.3). Discriminated by `type`. */
 export const ChapterNodeSchema = z.discriminatedUnion('type', [
   z.object({
@@ -266,6 +276,7 @@ export const ChapterSchema = z.object({
   entryNodeId: IdSchema,
   bossNodeId: IdSchema,
   background: ChapterBackgroundSchema.optional(),
+  opening: ChapterOpeningSchema.optional(),
   nodes: z.array(ChapterNodeSchema),
   edges: z.array(EdgeSchema),
 });

@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { IdSchema } from './common.js';
 import { RoomStatusSchema } from './accounts.js';
-import { BattleNodeOptionSchema, BattleSummarySchema } from './battles.js';
+import { BattleSummarySchema } from './battles.js';
 import { RoomTurnTimersSchema } from './room-turn-timers.js';
-import { ShopNodeOptionSchema } from './shop.js';
+import { CampaignProgressViewSchema } from './progress.js';
 
 /**
  * Room REST contracts (Fase 2, spec §7): write payloads validated by the server and reused by the
@@ -128,10 +128,10 @@ export const RoomDetailSchema = z.object({
   classes: z.array(RoomClassSlotSchema),
   /** Battles forming or running in the room (Fase 3). */
   battles: z.array(BattleSummarySchema),
-  /** Nodes of the current version a formation can open on (provisional list until the map). */
-  battleNodes: z.array(BattleNodeOptionSchema),
-  /** Shop nodes of the current version (provisional list until the map, like `battleNodes`). */
-  shopNodes: z.array(ShopNodeOptionSchema),
+  /** Where the room stands: the trail of chapters and node states (Fase 5). */
+  progress: CampaignProgressViewSchema,
+  /** When the room beat the last chapter's boss; null while it has not (spec §7). */
+  completedAt: z.string().nullable(),
   /** The master's adjustments to the turn timers; a missing key is the platform default. */
   turnTimers: RoomTurnTimersSchema,
   /** The caller's own standing in the room. */

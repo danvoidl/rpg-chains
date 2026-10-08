@@ -29,18 +29,3 @@ export const BattleSummarySchema = z.object({
   needsMaster: z.boolean(),
 });
 export type BattleSummary = z.infer<typeof BattleSummarySchema>;
-
-/**
- * A node the room may fight on (Fase 3 plan M4). A plain list until the chapter map arrives; the
- * unlock gate of Fase 5 will filter it.
- */
-export const BattleNodeOptionSchema = z.object({
-  nodeId: IdSchema,
-  title: z.string(),
-  type: z.enum(['battle', 'boss']),
-  chapterName: z.string(),
-  participantLimit: z.number().int().positive().nullable(),
-  /** Has open questions: not playable until the master's judgement lands (plan M7). */
-  needsMaster: z.boolean(),
-});
-export type BattleNodeOption = z.infer<typeof BattleNodeOptionSchema>;

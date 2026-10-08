@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CampaignSnapshotSchema } from './snapshot.js';
 import { MAX_DROP_CHANCE } from '@rpg-chains/game-config';
-import { ItemSchema, VillainSchema } from './content.js';
+import { ChapterOpeningSchema, ItemSchema, VillainSchema } from './content.js';
 
 const emptySnapshot = {
   schemaVersion: 1,
@@ -81,5 +81,17 @@ describe('economy fields (Fase 4 plan decision 14)', () => {
     expect(VillainSchema.safeParse(villain(MAX_DROP_CHANCE)).success).toBe(true);
     expect(VillainSchema.safeParse(villain(1)).success).toBe(false);
     expect(VillainSchema.safeParse(villain(0)).success).toBe(false);
+  });
+});
+
+describe('chapter flow fields (Fase 5 plan decisions 11 and 18)', () => {
+  it('keeps a snapshot published before them valid, with no opening and nothing upcoming', () => {
+    const parsed = CampaignSnapshotSchema.parse(emptySnapshot);
+    expect(parsed.upcomingChapters).toEqual([]);
+  });
+
+  it('accepts a chapter opening with an optional video', () => {
+    expect(ChapterOpeningSchema.parse({})).toEqual({ text: '' });
+    expect(() => ChapterOpeningSchema.parse({ videoUrl: 'not a url' })).toThrow();
   });
 });
