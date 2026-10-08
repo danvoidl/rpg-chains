@@ -1,4 +1,5 @@
 import type { DraftNode, NodeType } from '@rpg-chains/shared-types';
+import { randomId } from '@/lib/random-id';
 
 export const NODE_TYPE_LABELS: Record<NodeType, string> = {
   battle: 'Batalha',
@@ -27,7 +28,7 @@ export function createNode(
   existingNodes: readonly DraftNode[],
 ): DraftNode {
   const base = {
-    id: crypto.randomUUID(),
+    id: randomId(),
     title: nextTitle(type, existingNodes),
     mandatory: type === 'boss',
     recommendedLevel: null,

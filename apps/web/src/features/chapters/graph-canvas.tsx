@@ -19,6 +19,7 @@ import {
   type TrailPosition,
 } from '@rpg-chains/shared-types';
 import { ChapterNode, type ChapterFlowNode } from './chapter-node';
+import { FocusNode } from './focus-node';
 import { TrailColumn } from './trail-column';
 
 /** Empty rows drawn below the lowest node, room to drag nodes further down. */
@@ -31,6 +32,8 @@ interface GraphCanvasProps {
   background: ChapterBackground | null;
   labels: Map<string, string>;
   selectedId: string | null;
+  /** A node just added, to pan the canvas to. */
+  focusId: string | null;
   issueNodeIds: ReadonlySet<string>;
   onSelect: (id: string | null) => void;
   onMove: (id: string, position: TrailPosition) => void;
@@ -51,6 +54,7 @@ export function GraphCanvas({
   background,
   labels,
   selectedId,
+  focusId,
   issueNodeIds,
   onSelect,
   onMove,
@@ -127,6 +131,7 @@ export function GraphCanvas({
         fitViewOptions={{ maxZoom: 1 }}
       >
         <TrailColumn height={columnHeight} background={background} />
+        <FocusNode target={graph.nodes.find((n) => n.id === focusId) ?? null} />
         <Background />
         <Controls />
       </ReactFlow>

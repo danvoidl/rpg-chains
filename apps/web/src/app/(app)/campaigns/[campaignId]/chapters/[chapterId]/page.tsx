@@ -71,6 +71,7 @@ function ChapterEditor({ campaignId, chapter, draft }: ChapterEditorProps) {
   const [graph, setGraph] = useState<DraftGraph>(() => toGraph(chapter));
   const [savedJson, setSavedJson] = useState(() => JSON.stringify(toGraph(chapter)));
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
 
   const isDirty = JSON.stringify(graph) !== savedJson;
@@ -100,6 +101,7 @@ function ChapterEditor({ campaignId, chapter, draft }: ChapterEditorProps) {
     const node = createNode(type, newNodePosition(graph.nodes), graph.nodes);
     edit((g) => addNode(g, node));
     setSelectedId(node.id);
+    setFocusId(node.id);
   };
 
   // A drop on a taken cell puts the node back where the drag started: one node per cell.
@@ -195,6 +197,7 @@ function ChapterEditor({ campaignId, chapter, draft }: ChapterEditorProps) {
           background={chapter.background}
           labels={labels}
           selectedId={selectedId}
+          focusId={focusId}
           issueNodeIds={issueNodeIds}
           onSelect={setSelectedId}
           onMove={(id, position) => edit((g) => moveNode(g, id, position))}
