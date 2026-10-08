@@ -37,7 +37,7 @@ O criador da campanha e o dono da sala são pessoas diferentes, e o criador não
 
 Ao contrário de um modelo de sala congelada, as salas em andamento **acompanham** a última versão publicada: cada sala guarda um ponteiro para a versão que está jogando e o avança automaticamente para a mais recente **em ponto seguro** — entre batalhas ou numa fogueira, nunca no meio de uma batalha (uma batalha em andamento termina na versão em que começou, o que preserva o determinismo do replay descrito na seção 3). Não há ação do mestre: o autor "empurra" publicando, e as salas rolam para frente sozinhas, recebendo conteúdo novo e correções sem perder progresso.
 
-Como o autor não enxerga as salas de terceiros, quem garante que esse avanço é seguro não é o julgamento dele, e sim um **portão de compatibilidade** na publicação. A partir da segunda publicação, cada versão é validada contra a anterior e só é aceita se for **retrocompatível** — mudanças aditivas e correções não-quebrantes passam; mudanças que invalidariam um personagem em jogo são recusadas, e a publicação falha listando as violações. A regra vale sempre após o primeiro publish, exista ou não uma sala viva, para dar previsibilidade ao autor; o primeiro publish avisa esse contrato. Capítulos marcados como "em construção" permanecem no rascunho e não entram na versão publicada, o que dispensa qualquer mecanismo separado para eles — e são o palco natural para preparar um capítulo antes de liberá-lo.
+Como o autor não enxerga as salas de terceiros, quem garante que esse avanço é seguro não é o julgamento dele, e sim um **portão de compatibilidade** na publicação. A partir da segunda publicação, cada versão é validada contra a anterior e só é aceita se for **retrocompatível** — mudanças aditivas e correções não-quebrantes passam; mudanças que invalidariam um personagem em jogo são recusadas, e a publicação falha listando as violações. A regra vale sempre após o primeiro publish, exista ou não uma sala viva, para dar previsibilidade ao autor; o primeiro publish avisa esse contrato. Capítulos marcados como "em construção" permanecem no rascunho e não entram na versão publicada com conteúdo, o que dispensa qualquer mecanismo separado para eles — e são o palco natural para preparar um capítulo antes de liberá-lo. Da versão publicada eles levam só o nome, para que os jogadores vejam no fim da trilha que há capítulos a caminho. Como capítulos novos só entram depois dos já publicados, um capítulo em construção precisa ficar depois de todos os publicados na ordem da campanha.
 
 #### 2.2.1 O que a publicação permite e proíbe após o primeiro publish
 
@@ -45,7 +45,7 @@ O critério é o que um personagem em jogo (Perfil de Campanha) e o log de batal
 
 **Permitido** (a versão nova rola para a sala com segurança):
 
-- Adicionar conteúdo: capítulos, nós, arestas, classes, vilões, ataques, perguntas, itens e habilidades a uma classe.
+- Adicionar conteúdo: capítulos (sempre depois dos já publicados), nós, arestas, classes, vilões, ataques, perguntas, itens e habilidades a uma classe.
 - Editar texto e arte: enunciados, nomes, descrições, ícones, imagens e vídeos.
 - Corrigir uma pergunta: alternativas e resposta correta.
 - Balancear números de vilão, habilidade e item: vida, atributos, dano base, custo de energia, cooldown, nível de desbloqueio e a magnitude/duração do efeito de uma habilidade. É seguro porque o perfil não guarda os números da habilidade — o motor os lê da versão vigente no momento do uso, e o avanço nunca acontece no meio de uma batalha.
@@ -57,6 +57,7 @@ O critério é o que um personagem em jogo (Perfil de Campanha) e o log de batal
 - Alterar os atributos-base de uma classe (vida e energia base, ganho por nível, arma base), pois eles definem os valores derivados de personagens que já existem.
 - Reduzir o limite de vagas de uma classe.
 - Remover uma habilidade de uma classe — o conjunto é só-adição; rebalancear uma habilidade existente é permitido.
+- Reordenar os capítulos publicados ou inserir um capítulo antes deles — a sala avança de capítulo em capítulo, na ordem.
 - Quebrar a estrutura do grafo: remover um nó ou aresta de modo a tornar inalcançável um nó antes alcançável, ou remover o nó de entrada ou o de chefe.
 
 Curva de XP, constante de dano e fator de relevância vivem na configuração da plataforma (seção 4), não no conteúdo autoral, e portanto não fazem parte deste versionamento; alterá-los é um evento de plataforma, não de publicação de campanha.
@@ -67,9 +68,17 @@ Cada capítulo é um grafo direcionado em forma de árvore invertida: múltiplos
 
 Os nós de batalha respeitam um limite de participantes definido pelo criador. Salas de chefe não têm limite. Os jogadores escolhem livremente de qual nó participar, respeitando a lotação, e uma vez dentro de uma batalha não podem trocar até que ela termine.
 
-O capítulo é concluído quando todas as batalhas obrigatórias forem vencidas. O chefe é liberado automaticamente quando os nós que o antecedem (seus pré-requisitos) forem vencidos — não há liberação manual pelo mestre nem decisão do grupo.
+**Progresso e desbloqueio.** O progresso no grafo é da sala, não de cada jogador: quem chega depois encontra o mapa como o grupo o deixou. Cada nó está bloqueado, liberado ou concluído. Uma batalha (ou o chefe) é concluída com a vitória; uma narrativa, quando alguém a lê e segue em frente; uma loja, na primeira vez que alguém a abre; uma fogueira, quando alguém a acende. As arestas são o caminho e os pré-requisitos são a trava: um nó é liberado quando alguma aresta que chega nele vem de um nó concluído (a entrada do capítulo já começa liberada) **e** todos os seus pré-requisitos estão concluídos. O chefe, além disso, só é liberado quando todos os nós obrigatórios do capítulo — de qualquer tipo, não só batalhas — estiverem concluídos; isso acontece automaticamente, sem liberação manual pelo mestre nem decisão do grupo. Uma batalha vencida não pode ser lutada de novo; só a volta à fogueira depois de uma derrota a reabre (seção 3.7).
 
-**Mapa de fundo (fase futura, contrato já preparado).** Um capítulo pode ter uma imagem de fundo — tipicamente um mapa — e cada nó é posicionado num ponto dessa imagem. As posições dos nós são coordenadas absolutas em pixels de um "mundo" com largura × altura lógicas definidas junto com a imagem; a imagem é sempre escalada para esse tamanho, então trocar o mapa por outra resolução não desloca os nós. Trocar ou remover o mapa e renomear nós são edições de arte/texto, permitidas pelo portão de compatibilidade.
+**Capítulos.** O capítulo é concluído quando o chefe é vencido, e isso libera a entrada do capítulo seguinte, na ordem da campanha. Capítulos já concluídos continuam abertos: suas lojas e fogueiras podem ser usadas e suas batalhas opcionais não feitas podem ser jogadas. A conclusão é permanente — uma versão nova que acrescente nós a um capítulo concluído não o reabre.
+
+**Fogueira.** Qualquer jogador da sala, fora de batalha, pode acender uma fogueira liberada, quantas vezes quiser. Ela reergue os caídos e restaura HP e energia de todos os jogadores da sala que não estão em batalha, e passa a ser o ponto de volta do capítulo em caso de derrota (seção 3.7).
+
+**Trilha.** O jogador vê a campanha como uma trilha, no estilo do Duolingo: uma coluna estreita e de largura fixa que só cresce para baixo, igual no celular e no computador — no computador ela fica centralizada, com o resto da sala nas laterais. Todos os capítulos ficam numa só rolagem, um abaixo do outro, cada um com seu cabeçalho (nome e abertura): os concluídos acima, o atual em vista, os bloqueados em cinza e, no fim, os capítulos em construção. Os nós aparecem com o estado de cada um, e tocar num nó abre a ação dele; as arestas valem para o desbloqueio mas não são desenhadas. Para a trilha funcionar em qualquer tela, todo capítulo tem a mesma largura e o editor encaixa cada nó numa grade de cinco colunas, com quantas linhas o autor quiser — vários nós na mesma linha formam ramos e trechos horizontais. O autor vê no editor exatamente o que o jogador verá.
+
+**Abertura.** Cada capítulo pode ter uma abertura — um texto e um vídeo — que cada jogador vê ao chegar nele pela primeira vez e pode rever quando quiser. A abertura da campanha é a do primeiro capítulo. Os nós de narrativa também podem ter vídeo.
+
+**Mapa de fundo (contrato preparado, editor em fase futura).** Um capítulo pode ter uma imagem de fundo — tipicamente um mapa — e cada nó é posicionado num ponto dessa imagem. As posições dos nós são coordenadas absolutas em pixels de um "mundo" com a largura fixa da trilha e altura definida junto com a imagem; a imagem é sempre escalada para esse tamanho, então trocar o mapa por outra resolução não desloca os nós. Trocar ou remover o mapa e renomear nós são edições de arte/texto, permitidas pelo portão de compatibilidade.
 ---
 
 ## 3. Sistema de combate
@@ -126,7 +135,7 @@ Habilidades com efeito de reerguer devolvem aliados caídos ao combate, gastando
 
 HP, energia e o estado de caído **persistem entre batalhas**: ao fim de cada batalha, vitória ou derrota, os valores de cada participante — inclusive de quem saiu por desconexão, no momento da saída — são gravados no Perfil de Campanha. Quem está caído não pode entrar numa batalha.
 
-Se todos os jogadores de uma batalha caírem, a batalha é perdida e o grupo é devolvido automaticamente à última fogueira ativada, sem necessidade de percorrer o caminho. O snapshot da fogueira restaura **apenas o estado de combate**: HP, energia, caídos reerguidos e reset dos nós de batalha do capítulo atual. Nível, experiência, equipamentos e inventário nunca regridem. O custo da derrota é o tempo e uma fração do ouro de cada participante da batalha — inclusive de quem saiu antes do fim, para que abandonar não seja a saída barata.
+Se todos os jogadores de uma batalha caírem, a batalha é perdida e o grupo é devolvido automaticamente à última fogueira ativada, sem necessidade de percorrer o caminho. Os participantes da batalha perdida são restaurados como numa fogueira — HP e energia cheios, caídos reerguidos — e o progresso do capítulo volta àquela fogueira **apenas no que eles fizeram**: voltam a ficar em aberto os nós do capítulo concluídos depois que a fogueira foi acesa e de que algum deles tomou parte. O que outro subgrupo concluiu sem eles continua concluído, assim como tudo o que veio antes da fogueira e os outros capítulos. Sem fogueira acesa no capítulo, o ponto de volta é a entrada dele. Nível, experiência, equipamentos e inventário nunca regridem. O custo da derrota é o tempo e uma fração do ouro de cada participante da batalha — inclusive de quem saiu antes do fim, para que abandonar não seja a saída barata.
 
 ---
 
@@ -293,7 +302,7 @@ A sala é criada por um usuário a partir de qualquer campanha publicada. Ele se
 
 Ao entrar pela primeira vez, o jogador escolhe a classe entre as que a campanha oferece e que ainda tenham vaga, o que define seus valores base de vida e energia. Um jogador que entra numa sala já avançada começa no nível 1; o fator de relevância da seção 4.5 é o que torna essa entrada tardia viável.
 
-Quando o chefe final é derrotado, a campanha é marcada como cumprida, mas o encerramento efetivo da sala é decisão do mestre. É no encerramento que o histórico é gravado: campanha concluída e os dados finais do personagem de cada participante.
+Quando o chefe do último capítulo é derrotado, a sala é marcada como concluída, mas o encerramento efetivo é decisão do mestre: até lá a sala continua jogável — lojas, trocas e batalhas opcionais — e, se a campanha publicar um capítulo novo, a sala o recebe e volta a estar em andamento. É no encerramento que o histórico é gravado: a campanha, se foi concluída, e os dados finais do personagem de cada participante. Cada jogador vê no próprio histórico as campanhas encerradas de que participou.
 
 Em caso de queda de conexão, o jogador é removido da batalha em andamento e não pode retornar a ela; o grupo pode reiniciar a batalha. Ao reconectar, ele volta normalmente à sala, com seu perfil intacto, incluindo o estado de caído se estava caído.
 

@@ -146,9 +146,20 @@ effect type is a schema-only change, no migration.
 (`posX/posY`) is an absolute pixel in the chapter's world, origin top-left. A chapter may carry a
 `background` map (`imageUrl` + logical `width`×`height`, schema in `shared-types/src/content.ts`);
 the image is always scaled to that logical size, so a node placed on a map pixel stays there even
-if the author swaps the image for another resolution. The map editor/player view is a future
-phase; the contract is already published, so do not add auto-layout, re-centering or position
-normalization anywhere (editor, server or snapshot). Node `title` is author text, not an id.
+if the author swaps the image for another resolution. Every chapter is drawn on the **trail**
+(`shared-types/src/trail.ts`, Fase 5): a fixed-width column (`TRAIL_WIDTH`) that only grows down,
+the same on phone and desktop, with nodes snapped to a 5-column grid — the editor snaps, the
+publish gate checks, the player trail scales the column to the screen. Do not add auto-layout,
+re-centering or position normalization anywhere (editor, server or snapshot). Node `title` is
+author text, not an id.
+
+**Room progress is stored facts + pure rules** (`campaign-rules/src/progress/`, spec §2.3, §3.7).
+Only what happened is stored — a node cleared (with the room's `seq` and who took part), a
+campfire lit, a chapter cleared; "unlocked" is always derived (`isNodeUnlocked`: edges are OR,
+prerequisites are AND, the boss waits for every mandatory node). A defeat (`rollbackDefeat`)
+undoes only the defeated players' clears in that chapter after its last lit campfire. Gate entry
+with `checkNodeEntry` and record with the `record*` functions; never compute unlocks in the server
+or the web. `progress-property.test.ts` is the guard, like the engine's `replay.test.ts`.
 
 **Runtime vs durable state boundary** (spec §3.7): combat-transient state (the active battle,
 its event log) lives **in memory** and is losable — a crash means the group restarts the
@@ -309,3 +320,14 @@ not duplicate it here; drop notes made obsolete by the current setup.**
   → To verify UI, kill whatever holds :3000/:3001 and start the `server-localhost` and
   `web-localhost` configs of `.claude/launch.json`, which override the URLs through the process
   env without touching `.env`.
+
+### 2026-10-08 (Fase 5 M2)
+
+- **Parallel agents running the server tests clash**: every run truncates the one
+  `TEST_DATABASE_URL` database. → Give each agent its own database (`…/rpg_chains_test_a`) via
+  `TEST_DATABASE_URL=…`; `prisma migrate deploy` creates it. Drop them afterwards.
+- **`preview_start server-localhost` refused port 3001 as "another chat's server"** even after that
+  process was killed, and the other session restarted its LAN server on 3001 mid-check (login then
+  failed with 403). → Check `ss -ltnp | grep 3001` right before testing; run the API with
+  `BETTER_AUTH_URL=http://localhost:3001 WEB_ORIGIN=http://localhost:3000 pnpm --filter
+@rpg-chains/server dev` in a background shell when the preview tool refuses.
