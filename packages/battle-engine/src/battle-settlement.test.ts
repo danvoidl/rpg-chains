@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { settleProfile, type SettledProfile } from './battle-settlement.js';
+import { restoreAtCampfire } from './restore.js';
 
 const cls = { baseHp: 120, baseEnergy: 40, hpPerLevel: 12, energyPerLevel: 3 };
 
@@ -42,7 +43,7 @@ describe('settleProfile (Fase 4 plan decisions 3, 5, 10, 12)', () => {
     expect(settled).toEqual({ ...before, currentHp: 70, currentEnergy: 20 });
   });
 
-  it('on a defeat, loses a fifth of the gold, rounded down, and gains nothing', () => {
+  it('on a defeat, loses a fifth of the gold and gains nothing, but is back at the campfire restored', () => {
     const downed = { profileId: 'p1', currentHp: 0, currentEnergy: 5, downed: true };
     const settled = settleProfile(
       cls,
@@ -53,8 +54,8 @@ describe('settleProfile (Fase 4 plan decisions 3, 5, 10, 12)', () => {
       gold: 40,
       level: 1,
       xp: 90,
-      downed: true,
-      currentHp: 0,
+      downed: false,
+      ...restoreAtCampfire(cls, before.level, before.attributes),
       inventory: ['it-sword', 'it-potion'],
     });
   });

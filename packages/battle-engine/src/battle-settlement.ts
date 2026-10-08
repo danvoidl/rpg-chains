@@ -2,6 +2,7 @@ import { DEFEAT_GOLD_LOSS_FRACTION } from '@rpg-chains/game-config';
 import type { BattleReward, CharacterClass } from '@rpg-chains/shared-types';
 import type { ProfileOutcome } from './battle-outcome.js';
 import { applyXp, type Progress } from './progression.js';
+import { restoreAtCampfire } from './restore.js';
 
 /** The durable part of a profile a battle changes (spec §3.7, §4.4, §6). */
 export interface SettledProfile extends Progress {
@@ -24,8 +25,9 @@ export interface BattleSettlement {
  * A profile after its battle (Fase 4 plan decisions 3, 5, 10, 12): resources as the battle ended,
  * used consumables out of the inventory, then — on a victory — XP (with any level-ups raising the
  * resources), gold and dropped items added; on a defeat, `DEFEAT_GOLD_LOSS_FRACTION` of the gold
- * lost, by everyone who fought, including whoever left. Everything is a delta on the profile as
- * read now, so nothing else written meanwhile is overwritten.
+ * lost, by everyone who fought, including whoever left — who all go back to the campfire restored,
+ * revived with full HP and energy (spec §3.7, Fase 5 plan decision 5). Everything is a delta on
+ * the profile as read now, so nothing else written meanwhile is overwritten.
  */
 export function settleProfile(
   cls: Pick<CharacterClass, 'baseHp' | 'baseEnergy' | 'hpPerLevel' | 'energyPerLevel'>,
@@ -46,7 +48,11 @@ export function settleProfile(
   };
   if (defeat) {
     const lost = Math.floor(profile.gold * DEFEAT_GOLD_LOSS_FRACTION);
-    return { ...afterBattle, gold: profile.gold - lost };
+    return {
+      ...afterBattle,
+      ...restoreAtCampfire(cls, profile.level, profile.attributes),
+      gold: profile.gold - lost,
+    };
   }
   if (!reward) return afterBattle;
   return {
