@@ -3,7 +3,7 @@ import { tickOverTime } from './effects/over-time.js';
 import { runEnemyTurn } from './enemy-turn.js';
 import { objectiveIds, openSignalFromDeck } from './questions.js';
 import { grantRewards } from './rewards.js';
-import { isActive } from './signal.js';
+import { canAct, isActive } from './signal.js';
 
 /**
  * The strict alternation of spec §3.1 — enemy, group, enemy, group — and the end of the battle.
@@ -38,9 +38,14 @@ export function startGroupTurn(ctx: DecideContext): void {
 /**
  * Where the group's question comes from (spec §3.2): a battle with open questions waits for the
  * master to pick one while he is present; without him it falls back to the node's objective
- * questions, or pauses — enemies included — if there are none.
+ * questions, or pauses — enemies included — if there are none. With no player who could act
+ * connected, it pauses before any of that (spec §3.7).
  */
 export function openGroupQuestion(ctx: DecideContext): void {
+  if (!ctx.state.combatants.some(canAct)) {
+    emit(ctx, { type: 'BattlePaused', turnToken: nextToken(ctx), reason: 'all_disconnected' });
+    return;
+  }
   if (!ctx.state.needsMaster) return openSignalFromDeck(ctx);
   if (ctx.state.masterOnline) {
     emit(ctx, { type: 'QuestionRequested', turnToken: nextToken(ctx) });
@@ -69,4 +74,17 @@ export function endGroupTurn(ctx: DecideContext, actorId: string | null): void {
   emit(ctx, { type: 'RoundEnded', round: ctx.state.round, blocked: actorId });
   if (resolveIfOver(ctx)) return;
   runEnemyPhase(ctx);
+}
+
+/**
+ * The last player who could act went away while the group's turn waited on nobody in particular —
+ * the signal, or the master's question: pause now rather than let the clock run (spec §3.7). A
+ * turn waiting on one player keeps its own clock; the pause comes when the next group turn opens.
+ */
+export function pauseIfNobodyCanAct(ctx: DecideContext): void {
+  const { stage } = ctx.state.turn;
+  if (ctx.state.result !== null || ctx.state.combatants.some(canAct)) return;
+  if (stage === 'awaiting_signal' || stage === 'awaiting_question') {
+    emit(ctx, { type: 'BattlePaused', turnToken: nextToken(ctx), reason: 'all_disconnected' });
+  }
 }

@@ -7,7 +7,7 @@ import {
   importDefaultKit,
   publish,
 } from './authoring';
-import { playToVictory } from './battle-turns';
+import { leaveBattle, playToVictory } from './battle-turns';
 import { continueNarrative, formBattle } from './trail';
 
 // The whole chapter flow of Fase 5 with two players: authoring two chapters, then playing them to
@@ -112,7 +112,7 @@ test('two players play a campaign to the end: openings, a defeat, two bosses, th
     .getByRole('button', { name: 'Iniciar batalha' })
     .click();
   await page.waitForURL(/\/battles\/[^/]+$/, { timeout: 60_000 });
-  await page.goto(roomUrl);
+  await leaveBattle(page);
   await expect(page.getByRole('listitem', { name: 'Portão' })).toBeHidden();
   await expect(page.getByRole('button', { name: 'Ponte (vencido)' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Brasas (acesa)' })).toBeVisible();

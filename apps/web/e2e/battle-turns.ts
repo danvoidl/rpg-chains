@@ -42,3 +42,10 @@ export async function playToVictory(pages: Page[], villain: string, maxTurns = 1
   }
   return tappers;
 }
+
+/** Leaves the running battle on purpose (spec §7): confirms the dialog and lands in the room. */
+export async function leaveBattle(page: Page) {
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByRole('button', { name: 'Sair da batalha' }).click();
+  await page.waitForURL(/\/rooms\/[^/]+$/, { timeout: 60_000 });
+}

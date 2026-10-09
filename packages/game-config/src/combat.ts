@@ -44,3 +44,16 @@ export const BATTLE_TIMER_RANGES: Record<BattleTimerKey, { minMs: number; maxMs:
   openAnswerMs: { minMs: 30_000, maxMs: 600_000 },
   actionMs: { minMs: 10_000, maxMs: 120_000 },
 };
+
+/**
+ * How long a player whose connection dropped mid-battle has to come back before they are out of
+ * it for good (spec §7, Fase 6 plan decision 1). The master's presence gets the same grace before
+ * the battle falls back to objective questions (spec §3.2). Playtest value.
+ */
+export const RECONNECT_GRACE_MS = 60_000;
+
+/**
+ * How long a request to cancel a running battle waits for every connected participant to join
+ * it, when the master is away (spec §7, Fase 6 plan decision 8).
+ */
+export const CANCEL_REQUEST_TIMEOUT_MS = 30_000;

@@ -62,8 +62,9 @@ export function masterPresence(ctx: DecideContext, online: boolean): Rejection |
   if (!ctx.state.needsMaster) return reject('master_not_needed');
   if (ctx.state.masterOnline === online) return reject('unchanged');
   emit(ctx, { type: 'MasterPresenceChanged', online });
-  const { stage } = ctx.state.turn;
-  if ((online && stage === 'paused') || (!online && stage === 'awaiting_question')) {
+  const { turn } = ctx.state;
+  const pausedForHim = turn.stage === 'paused' && turn.reason === 'master_absent';
+  if ((online && pausedForHim) || (!online && turn.stage === 'awaiting_question')) {
     openGroupQuestion(ctx);
   }
   return null;

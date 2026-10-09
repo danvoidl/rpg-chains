@@ -13,6 +13,7 @@ import {
   runBattle,
   skilledRobot,
   masterRobot,
+  connectionRobot,
   type Policy,
 } from './fixtures/run-battle.js';
 import { toPublicEvent, toPublicState } from './public-view.js';
@@ -112,6 +113,7 @@ describe.each<[string, () => BattleContent, RosterEntry[], Policy]>([
   ['every effect type, skills in play', catalogContent, catalogRoster, skilledRobot],
   ['a master who judges, leaves and returns', () => masterContent(false), kitRoster, masterRobot],
   ['a master and only open questions (pauses)', () => masterContent(true), kitRoster, masterRobot],
+  ['players dropping and coming back', () => content(true), roster, connectionRobot],
 ])('replay property, %s', (_name, makeContent, group, policy) => {
   const battle = makeContent();
   const runs = SEEDS.map((seed) => ({ seed, run: runBattle(battle, group, seed, policy) }));
@@ -263,6 +265,34 @@ describe('the robot exercises both endings and every turn path', () => {
     }
     expect(seen).toEqual(
       new Set(['wrong_answer', 'signal_expired', 'answer_timeout', 'action_timeout', 'left']),
+    );
+  });
+
+  it('with flaky connections, every connection path happens (Fase 6 plan decision 11)', () => {
+    const seen = new Set<string>();
+    for (const seed of SEEDS.slice(0, 50)) {
+      const { log } = runBattle(content(true), roster, seed, connectionRobot);
+      const away = new Set<string>();
+      for (const event of log) {
+        if (event.type === 'PlayerDisconnected') away.add(event.profileId);
+        if (event.type === 'PlayerReconnected') {
+          away.delete(event.profileId);
+          seen.add('reconnected');
+        }
+        if (event.type === 'BattlePaused') seen.add(`paused:${event.reason}`);
+        if (event.type === 'TurnLost' && event.reason === 'answer_timeout' && away.size > 0)
+          seen.add('timed out while away');
+        if (event.type === 'EnemyActed' && event.targetIds.some((id) => away.has(id)))
+          seen.add('away player hit');
+      }
+    }
+    expect(seen).toEqual(
+      new Set([
+        'reconnected',
+        'paused:all_disconnected',
+        'timed out while away',
+        'away player hit',
+      ]),
     );
   });
 });

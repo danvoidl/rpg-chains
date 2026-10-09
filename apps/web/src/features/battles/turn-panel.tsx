@@ -38,7 +38,9 @@ export function TurnPanel(props: TurnProps) {
     case 'paused':
       return (
         <p className="text-sm text-gray-700">
-          Batalha pausada: o mestre saiu. Ela continua quando ele voltar à sala.
+          {turn.reason === 'master_absent'
+            ? 'Batalha pausada: o mestre saiu. Ela continua quando ele voltar à sala.'
+            : 'Batalha pausada: ninguém do grupo está conectado. Ela continua quando alguém voltar.'}
         </p>
       );
     case 'starting':

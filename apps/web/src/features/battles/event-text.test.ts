@@ -33,6 +33,18 @@ describe('describeEvent', () => {
     );
   });
 
+  it('tells a dropped connection from a pause for the group (Fase 6)', () => {
+    expect(describeEvent({ type: 'PlayerDisconnected', profileId: 'p1' }, state)).toBe(
+      'Ana perdeu a conexão.',
+    );
+    expect(describeEvent({ type: 'PlayerReconnected', profileId: 'p1' }, state)).toBe(
+      'Ana reconectou.',
+    );
+    expect(
+      describeEvent({ type: 'BattlePaused', turnToken: 3, reason: 'all_disconnected' }, state),
+    ).toBe('Batalha pausada: ninguém do grupo está conectado.');
+  });
+
   it('skips bookkeeping', () => {
     expect(describeEvent({ type: 'EnergyChanged', targetId: 'p1', delta: 10 }, state)).toBeNull();
   });

@@ -1,5 +1,6 @@
 import { test, expect, createCampaign } from './fixtures';
 import { buildPublishableChapter, importDefaultKit, publish } from './authoring';
+import { leaveBattle } from './battle-turns';
 import { continueNarrative, formBattle } from './trail';
 
 // Authoring, a room and a battle in one flow; `next dev` compiles each route on first visit.
@@ -70,10 +71,10 @@ test('a player forms a battle, is taken to it, answers, attacks and uses a skill
   await page.screenshot({ path: 'test-results/battle-page.png', fullPage: true });
   await page.getByRole('button', { name: 'Atacar Guardião das Correntes' }).click();
 
-  // Leaving the battle page takes the fighter out (spec §7); alone, that loses the battle. A defeat
+  // Leaving the battle on purpose takes the fighter out (spec §7); alone, that loses the battle. A defeat
   // returns to the chapter entry (no campfire lit): the fighter is restored, and the narrative they
   // continued is undone, which locks the battle again (spec §3.7).
-  await page.goto(page.url().replace(/\/battles\/[^/]+$/, ''));
+  await leaveBattle(page);
   const me = page.getByRole('listitem').filter({ hasText: 'E2E Author' }).first();
   await expect(page.getByRole('listitem', { name: 'Batalha' })).toBeHidden();
   await expect(me.getByText(/Vida 120\/120/)).toBeVisible();

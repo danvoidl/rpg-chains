@@ -19,11 +19,13 @@ interface CombatantCardProps {
 export function CombatantCard({ combatant, isViewer, isActing, isEligible }: CombatantCardProps) {
   const status = combatant.left
     ? 'saiu'
-    : combatant.downed
-      ? 'caído'
-      : !isEligible
-        ? 'descansando'
-        : null;
+    : !combatant.connected
+      ? 'sem conexão'
+      : combatant.downed
+        ? 'caído'
+        : !isEligible
+          ? 'descansando'
+          : null;
   return (
     <li
       aria-label={combatant.name}

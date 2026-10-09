@@ -2,11 +2,17 @@ import { describe, expect, it } from 'vitest';
 import type { Combatant, Effect, PublicBattleState } from '@rpg-chains/shared-types';
 import { targetChoices } from './action-targets';
 
-const me = { profileId: 'p1', name: 'Ana', downed: false, left: false } as Combatant;
+const me = {
+  profileId: 'p1',
+  name: 'Ana',
+  downed: false,
+  connected: true,
+  left: false,
+} as Combatant;
 const view = {
   combatants: [
     me,
-    { profileId: 'p2', name: 'Bia', downed: true, left: false },
+    { profileId: 'p2', name: 'Bia', downed: true, connected: true, left: false },
     { profileId: 'p3', name: 'Caio', downed: false, left: true },
   ],
   enemies: [

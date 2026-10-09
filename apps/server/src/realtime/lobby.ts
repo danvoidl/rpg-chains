@@ -7,6 +7,7 @@ import {
   type RoomJoinAck,
   type RoomPresenceMessage,
 } from '@rpg-chains/shared-types';
+import { lobbyGraceKey } from '../services/grace-timers.js';
 import type { Presence } from './presence.js';
 import type { SocketData } from './socket-data.js';
 
@@ -26,6 +27,10 @@ type LobbySocket = Socket<
  * Lobby presence handlers (Fase 2 plan M3): a socket joins a room's channel (members of any room,
  * anyone for a public one), everyone in it receives the updated online list, and a disconnect
  * leaves every joined lobby. Mutations never travel here — they are REST.
+ *
+ * The online list is instant; what the game counts — the master's presence for a battle — waits
+ * out the reconnection grace (Fase 6 plan decision 4): a user whose last socket leaves is still
+ * present until the grace ends, and `onPresenceChanged` runs again then.
  */
 export function registerLobby(
   io: Server,
@@ -41,8 +46,12 @@ export function registerLobby(
 
   const leave = (socket: LobbySocket, roomId: string) => {
     if (!socket.data.roomIds.delete(roomId)) return;
-    presence.remove(roomId, socket.data.userId, socket.id);
+    const { userId } = socket.data;
+    presence.remove(roomId, userId, socket.id);
     void socket.leave(roomChannel(roomId));
+    if (!presence.has(roomId, userId)) {
+      app.grace.start(lobbyGraceKey(roomId, userId), () => onPresenceChanged(roomId));
+    }
     broadcast(roomId);
   };
 
@@ -73,6 +82,7 @@ export function registerLobby(
 
       socket.data.roomIds.add(roomId);
       presence.add(roomId, userId, socket.id);
+      app.grace.cancel(lobbyGraceKey(roomId, userId));
       await socket.join(roomChannel(roomId));
       broadcast(roomId);
       reply({ ok: true });

@@ -76,12 +76,15 @@ export type BattleSyncAck =
   | { ok: false; error: 'invalid_message' | 'battle_not_found' | 'not_allowed' };
 
 /**
- * Server → client: the battle left the server — resolved and written back, or cancelled. Nothing
+ * Server → client: the battle left the server — resolved and written back, cancelled, or restarted
+ * as a new formation (`next`). Nothing
  * of it can be synced any more.
  */
 export const BattleClosedMessageSchema = z.object({
   battleId: IdSchema,
-  reason: z.enum(['resolved', 'cancelled']),
+  reason: z.enum(['resolved', 'cancelled', 'restarted']),
+  /** A restarted battle's new formation, on the same node with the same group (spec §7). */
+  next: IdSchema.optional(),
 });
 export type BattleClosedMessage = z.infer<typeof BattleClosedMessageSchema>;
 

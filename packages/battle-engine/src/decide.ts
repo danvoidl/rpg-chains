@@ -8,7 +8,7 @@ import type {
 import { createContext, finish } from './decide-context.js';
 import { judgeOpenAnswer, masterPresence, presentQuestion } from './master-turn.js';
 import { chooseAction, submitObjectiveAnswer, submitOpenAnswer, tapSignal } from './player-turn.js';
-import { playerLeft, timeOut } from './system-commands.js';
+import { playerDisconnected, playerLeft, playerReconnected, timeOut } from './system-commands.js';
 
 export type DecideResult = { ok: true; events: BattleEvent[] } | Rejection;
 
@@ -44,6 +44,10 @@ function run(ctx: ReturnType<typeof createContext>, command: Command): Rejection
       return timeOut(ctx, command.type);
     case 'PlayerLeft':
       return playerLeft(ctx, command.profileId);
+    case 'PlayerDisconnected':
+      return playerDisconnected(ctx, command.profileId);
+    case 'PlayerReconnected':
+      return playerReconnected(ctx, command.profileId);
     case 'SubmitOpenAnswer':
       return submitOpenAnswer(ctx, command.profileId, command.text);
     case 'PresentQuestion':

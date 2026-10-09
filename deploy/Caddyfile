@@ -1,0 +1,21 @@
+# One origin for the browser: the API under /api, the socket under /socket.io, the rest is the
+# web app, on the port the host gives (PUBLIC_PORT). The host terminates TLS in front of this.
+{
+	admin off
+	auto_https off
+}
+
+:{$PUBLIC_PORT} {
+	handle /api/* {
+		reverse_proxy localhost:3001
+	}
+	handle /socket.io/* {
+		reverse_proxy localhost:3001
+	}
+	handle /health {
+		reverse_proxy localhost:3001
+	}
+	handle {
+		reverse_proxy localhost:3000
+	}
+}

@@ -1,47 +1,54 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { io, type Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 import {
   ROOM_EVENTS,
   type RoomChangedMessage,
   type RoomPresenceMessage,
 } from '@rpg-chains/shared-types';
-import { config } from '@/lib/config';
 
-/** Subscribes to a room's presence and change signals; `membershipKey` re-joins when it changes. */
-export function useRoomChannel(roomId: string, membershipKey?: string) {
+/**
+ * Subscribes the tab's socket to a room's presence and change signals; `membershipKey` re-joins
+ * when it changes. Every (re)connection joins again and refetches the room, since a
+ * `room:changed` sent while the socket was down is lost (Fase 6 plan decision 5).
+ */
+export function useRoomChannel(socket: Socket | null, roomId: string, membershipKey?: string) {
   const queryClient = useQueryClient();
   const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
-  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    const socket = io(config.apiUrl, { withCredentials: true });
-    socketRef.current = socket;
-
+    if (!socket) return;
     const join = () => {
       socket.emit(ROOM_EVENTS.join, { roomId });
     };
-    socket.on('connect', join);
-    socket.on(ROOM_EVENTS.presence, (msg: RoomPresenceMessage) => {
+    const onConnect = () => {
+      join();
+      void queryClient.invalidateQueries({ queryKey: ['rooms'] });
+    };
+    const onPresence = (msg: RoomPresenceMessage) => {
       if (msg.roomId === roomId) setOnlineUserIds(msg.onlineUserIds);
-    });
-    socket.on(ROOM_EVENTS.changed, (msg: RoomChangedMessage) => {
+    };
+    const onChanged = (msg: RoomChangedMessage) => {
       if (msg.roomId === roomId) void queryClient.invalidateQueries({ queryKey: ['rooms'] });
-    });
+    };
+    socket.on('connect', onConnect);
+    socket.on(ROOM_EVENTS.presence, onPresence);
+    socket.on(ROOM_EVENTS.changed, onChanged);
+    if (socket.connected) join();
 
     return () => {
       socket.emit(ROOM_EVENTS.leave, { roomId });
-      socket.disconnect();
-      socketRef.current = null;
+      socket.off('connect', onConnect);
+      socket.off(ROOM_EVENTS.presence, onPresence);
+      socket.off(ROOM_EVENTS.changed, onChanged);
       setOnlineUserIds([]);
     };
-  }, [roomId, queryClient]);
+  }, [socket, roomId, queryClient]);
 
   // Membership changes what the server allows for private rooms: join again.
   useEffect(() => {
-    const socket = socketRef.current;
     if (socket?.connected) socket.emit(ROOM_EVENTS.join, { roomId });
-  }, [roomId, membershipKey]);
+  }, [socket, roomId, membershipKey]);
 
   return { onlineUserIds };
 }

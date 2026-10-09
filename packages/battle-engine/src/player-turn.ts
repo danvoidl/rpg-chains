@@ -18,12 +18,24 @@ function findCombatant(ctx: DecideContext, profileId: string): Combatant | undef
   return ctx.state.combatants.find((c) => c.profileId === profileId);
 }
 
+/**
+ * Whose turn it is, unless they are away: a player inside the reconnection grace returns before
+ * answering or acting (the server applies `PlayerReconnected` on join), so a command in their
+ * name while away is refused (spec §7).
+ */
+function checkTurnOwner(ctx: DecideContext, owner: string, profileId: string): Rejection | null {
+  if (owner !== profileId) return reject('not_your_turn');
+  if (!findCombatant(ctx, profileId)?.connected) return reject('player_disconnected');
+  return null;
+}
+
 export function tapSignal(ctx: DecideContext, profileId: string): Rejection | null {
   if (ctx.state.turn.stage !== 'awaiting_signal') return reject('signal_not_open');
   const player = findCombatant(ctx, profileId);
   if (!player) return reject('unknown_player');
   if (player.downed) return reject('player_downed');
   if (player.left) return reject('player_left');
+  if (!player.connected) return reject('player_disconnected');
   if (!eligibleForSignal(ctx.state).has(profileId)) return reject('blocked_this_round');
   emit(ctx, { type: 'SignalWonBy', turnToken: nextToken(ctx), profileId });
   return null;
@@ -37,7 +49,8 @@ export function submitObjectiveAnswer(
 ): Rejection | null {
   const { turn } = ctx.state;
   if (turn.stage !== 'awaiting_answer') return reject('not_answering');
-  if (turn.profileId !== profileId) return reject('not_your_turn');
+  const notOwner = checkTurnOwner(ctx, turn.profileId, profileId);
+  if (notOwner) return notOwner;
   if (turn.question.type !== 'objective') return reject('wrong_answer_type');
   const question = findQuestion(ctx.content, turn.question.questionId);
   if (question.type !== 'objective' || index >= question.options.length) {
@@ -62,7 +75,8 @@ export function submitOpenAnswer(
 ): Rejection | null {
   const { turn } = ctx.state;
   if (turn.stage !== 'awaiting_answer') return reject('not_answering');
-  if (turn.profileId !== profileId) return reject('not_your_turn');
+  const notOwner = checkTurnOwner(ctx, turn.profileId, profileId);
+  if (notOwner) return notOwner;
   if (turn.question.type !== 'open') return reject('wrong_answer_type');
   emit(ctx, { type: 'OpenAnswerSubmitted', turnToken: nextToken(ctx), profileId, text });
   return null;
@@ -76,7 +90,8 @@ export function chooseAction(
 ): Rejection | null {
   const { turn } = ctx.state;
   if (turn.stage !== 'awaiting_action') return reject('not_acting');
-  if (turn.profileId !== profileId) return reject('not_your_turn');
+  const notOwner = checkTurnOwner(ctx, turn.profileId, profileId);
+  if (notOwner) return notOwner;
   const actor = findCombatant(ctx, profileId)!;
 
   const rejected =

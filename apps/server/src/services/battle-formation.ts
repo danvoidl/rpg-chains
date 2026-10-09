@@ -6,6 +6,7 @@ import type {
   BattleParticipant,
   BattleRegistry,
   FormingBattle,
+  RunningBattle,
 } from './battle-registry.js';
 
 /** A refused battle mutation, as the route replies it. */
@@ -127,14 +128,58 @@ export function leaveFormation(
 }
 
 /**
- * Who may cancel (Fase 3 plan decision 10): the room master, or the last participant still in it.
- * Nothing of a battle is stored before it ends, so cancelling just drops it from memory.
+ * Who may cancel (Fase 3 plan decision 10, Fase 6 plan decision 8): a formation, the room master
+ * or its last participant; a running battle, only the master — the players ask together instead
+ * (`requestCancel`), so cancelling is never a way out of a defeat. Nothing of a battle is stored
+ * before it ends, so cancelling just drops it.
  */
 export function mayCancel(battle: ActiveBattle, userId: string, masterId: string): boolean {
   if (userId === masterId) return true;
-  const remaining =
-    battle.status === 'running'
-      ? battle.state.combatants.filter((c) => !c.left).map((c) => c.userId)
-      : battle.participants.map((p) => p.userId);
-  return remaining.length === 1 && remaining[0] === userId;
+  if (battle.status === 'running') return false;
+  return battle.participants.length === 1 && battle.participants[0]!.userId === userId;
+}
+
+/**
+ * A participant asks to cancel a running battle while the master is away (spec §7). The request
+ * gathers the askers for `timeoutMs`; once every connected participant still in the battle has
+ * asked, it is granted. Returns how many are still missing, or 0 when granted.
+ */
+export function requestCancel(
+  battle: RunningBattle,
+  userId: string,
+  now: number,
+  timeoutMs: number,
+): number | Refusal {
+  const inBattle = battle.state.combatants.filter((c) => !c.left);
+  if (!inBattle.some((c) => c.userId === userId)) return refuse(404, 'not_a_participant');
+  if (!battle.cancelRequest || battle.cancelRequest.expiresAt <= now) {
+    battle.cancelRequest = { userIds: new Set(), expiresAt: now + timeoutMs };
+  }
+  battle.cancelRequest.userIds.add(userId);
+  const asked = battle.cancelRequest.userIds;
+  return inBattle.filter((c) => c.connected && !asked.has(c.userId)).length;
+}
+
+/**
+ * Restarts a running battle (spec §7, Fase 6 plan decision 7): it is dropped without writing
+ * anything — like a cancel — and a formation on the same node, with everyone who had not left,
+ * takes its place at once. Synchronous, so nobody can take the node in between.
+ */
+export function restartBattle(registry: BattleRegistry, battle: RunningBattle): FormingBattle {
+  const stillIn = new Set(battle.state.combatants.filter((c) => !c.left).map((c) => c.profileId));
+  const next: FormingBattle = {
+    status: 'forming',
+    starting: false,
+    battleId: randomUUID(),
+    roomId: battle.roomId,
+    node: battle.node,
+    needsMaster: battle.needsMaster,
+    masterId: battle.masterId,
+    campaignVersionId: battle.campaignVersionId,
+    participants: battle.participants.filter((p) => stillIn.has(p.profileId)),
+  };
+  battle.restartedAs = next.battleId;
+  registry.remove(battle.battleId);
+  registry.add(next);
+  return next;
 }

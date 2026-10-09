@@ -73,6 +73,7 @@ function toCombatant(content: BattleContent, entry: RosterEntry): Combatant | Re
     currentEnergy: Math.min(entry.currentEnergy, maxEnergy),
     maxEnergy,
     downed: false,
+    connected: true,
     left: false,
     blockedFromSignal: false,
     skills: cls.skills.filter((s) => s.unlockLevel <= entry.level),

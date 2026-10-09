@@ -1,7 +1,7 @@
 // As Sete Correntes — data model (Fase 0).
 // Relational tables carry FK/queryable fields; polymorphic payloads live in jsonb
-// validated by Zod at the app boundary (decision 6). "Active battle" has no table — it
-// lives in memory (decision 4). Published content is frozen in CampaignVersion.snapshot
+// validated by Zod at the app boundary (decision 6). The active battle lives in memory
+// (decision 4); `BattleJournal` is only its copy for a restart (Fase 6). Published content is frozen in CampaignVersion.snapshot
 // (decision 5). Connection URL and driver adapter come from prisma.config.ts / the client
 // constructor (Prisma 7 direction), not from this datasource block.
 
@@ -279,6 +279,8 @@ model Room {
   history           History[]
   nodeClears        RoomNodeClear[]
   chapterStates     RoomChapterState[]
+  battleJournals    BattleJournal[]
+  tradeOffers       TradeOffer[]
 
   @@index([campaignId])
   @@index([isPublic, status])
@@ -340,6 +342,58 @@ model RoomChapterState {
   clearedAt      DateTime?
 
   @@id([roomId, chapterId])
+}
+
+/// The copy of a running battle that survives a server restart (spec §3.7, Fase 6 plan decision
+/// 6). Memory stays the source of truth while the process runs; this is only read on boot. The
+/// content is not stored — it is cut again from the immutable version — nor the state, which is
+/// the fold of the entries. Deleted in the write-back transaction, so a journal that exists is a
+/// battle not yet written back.
+model BattleJournal {
+  battleId          String                @id
+  roomId            String
+  room              Room                  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  campaignVersionId String
+  /// `BattleNode`: id, title, type and participant limit.
+  node              Json
+  needsMaster       Boolean
+  masterId          String
+  /// `BattleParticipant[]` in formation order.
+  participants      Json
+  /// The room's turn timer adjustments when the battle started.
+  turnTimers        Json
+  createdAt         DateTime              @default(now())
+  entries           BattleJournalEntry[]
+
+  @@index([roomId])
+}
+
+/// One accepted batch of a journaled battle's log (secret events included), at its 1-based
+/// position in the log.
+model BattleJournalEntry {
+  battleId String
+  journal  BattleJournal @relation(fields: [battleId], references: [battleId], onDelete: Cascade)
+  fromSeq  Int
+  events   Json
+
+  @@id([battleId, fromSeq])
+}
+
+/// A pending trade offer (spec §6, Fase 4 plan decision 9), copied from memory so it survives a
+/// restart (Fase 6 plan decision 9). Nothing moves until it is accepted, so a lost row only costs
+/// proposing again.
+model TradeOffer {
+  id            String   @id
+  roomId        String
+  room          Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  fromProfileId String
+  toProfileId   String
+  /// `TradeSide`: gold and item ids.
+  give          Json
+  ask           Json
+  expiresAt     DateTime
+
+  @@index([roomId])
 }
 
 model History {

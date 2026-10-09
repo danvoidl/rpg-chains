@@ -101,11 +101,11 @@ Como só o mestre julga perguntas abertas, **uma batalha que tem pergunta aberta
 
 **O mestre como jogador.** O mestre pode ter um Perfil de Campanha, mas **não entra como combatente numa batalha que tenha pergunta aberta** — ali ele é o juiz, e não pode julgar a própria resposta. Em batalhas só com perguntas objetivas ele luta como qualquer jogador. Enquanto houver uma batalha com pergunta aberta em andamento, o papel de mestre não pode ser transferido.
 
-**Queda do mestre no meio de uma batalha com pergunta aberta.** A batalha não é perdida: enquanto o mestre estiver ausente, o turno do grupo passa a usar as perguntas objetivas daquele nó, se houver. Se o nó só tiver perguntas abertas, a batalha **pausa** no início do turno do grupo — inimigos também não agem — até o mestre voltar ou a batalha ser cancelada. Uma resposta aberta já enviada continua aguardando o julgamento.
+**Queda do mestre no meio de uma batalha com pergunta aberta.** O mestre tem o mesmo período de graça dos jogadores (seção 7): recarregar a página ou perder a rede por alguns instantes não muda nada na batalha. Passado o prazo, a batalha não é perdida: enquanto o mestre estiver ausente, o turno do grupo passa a usar as perguntas objetivas daquele nó, se houver. Se o nó só tiver perguntas abertas, a batalha **pausa** no início do turno do grupo — inimigos também não agem — até o mestre voltar ou a batalha ser cancelada. Uma resposta aberta já enviada continua aguardando o julgamento.
 
 ### 3.3 Rotação da campainha
 
-Um jogador que agiu numa rodada fica bloqueado do sinal na rodada seguinte. Isso garante rotação sem impedir que o grupo escolha quem age em momentos críticos. Jogadores mortos ou desconectados saem da lista de elegíveis; se em algum momento não restar nenhum jogador elegível, o bloqueio é ignorado e todos os vivos voltam a poder responder.
+Um jogador que agiu numa rodada fica bloqueado do sinal na rodada seguinte. Isso garante rotação sem impedir que o grupo escolha quem age em momentos críticos. Jogadores mortos ou desconectados saem da lista de elegíveis; se em algum momento não restar nenhum jogador elegível, o bloqueio é ignorado e todos os vivos e conectados voltam a poder responder. Um jogador desconectado, ainda dentro do período de graça (seção 7), continua na batalha e continua sendo alvo dos inimigos — cair não é uma esquiva —, só não pode tocar no sinal até voltar.
 
 Habilidades que não causam dano — provocar, curar, reerguer, aplicar buff — contam como a ação da rodada da mesma forma que um ataque, e portanto também bloqueiam quem as usou na rodada seguinte. Errar a resposta não é agir: quem erra não fica bloqueado.
 
@@ -136,6 +136,10 @@ Habilidades com efeito de reerguer devolvem aliados caídos ao combate, gastando
 HP, energia e o estado de caído **persistem entre batalhas**: ao fim de cada batalha, vitória ou derrota, os valores de cada participante — inclusive de quem saiu por desconexão, no momento da saída — são gravados no Perfil de Campanha. Quem está caído não pode entrar numa batalha.
 
 Se todos os jogadores de uma batalha caírem, a batalha é perdida e o grupo é devolvido automaticamente à última fogueira ativada, sem necessidade de percorrer o caminho. Os participantes da batalha perdida são restaurados como numa fogueira — HP e energia cheios, caídos reerguidos — e o progresso do capítulo volta àquela fogueira **apenas no que eles fizeram**: voltam a ficar em aberto os nós do capítulo concluídos depois que a fogueira foi acesa e de que algum deles tomou parte. O que outro subgrupo concluiu sem eles continua concluído, assim como tudo o que veio antes da fogueira e os outros capítulos. Sem fogueira acesa no capítulo, o ponto de volta é a entrada dele. Nível, experiência, equipamentos e inventário nunca regridem. O custo da derrota é o tempo e uma fração do ouro de cada participante da batalha — inclusive de quem saiu antes do fim, para que abandonar não seja a saída barata.
+
+**Grupo desconectado.** Se nenhum jogador que poderia agir (vivo e não saído) estiver conectado, a batalha **pausa** — o grupo não age, os inimigos também não, e nenhum prazo corre — até o primeiro voltar. Se o período de graça de todos vence, todos saem da batalha e ela é perdida, como qualquer abandono.
+
+**Reinício do servidor.** O estado de uma batalha em andamento vive na memória do servidor, que é a fonte da verdade enquanto o processo roda; cada fato da batalha é copiado num diário de batalha no banco. Se o servidor reinicia (atualização ou falha), as batalhas em andamento voltam do diário no ponto em que estavam, com todos os jogadores desconectados — e portanto pausadas — até que reconectem. Se ninguém volta dentro do período de graça, a batalha é cancelada sem custo para ninguém, porque a queda foi do servidor, não do grupo.
 
 ---
 
@@ -304,7 +308,9 @@ Ao entrar pela primeira vez, o jogador escolhe a classe entre as que a campanha 
 
 Quando o chefe do último capítulo é derrotado, a sala é marcada como concluída, mas o encerramento efetivo é decisão do mestre: até lá a sala continua jogável — lojas, trocas e batalhas opcionais — e, se a campanha publicar um capítulo novo, a sala o recebe e volta a estar em andamento. É no encerramento que o histórico é gravado: a campanha, se foi concluída, e os dados finais do personagem de cada participante. Cada jogador vê no próprio histórico as campanhas encerradas de que participou.
 
-Em caso de queda de conexão, o jogador é removido da batalha em andamento e não pode retornar a ela; o grupo pode reiniciar a batalha. Ao reconectar, ele volta normalmente à sala, com seu perfil intacto, incluindo o estado de caído se estava caído.
+Uma queda de conexão não é uma saída. O jogador que cai no meio de uma batalha — recarregou a página, trocou de app no celular, perdeu a rede — tem um **período de graça** para voltar e continuar na mesma batalha, no mesmo estado que os outros veem. Enquanto está fora, não pode tocar no sinal, mas continua sendo alvo; se o turno esperava por ele, o prazo daquela etapa corre normalmente. Passado o período de graça, ele é removido da batalha e não pode retornar a ela. Sair de propósito ("Sair da batalha") remove na hora. Em qualquer caso, ao reconectar ele volta normalmente à sala, com seu perfil intacto, incluindo o estado de caído se estava caído.
+
+O mestre pode **reiniciar** uma batalha em andamento: ela é descartada sem gravar nada e uma formação nova abre no mesmo nó com os participantes que não tinham saído. Cancelar uma batalha em andamento também é do mestre; sem ele presente, só com a confirmação de todos os participantes conectados — para que cancelar não seja a fuga de uma derrota.
 
 ---
 

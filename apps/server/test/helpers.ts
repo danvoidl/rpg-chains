@@ -2,11 +2,20 @@ import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fas
 import { buildApp, type AppOptions } from '../src/app.js';
 import { config } from '../src/config.js';
 
+/** Reconnection grace in tests: long enough for a reconnect, short enough to wait out. */
+export const TEST_GRACE_MS = 150;
+
 /** Builds a ready, non-listening app for `app.inject()` contract tests. */
 export async function createTestApp(
   options: Omit<AppOptions, 'logger'> = {},
 ): Promise<FastifyInstance> {
-  const app = await buildApp({ logger: false, ...options });
+  const app = await buildApp({
+    logger: false,
+    ...options,
+    // Tests share one database: only a restart test brings journaled battles back.
+    battles: { reconnectGraceMs: TEST_GRACE_MS, restore: false, ...options.battles },
+    trades: { restore: false, ...options.trades },
+  });
   await app.ready();
   return app;
 }

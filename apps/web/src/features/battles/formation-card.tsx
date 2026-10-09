@@ -2,7 +2,14 @@
 
 import Link from 'next/link';
 import type { BattleSummary } from '@rpg-chains/shared-types';
-import { useCancelBattle, useJoinFormation, useLeaveFormation, useStartBattle } from './api';
+import {
+  useCancelBattle,
+  useJoinFormation,
+  useLeaveFormation,
+  useRequestCancel,
+  useRestartBattle,
+  useStartBattle,
+} from './api';
 import { battleErrorMessage } from './battle-error-messages';
 
 interface FormationCardProps {
@@ -32,8 +39,11 @@ export function FormationCard({
   const leave = useLeaveFormation();
   const start = useStartBattle();
   const cancel = useCancelBattle();
-  const error = [join, leave, start, cancel].find((m) => m.isError)?.error;
-  const busy = [join, leave, start, cancel].some((m) => m.isPending);
+  const restart = useRestartBattle();
+  const requestCancel = useRequestCancel();
+  const mutations = [join, leave, start, cancel, restart, requestCancel];
+  const error = mutations.find((m) => m.isError)?.error;
+  const busy = mutations.some((m) => m.isPending);
 
   const inIt = battle.participants.some((p) => p.userId === userId);
   const full =
@@ -105,10 +115,28 @@ export function FormationCard({
             href={`/rooms/${roomId}/battles/${battle.battleId}`}
             className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700"
           >
-            {inIt ? 'Ir para a batalha' : battle.needsMaster && isMaster ? 'Conduzir' : 'Assistir'}
+            {inIt ? 'Voltar à batalha' : battle.needsMaster && isMaster ? 'Conduzir' : 'Assistir'}
           </Link>
         )}
-        {(isMaster || (!forming && soleParticipant)) && (
+        {!forming && isMaster && (
+          <button
+            type="button"
+            className={buttonClass}
+            disabled={busy}
+            onClick={() => {
+              if (
+                window.confirm(
+                  'Reiniciar a batalha? Ela recomeça do zero com quem ainda está nela; nada desta será guardado.',
+                )
+              ) {
+                restart.mutate(battle.battleId);
+              }
+            }}
+          >
+            Reiniciar
+          </button>
+        )}
+        {(isMaster || (forming && soleParticipant)) && (
           <button
             type="button"
             className={buttonClass}
@@ -122,7 +150,24 @@ export function FormationCard({
             Cancelar
           </button>
         )}
+        {!forming && inIt && !isMaster && !masterOnline && (
+          <button
+            type="button"
+            className={buttonClass}
+            disabled={busy}
+            onClick={() => requestCancel.mutate(battle.battleId)}
+          >
+            Pedir para cancelar
+          </button>
+        )}
       </div>
+      {requestCancel.data?.status === 'requested' && (
+        <p role="status" className="text-xs text-gray-600">
+          Pedido registrado. Falta{requestCancel.data.waitingFor > 1 ? 'm' : ''}{' '}
+          {requestCancel.data.waitingFor} participante
+          {requestCancel.data.waitingFor > 1 ? 's' : ''} pedir também (30 segundos).
+        </p>
+      )}
     </li>
   );
 }

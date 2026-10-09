@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { io, type Socket } from 'socket.io-client';
+import { useCallback, useEffect, useState } from 'react';
 import { evolvePublic } from '@rpg-chains/battle-engine';
 import {
   BATTLE_EVENTS,
@@ -14,7 +13,7 @@ import {
   type PublicBattleEvent,
   type PublicBattleState,
 } from '@rpg-chains/shared-types';
-import { config } from '@/lib/config';
+import { useRoomSocket } from '@/features/rooms/room-channel-context';
 import { pauseBefore } from './event-pacing';
 
 /** How many recent events the feed keeps. */
@@ -50,13 +49,19 @@ export interface BattleChannel {
   joinError: string | null;
   /** Sends an intent; resolves with the server's verdict. */
   send: (intent: ClientIntent) => Promise<BattleCommandAck>;
+  /** The tab's socket is connected; intents wait for it (spec §7). */
+  connected: boolean;
 }
 
 /**
- * The battle socket (Fase 3 plan M4): joins, starts from the `battle:sync` state, and folds every
- * batch with the engine's own `evolvePublic`. Batches carry server log positions: a duplicate is
- * dropped, a gap asks for a fresh sync. Events are then shown one at a time with short pauses
- * (`event-pacing.ts`), never changing what the final state is.
+ * The battle channel (Fase 3 plan M4) on the tab's socket: joins, starts from the `battle:sync`
+ * state, and folds every batch with the engine's own `evolvePublic`. Batches carry server log
+ * positions: a duplicate is dropped, a gap asks for a fresh sync. Events are then shown one at a
+ * time with short pauses (`event-pacing.ts`), never changing what the final state is.
+ *
+ * Every (re)connection joins again — inside the reconnection grace that puts a dropped fighter
+ * back in the battle — and starts over from the sync. Leaving the page stops watching, which the
+ * server counts as a drop with its grace, not as leaving the battle (Fase 6 plan decision 2).
  */
 export function useBattleChannel(battleId: string): BattleChannel {
   const [view, setView] = useState<PublicBattleState | null>(null);
@@ -64,11 +69,10 @@ export function useBattleChannel(battleId: string): BattleChannel {
   const [closed, setClosed] = useState<BattleChannel['closed']>(null);
   const [clock, setClock] = useState<LocalClock | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
-  const socketRef = useRef<Socket | null>(null);
+  const { socket, connected } = useRoomSocket();
 
   useEffect(() => {
-    const socket = io(config.apiUrl, { withCredentials: true });
-    socketRef.current = socket;
+    if (!socket) return;
     /** Last server log position received (shown or queued); -1 before the first sync. */
     let seq = -1;
     let queue: PublicBattleEvent[] = [];
@@ -112,45 +116,49 @@ export function useBattleChannel(battleId: string): BattleChannel {
       );
     };
 
-    socket.on('connect', () => {
+    const join = () => {
       void (socket.emitWithAck(BATTLE_EVENTS.join, { battleId }) as Promise<BattleJoinAck>).then(
         (ack) => {
           if (ack.ok) resync(ack.sync);
           else setJoinError(ack.error);
         },
       );
-    });
-    socket.on(BATTLE_EVENTS.events, (message: BattleEventsMessage) => {
+    };
+    const onEvents = (message: BattleEventsMessage) => {
       if (message.battleId !== battleId || seq < 0 || message.toSeq <= seq) return;
       if (message.fromSeq !== seq + 1) return requestSync();
       seq = message.toSeq;
       setClock(pin(message.clock));
       queue = [...queue, ...message.events];
       drain();
-    });
-    socket.on(BATTLE_EVENTS.closed, (message: BattleClosedMessage) => {
+    };
+    const onClosed = (message: BattleClosedMessage) => {
       if (message.battleId === battleId) setClosed(message.reason);
-    });
+    };
+    socket.on('connect', join);
+    socket.on(BATTLE_EVENTS.events, onEvents);
+    socket.on(BATTLE_EVENTS.closed, onClosed);
+    if (socket.connected) join();
 
     return () => {
       if (timer !== null) clearTimeout(timer);
       socket.emit(BATTLE_EVENTS.leave, { battleId });
-      socket.disconnect();
-      socketRef.current = null;
+      socket.off('connect', join);
+      socket.off(BATTLE_EVENTS.events, onEvents);
+      socket.off(BATTLE_EVENTS.closed, onClosed);
     };
-  }, [battleId]);
+  }, [socket, battleId]);
 
   const send = useCallback(
     async (intent: ClientIntent): Promise<BattleCommandAck> => {
-      const socket = socketRef.current;
       if (!socket?.connected) return { ok: false, reason: 'disconnected' };
       return (await socket.emitWithAck(BATTLE_EVENTS.command, {
         battleId,
         intent,
       })) as BattleCommandAck;
     },
-    [battleId],
+    [socket, battleId],
   );
 
-  return { view, feed, clock, closed, joinError, send };
+  return { view, feed, clock, closed, joinError, send, connected };
 }

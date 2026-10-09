@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { readAnswerDraft, writeAnswerDraft } from './answer-draft';
 import { primaryButton, type TurnProps } from './turn-props';
 
 /** The signal winner writes an answer to an open question; the master will judge it. */
@@ -8,8 +9,9 @@ export function OpenAnswerForm({
   view,
   act,
   pending,
-}: Pick<TurnProps, 'view' | 'act' | 'pending'>) {
-  const [text, setText] = useState('');
+  battleId,
+}: Pick<TurnProps, 'view' | 'act' | 'pending' | 'battleId'>) {
+  const [text, setText] = useState(() => readAnswerDraft(battleId, view.turnToken));
   return (
     <form
       className="space-y-2"
@@ -27,7 +29,10 @@ export function OpenAnswerForm({
         rows={3}
         maxLength={2000}
         value={text}
-        onChange={(event) => setText(event.target.value)}
+        onChange={(event) => {
+          setText(event.target.value);
+          writeAnswerDraft(battleId, view.turnToken, event.target.value);
+        }}
         className="w-full rounded-md border border-gray-300 p-2 text-sm"
       />
       <button type="submit" className={primaryButton} disabled={pending || !text.trim()}>

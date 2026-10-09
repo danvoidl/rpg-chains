@@ -46,7 +46,12 @@ export const CombatantSchema = z.object({
   currentEnergy: z.number().nonnegative(),
   maxEnergy: z.number().nonnegative(),
   downed: z.boolean(),
-  /** Disconnected mid-battle: no longer eligible nor targetable, cannot return (spec §7). */
+  /**
+   * Has a live connection. A disconnected player is still in the battle and still a target, but
+   * cannot tap the signal until they return within the grace period (spec §3.3, §7).
+   */
+  connected: z.boolean(),
+  /** Out of the battle for good — left on purpose or past the grace period (spec §7). */
   left: z.boolean(),
   /** Acted last round: blocked from the next signal (spec §3.3). */
   blockedFromSignal: z.boolean(),
@@ -87,6 +92,13 @@ export const EnemySchema = z.object({
 export type Enemy = z.infer<typeof EnemySchema>;
 
 /**
+ * Why a battle waits on nobody (spec §3.2, §3.7): the master it needs is away with no objective
+ * question to fall back on, or no player who could act is connected.
+ */
+export const PauseReasonSchema = z.enum(['master_absent', 'all_disconnected']);
+export type PauseReason = z.infer<typeof PauseReasonSchema>;
+
+/**
  * Where the battle stands (Fase 3 plan, contracts). Group turns walk awaiting_signal →
  * awaiting_answer → (awaiting_judgement, open questions) → awaiting_action; a battle that needs
  * the master asks him for a question first (`awaiting_question`) and may pause while he is away
@@ -110,7 +122,7 @@ export const TurnSchema = z.discriminatedUnion('stage', [
     answer: z.string(),
   }),
   z.object({ stage: z.literal('awaiting_action'), profileId: IdSchema }),
-  z.object({ stage: z.literal('paused'), reason: z.literal('master_absent') }),
+  z.object({ stage: z.literal('paused'), reason: PauseReasonSchema }),
   z.object({ stage: z.literal('ended') }),
 ]);
 export type Turn = z.infer<typeof TurnSchema>;

@@ -3,9 +3,12 @@
 import { useState } from 'react';
 import { useRoom } from '@/features/rooms/api';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { RECONNECT_GRACE_MS } from '@rpg-chains/game-config';
 import { eligibleForSignal } from '@rpg-chains/battle-engine';
 import type { ClientIntent } from '@rpg-chains/shared-types';
-import { battleReasonMessage } from './battle-error-messages';
+import { useLeaveFormation } from './api';
+import { battleErrorMessage, battleReasonMessage } from './battle-error-messages';
 import { BattleResult } from './battle-result';
 import { clearedNodeIds } from './result-summary';
 import { CombatantCard } from './combatant-card';
@@ -23,7 +26,9 @@ interface BattleViewProps {
 
 /** The battle page body: enemies, the group, the turn and the feed (Fase 3 plan M4). */
 export function BattleView({ battleId, roomId, userId }: BattleViewProps) {
-  const { view, feed, clock, closed, joinError, send } = useBattleChannel(battleId);
+  const { view, feed, clock, closed, joinError, send, connected } = useBattleChannel(battleId);
+  const router = useRouter();
+  const leaveBattle = useLeaveFormation();
   const room = useRoom(roomId).data;
   const isMaster = room?.viewer.isMaster ?? false;
   /** The cleared nodes when the battle page first saw the room, before any defeat rolled them back. */
@@ -94,6 +99,13 @@ export function BattleView({ battleId, roomId, userId }: BattleViewProps) {
             progress={room?.progress ?? null}
             clearedBefore={clearedBefore}
           />
+        ) : closed === 'restarted' ? (
+          <div className="space-y-2">
+            <p role="status" className="text-sm text-gray-700">
+              O mestre reiniciou a batalha. A nova formação está na sala.
+            </p>
+            {backToRoom}
+          </div>
         ) : closed === 'cancelled' ? (
           <div className="space-y-2">
             <p role="status" className="text-sm text-gray-700">
@@ -108,7 +120,7 @@ export function BattleView({ battleId, roomId, userId }: BattleViewProps) {
               view={view}
               me={me}
               act={act}
-              pending={pending}
+              pending={pending || !connected}
               isMaster={isMaster}
               battleId={battleId}
             />
@@ -136,10 +148,33 @@ export function BattleView({ battleId, roomId, userId }: BattleViewProps) {
       </section>
 
       {me && !me.left && !view.result && (
-        // Fase 6 brings a reconnection grace; until then a dropped socket is a dropped fighter.
-        <p className="text-xs text-gray-500">
-          Sair desta página tira você da batalha até o fim dela.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-gray-500">
+            Se a conexão cair ou você sair desta página, tem {Math.round(RECONNECT_GRACE_MS / 1000)}{' '}
+            segundos para voltar sem sair da batalha.
+          </p>
+          <button
+            type="button"
+            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            disabled={leaveBattle.isPending}
+            onClick={() => {
+              if (
+                window.confirm(
+                  'Sair da batalha? Você não poderá voltar a ela, não recebe recompensa e, se o grupo perder, perde ouro como os outros.',
+                )
+              ) {
+                leaveBattle.mutate(battleId, { onSuccess: () => router.push(`/rooms/${roomId}`) });
+              }
+            }}
+          >
+            Sair da batalha
+          </button>
+          {leaveBattle.error != null && (
+            <p role="alert" className="w-full text-sm text-red-700">
+              {battleErrorMessage(leaveBattle.error, 'Não foi possível sair da batalha.')}
+            </p>
+          )}
+        </div>
       )}
 
       <EventFeed feed={feed} view={view} />

@@ -29,3 +29,13 @@ export const BattleSummarySchema = z.object({
   needsMaster: z.boolean(),
 });
 export type BattleSummary = z.infer<typeof BattleSummarySchema>;
+
+/**
+ * Asking to cancel a running battle while the master is away (spec §7, Fase 6 plan decision 8):
+ * it is cancelled once every connected participant asked within the timeout.
+ */
+export const CancelRequestResultSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('cancelled') }),
+  z.object({ status: z.literal('requested'), waitingFor: z.number().int().positive() }),
+]);
+export type CancelRequestResult = z.infer<typeof CancelRequestResultSchema>;

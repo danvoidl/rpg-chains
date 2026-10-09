@@ -19,6 +19,8 @@ const messages: Record<string, string> = {
   not_a_participant: 'Você não está nesta batalha.',
   not_allowed: 'Você não pode fazer isso.',
   not_master: 'Apenas o mestre pode fazer isso.',
+  master_present: 'O mestre está na sala: peça a ele para cancelar.',
+  battle_not_running: 'A batalha não está em andamento.',
   // The trail (Fase 5).
   node_locked: 'Este nó ainda está bloqueado.',
   node_cleared: 'Este nó já foi concluído.',
@@ -31,6 +33,7 @@ const messages: Record<string, string> = {
   blocked_this_round: 'Você agiu na rodada passada; espere a próxima.',
   player_downed: 'Seu personagem está caído.',
   player_left: 'Você saiu desta batalha.',
+  player_disconnected: 'Sem conexão: reconectando à batalha…',
   not_your_turn: 'Não é a sua vez.',
   not_answering: 'Não é você quem está respondendo.',
   not_acting: 'Não é você quem escolhe a ação.',
@@ -38,6 +41,7 @@ const messages: Record<string, string> = {
   not_implemented: 'Isso ainda não está disponível.',
   invalid_target: 'Alvo inválido.',
   disconnected: 'Sem conexão com o servidor.',
+  rate_limited: 'Calma: muitos toques seguidos. Tente de novo.',
   // Skills and items (M6).
   unknown_skill: 'Habilidade indisponível.',
   skill_on_cooldown: 'A habilidade ainda está em recarga.',

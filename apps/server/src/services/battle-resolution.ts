@@ -7,6 +7,7 @@ import {
 } from '@rpg-chains/battle-engine';
 import { recordNodeCleared, rollbackDefeat } from '@rpg-chains/campaign-rules';
 import { CampaignProfileSchema, CampaignSnapshotSchema } from '@rpg-chains/shared-types';
+import type { BattleJournal } from './battle-journal.js';
 import type { BattleListener, BattleRegistry, RunningBattle } from './battle-registry.js';
 import { changeProgress } from './room-progress.js';
 import { lockRoom } from './room-lock.js';
@@ -19,13 +20,15 @@ import { lockRoom } from './room-lock.js';
  * room lock; and the room's progress records it — a victory clears the node, a defeat undoes what
  * the defeated cleared since the chapter's campfire. All in one transaction, and only then does
  * the battle leave the registry — so the room cannot roll forward to a newer version, or close,
- * before the profiles and the progress are written.
+ * before the profiles and the progress are written. The battle's journal is deleted in the same
+ * transaction (Fase 6 plan decision 6): a journal found on boot is a battle not yet written back.
  */
 export class BattleResolution implements BattleListener {
   private readonly writing = new Map<string, Promise<void>>();
 
   constructor(
     private readonly registry: BattleRegistry,
+    private readonly journal: BattleJournal,
     private readonly prisma: PrismaClient,
     private readonly onResolved: (roomId: string) => void,
     private readonly onError: (error: unknown) => void,
@@ -33,6 +36,7 @@ export class BattleResolution implements BattleListener {
     registry.subscribe(this);
   }
 
+  /** Also called on boot for a journaled battle that had resolved but was not written back. */
   appended(battle: RunningBattle): void {
     if (battle.state.result === null || this.writing.has(battle.battleId)) return;
     const done = this.writeBack(battle)
@@ -55,8 +59,11 @@ export class BattleResolution implements BattleListener {
     const outcomes = profileOutcomes(state);
     const consumed = consumedItems(battle.log);
     const defeat = state.result === 'defeat';
+    // The batch that resolved the battle is journaled first, so the delete below finds every row.
+    await this.journal.idle(battle.battleId);
     await this.prisma.$transaction(async (tx) => {
       await lockRoom(tx, battle.roomId);
+      await tx.battleJournal.deleteMany({ where: { battleId: battle.battleId } });
       // Read under the lock: the settlement is a delta on the profile as it is now.
       const rows = await tx.campaignProfile.findMany({
         where: { id: { in: outcomes.map((o) => o.profileId) } },

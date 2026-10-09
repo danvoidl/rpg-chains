@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { BattleSummary, PublicQuestion } from '@rpg-chains/shared-types';
+import type { BattleSummary, CancelRequestResult, PublicQuestion } from '@rpg-chains/shared-types';
 import { apiFetch } from '@/lib/api';
 
 /** Every battle mutation changes the room page; the lobby signal refreshes the others. */
@@ -24,6 +24,7 @@ export function useJoinFormation() {
   );
 }
 
+/** Leaves a formation — or, on purpose and for good, a running battle (spec §7). */
 export function useLeaveFormation() {
   return useRoomMutation((battleId: string) =>
     apiFetch<void>(`/api/battles/${battleId}/participants`, { method: 'DELETE' }),
@@ -39,6 +40,20 @@ export function useStartBattle() {
 export function useCancelBattle() {
   return useRoomMutation((battleId: string) =>
     apiFetch<void>(`/api/battles/${battleId}/cancel`, { method: 'POST' }),
+  );
+}
+
+/** Master-only: discards a running battle and reopens it as a formation of the same group. */
+export function useRestartBattle() {
+  return useRoomMutation((battleId: string) =>
+    apiFetch<BattleSummary>(`/api/battles/${battleId}/restart`, { method: 'POST' }),
+  );
+}
+
+/** Asks to cancel a running battle while the master is away; all connected fighters must ask. */
+export function useRequestCancel() {
+  return useRoomMutation((battleId: string) =>
+    apiFetch<CancelRequestResult>(`/api/battles/${battleId}/cancel-requests`, { method: 'POST' }),
   );
 }
 

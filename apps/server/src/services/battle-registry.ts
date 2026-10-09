@@ -40,6 +40,9 @@ export interface FormingBattle extends BattleRecord {
   starting: boolean;
 }
 
+/** What a running battle is besides its fold: what the journal keeps (Fase 6 plan decision 6). */
+export type BattleHeader = BattleRecord;
+
 /** A battle being fought, or resolved and waiting for its write-back. */
 export interface RunningBattle extends BattleRecord {
   status: 'running';
@@ -49,6 +52,12 @@ export interface RunningBattle extends BattleRecord {
   state: BattleState;
   /** The full server log, secret events included. An event's `seq` is its 1-based position. */
   log: BattleEvent[];
+  /** Log length when the battle came back from the journal on boot; absent if it never did. */
+  restoredAtSeq?: number;
+  /** Set right before a restart drops it: the formation that replaces it (spec §7). */
+  restartedAs?: string;
+  /** Participants asking to cancel while the master is away, and until when (decision 8). */
+  cancelRequest?: { userIds: Set<string>; expiresAt: number };
 }
 
 export type ActiveBattle = FormingBattle | RunningBattle;
@@ -146,6 +155,29 @@ export class BattleRegistry {
     };
     this.battles.set(battle.battleId, battle);
     this.notify(battle, { fromSeq: 1, events });
+    return battle;
+  }
+
+  /**
+   * Puts back a battle read from the journal on boot (Fase 6 plan decision 6). No listener is told:
+   * its events are already journaled, nobody is connected to hear them, and no clock was running.
+   */
+  restore(
+    header: BattleHeader,
+    content: BattleContent,
+    events: BattleEvent[],
+    turnTimers: RoomTurnTimers,
+  ): RunningBattle {
+    const battle: RunningBattle = {
+      ...header,
+      status: 'running',
+      content,
+      turnTimers,
+      state: replay(emptyBattle(header.battleId), events),
+      log: [...events],
+      restoredAtSeq: events.length,
+    };
+    this.battles.set(battle.battleId, battle);
     return battle;
   }
 

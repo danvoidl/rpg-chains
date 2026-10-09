@@ -87,8 +87,14 @@ export function describeEvent(event: PublicBattleEvent, state: PublicBattleState
       return `${name(event.instanceId)} foi derrotado!`;
     case 'PlayerLeft':
       return `${name(event.profileId)} saiu da batalha.`;
+    case 'PlayerDisconnected':
+      return `${name(event.profileId)} perdeu a conexão.`;
+    case 'PlayerReconnected':
+      return `${name(event.profileId)} reconectou.`;
     case 'BattlePaused':
-      return 'Batalha pausada: o mestre saiu.';
+      return event.reason === 'master_absent'
+        ? 'Batalha pausada: o mestre saiu.'
+        : 'Batalha pausada: ninguém do grupo está conectado.';
     case 'MasterPresenceChanged':
       return event.online ? 'O mestre voltou.' : 'O mestre saiu.';
     case 'BattleResolved':

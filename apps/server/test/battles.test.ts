@@ -155,8 +155,15 @@ describe('starting', () => {
     expect([late.statusCode, late.json().error]).toEqual([409, 'battle_not_forming']);
     expect((await roomDetail(t, bia)).battles[0]!.status).toBe('running');
 
-    // The sole remaining participant may give up.
-    expect((await battleAction(app, ana, battleId, 'cancel')).statusCode).toBe(204);
+    // A running battle is not the participants' to cancel: with the master away, they ask
+    // together — here Ana is the only one (Fase 6 plan decision 8).
+    expect((await battleAction(app, ana, battleId, 'cancel')).statusCode).toBe(403);
+    const asked = await requestAs(app, ana, {
+      method: 'POST',
+      url: `/api/battles/${battleId}/cancel-requests`,
+    });
+    expect(asked.json()).toEqual({ status: 'cancelled' });
+    expect(app.battles.get(battleId)).toBeUndefined();
   });
 
   it('refuses a participant downed after joining', async () => {

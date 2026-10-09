@@ -317,7 +317,7 @@ describe('a battle over the socket', () => {
     });
   });
 
-  it('takes out a player whose last socket leaves; the last one out loses, and everyone is back at the campfire', async () => {
+  it('leaving on purpose is for good; the last one dropping past the grace loses, and everyone is back at the campfire', async () => {
     const f = await fight();
     const anaTabs = [await watcher(f.ana, f.battleId), await watcher(f.ana, f.battleId)];
     const biaSocket = await watcher(f.bia, f.battleId);
@@ -330,9 +330,15 @@ describe('a battle over the socket', () => {
     const anaLeft = next(biaSocket, BATTLE_EVENTS.events, (m: BattleEventsMessage) =>
       m.events.some((e) => e.type === 'PlayerLeft' && e.profileId === anaProfile.profileId),
     );
-    anaTabs[1]!.emit(BATTLE_EVENTS.leave, { battleId: f.battleId });
+    // Leaving on purpose is REST and takes no grace (spec §7).
+    const left = await requestAs(app, f.ana, {
+      method: 'DELETE',
+      url: `/api/battles/${f.battleId}/participants`,
+    });
+    expect(left.statusCode).toBe(204);
     await anaLeft;
 
+    // Bia drops: the battle pauses for her grace, then she is out and the battle is lost.
     const changed = next(await roomWatcher(f), 'room:changed', () => true);
     biaSocket.disconnect();
     await changed;

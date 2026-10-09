@@ -4,7 +4,7 @@ import { ActionSchema } from './commands.js';
 import { ActiveEffectSchema } from './battle-effects.js';
 import { PublicQuestionSchema } from './battle-question.js';
 import { BattleRewardSchema } from './battle-rewards.js';
-import { CombatantSchema, EnemySchema } from './battle-state.js';
+import { CombatantSchema, EnemySchema, PauseReasonSchema } from './battle-state.js';
 
 /**
  * Domain events — consummated facts folded by `evolve` (CLAUDE.md "Command vs Event"). They carry
@@ -156,8 +156,10 @@ const publicEvents = [
   }),
   z.object({ type: z.literal('EnemyDefeated'), instanceId: IdSchema }),
   z.object({ type: z.literal('PlayerLeft'), profileId: IdSchema }),
+  z.object({ type: z.literal('PlayerDisconnected'), profileId: IdSchema }),
+  z.object({ type: z.literal('PlayerReconnected'), profileId: IdSchema }),
   z.object({ type: z.literal('MasterPresenceChanged'), online: z.boolean() }),
-  z.object({ type: z.literal('BattlePaused'), turnToken, reason: z.literal('master_absent') }),
+  z.object({ type: z.literal('BattlePaused'), turnToken, reason: PauseReasonSchema }),
   /** A victory's rewards, one entry per participant still in the battle (spec §6). */
   z.object({ type: z.literal('RewardsGranted'), rewards: z.array(BattleRewardSchema) }),
   z.object({ type: z.literal('BattleResolved'), result: z.enum(['victory', 'defeat']) }),

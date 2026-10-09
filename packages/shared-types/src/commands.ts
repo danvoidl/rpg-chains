@@ -86,6 +86,8 @@ export const SystemCommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('AnswerTimedOut'), turnToken }),
   z.object({ type: z.literal('ActionTimedOut'), turnToken }),
   z.object({ type: z.literal('PlayerLeft'), profileId: IdSchema }),
+  z.object({ type: z.literal('PlayerDisconnected'), profileId: IdSchema }),
+  z.object({ type: z.literal('PlayerReconnected'), profileId: IdSchema }),
   z.object({ type: z.literal('MasterPresenceChanged'), online: z.boolean() }),
 ]);
 export type SystemCommand = z.infer<typeof SystemCommandSchema>;

@@ -212,3 +212,42 @@ describe('trades between players (Fase 4 plan decision 9)', () => {
     ]);
   });
 });
+
+describe('offers survive a restart (Fase 6 plan decision 9)', () => {
+  it('a pending offer is stored, comes back on the next boot, and still expires on time', async () => {
+    const { roomId, ana, biaId } = await pair();
+    await propose(ana, roomId, { toProfileId: biaId, give: { gold: 5, items: [] }, ask: nothing });
+    await app.tradeStore.settled();
+    const [stored] = await app.prisma.tradeOffer.findMany();
+    expect(stored).toMatchObject({ roomId, toProfileId: biaId, give: { gold: 5, items: [] } });
+
+    const next = await createTestApp({ trades: { timeoutMs: TIMEOUT_MS, restore: true } });
+    try {
+      expect(next.trades.involving(biaId).map((o) => o.id)).toEqual([stored!.id]);
+      await new Promise((resolve) => setTimeout(resolve, TIMEOUT_MS + 50));
+      expect(next.trades.involving(biaId)).toEqual([]);
+      await next.tradeStore.settled();
+      expect(await next.prisma.tradeOffer.count()).toBe(0);
+    } finally {
+      await next.close();
+    }
+  });
+
+  it('accepting or declining removes the stored copy', async () => {
+    const { roomId, ana, bia, biaId } = await pair();
+    await propose(ana, roomId, { toProfileId: biaId, give: { gold: 5, items: [] }, ask: nothing });
+    const [offer] = await offersOf(bia, roomId);
+    expect((await accept(bia, roomId, offer!.id)).statusCode).toBe(200);
+    await app.tradeStore.settled();
+    expect(await app.prisma.tradeOffer.count()).toBe(0);
+
+    await propose(ana, roomId, { toProfileId: biaId, give: { gold: 5, items: [] }, ask: nothing });
+    const [second] = await offersOf(bia, roomId);
+    await requestAs(app, bia, {
+      method: 'DELETE',
+      url: `/api/rooms/${roomId}/trades/${second!.id}`,
+    });
+    await app.tradeStore.settled();
+    expect(await app.prisma.tradeOffer.count()).toBe(0);
+  });
+});

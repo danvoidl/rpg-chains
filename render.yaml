@@ -1,0 +1,49 @@
+# Render Blueprint for the Fase 6 playtest (docs/phase-6-playtest.md): one free Docker web
+# service. The database is external (Neon); Render's free Postgres expires after 30 days.
+# Battles live in memory, so this must stay ONE instance.
+services:
+  - type: web
+    name: rpg-chains-playtest
+    runtime: docker
+    plan: free
+    region: virginia
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    numInstances: 1
+    autoDeployTrigger: off
+    envVars:
+      # Caddy listens here; the API and the web stay on inner ports (deploy/start.sh).
+      - key: PORT
+        value: '10000'
+      # The service's own public URL, e.g. https://rpg-chains-playtest.onrender.com. The web
+      # bundle inlines it at build time; auth and the socket check it at runtime.
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: BETTER_AUTH_URL
+        sync: false
+      - key: WEB_ORIGIN
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      # Neon connection string (sslmode=require).
+      - key: DATABASE_URL
+        sync: false
+      # Media storage (S3-compatible). Placeholders are fine if nobody uploads during the playtest.
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_FORCE_PATH_STYLE
+        value: 'true'
+      - key: S3_PUBLIC_BASE_URL
+        sync: false
+      - key: MEDIA_MAX_UPLOAD_BYTES
+        value: '5242880'
+      - key: MEDIA_MAX_VIDEO_BYTES
+        value: '52428800'

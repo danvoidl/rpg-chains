@@ -4,6 +4,7 @@ import {
   type BattleEvent,
   type BattleState,
   type CampaignSnapshot,
+  type Combatant,
   type Command,
 } from '@rpg-chains/shared-types';
 import { createBattle, type RosterEntry } from '../create-battle.js';
@@ -85,7 +86,7 @@ export function assertValidState(state: BattleState): void {
  */
 export const robot: Policy = (state, content) => {
   const { turn, turnToken, round } = state;
-  const active = state.combatants.filter((c) => !c.downed && !c.left);
+  const active = state.combatants.filter((c) => !c.downed && !c.left && c.connected);
 
   if (turn.stage === 'awaiting_signal') {
     const leaver = state.combatants[2];
@@ -190,4 +191,51 @@ export const masterRobot: Policy = (state, content) => {
     return { type: 'JudgeOpenAnswer', turnToken, approved: turnToken % 4 !== 0 };
   }
   return skilledRobot(state, content);
+};
+
+/** Who drops this round, by seat. */
+const dropperOf = (present: readonly Combatant[], round: number) => present[round % present.length];
+
+/**
+ * The robot with flaky connections (Fase 6 plan decision 11): one player drops every third round
+ * and everyone comes back the round after; at round 6 the whole group drops in order, so the
+ * battle pauses until the first of them returns; and whoever is answering or acting drops now and
+ * then and does not come back in time (the turn times out; they return with the others). Its
+ * choices still derive only from the state.
+ */
+export const connectionRobot: Policy = (state, content) => {
+  const { turn, turnToken, round } = state;
+  const present = state.combatants.filter((c) => !c.left);
+  const away = present.filter((c) => !c.connected);
+  const online = present.filter((c) => c.connected);
+
+  if (turn.stage === 'paused') {
+    return { type: 'PlayerReconnected', profileId: away[0]!.profileId };
+  }
+  if (turn.stage === 'awaiting_signal') {
+    if (round % 3 === 1 && away.length > 0) {
+      return { type: 'PlayerReconnected', profileId: away[0]!.profileId };
+    }
+    // Dropping in seat order keeps the ones away a prefix; after the pause the first seat is back,
+    // which breaks the prefix and lets the turn go on.
+    const awayIsPrefix = away.every((c, i) => c === present[i]);
+    if (round === 6 && awayIsPrefix && online.length > 0) {
+      return { type: 'PlayerDisconnected', profileId: online[0]!.profileId };
+    }
+    // A lone drop never empties the battle: someone who can act stays.
+    const canStillAct = online.filter((c) => !c.downed && c !== dropperOf(present, round));
+    const dropper = dropperOf(present, round);
+    if (round % 3 === 0 && round !== 6 && dropper?.connected && canStillAct.length > 0) {
+      return { type: 'PlayerDisconnected', profileId: dropper.profileId };
+    }
+  }
+  if (turn.stage === 'awaiting_answer' || turn.stage === 'awaiting_action') {
+    const actor = state.combatants.find((c) => c.profileId === turn.profileId)!;
+    if (!actor.connected) {
+      const timeout = turn.stage === 'awaiting_answer' ? 'AnswerTimedOut' : 'ActionTimedOut';
+      return { type: timeout, turnToken };
+    }
+    if (turnToken % 7 === 0) return { type: 'PlayerDisconnected', profileId: actor.profileId };
+  }
+  return robot(state, content);
 };

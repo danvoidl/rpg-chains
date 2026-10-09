@@ -18,6 +18,7 @@ import {
   type PublicBattleEvent,
 } from '@rpg-chains/shared-types';
 import type { RunningBattle } from '../services/battle-registry.js';
+import { participantGraceKey } from '../services/grace-timers.js';
 import { Presence } from './presence.js';
 import type { SocketData } from './socket-data.js';
 
@@ -47,8 +48,12 @@ function replier<T>(ack: unknown): (result: T) => void {
  * The running battle over Socket.IO (Fase 3 plan M3). Unlike the lobby, commands travel here: an
  * intent is parsed, its actor bound from the session — never trusted from the payload — and handed
  * to the registry, whose verdict is the ack. Every accepted batch goes to the channel projected
- * through `toPublicEvent`, so no seed, deck or answer key ever leaves the server. A player whose
- * last socket leaves the battle is out of it (`PlayerLeft`, spec §7).
+ * through `toPublicEvent`, so no seed, deck or answer key ever leaves the server.
+ *
+ * A participant whose last socket leaves the channel — disconnect, reload, `battle:leave` — has
+ * dropped, not left (spec §7, Fase 6 plan decision 1): `PlayerDisconnected`, and the reconnection
+ * grace starts; joining again in time is `PlayerReconnected`, and the grace running out is
+ * `PlayerLeft`. Leaving on purpose is a REST call (`DELETE /battles/:id/participants`).
  */
 export function registerBattleChannel(io: Server, app: FastifyInstance): void {
   const presence = new Presence();
@@ -73,11 +78,16 @@ export function registerBattleChannel(io: Server, app: FastifyInstance): void {
       io.to(battleChannel(battle.battleId)).emit(BATTLE_EVENTS.events, message);
     },
     removed(battle) {
-      const closed: BattleClosedMessage = {
-        battleId: battle.battleId,
-        reason:
-          battle.status === 'running' && battle.state.result !== null ? 'resolved' : 'cancelled',
-      };
+      const closed: BattleClosedMessage =
+        battle.status === 'running' && battle.restartedAs
+          ? { battleId: battle.battleId, reason: 'restarted', next: battle.restartedAs }
+          : {
+              battleId: battle.battleId,
+              reason:
+                battle.status === 'running' && battle.state.result !== null
+                  ? 'resolved'
+                  : 'cancelled',
+            };
       io.to(battleChannel(battle.battleId)).emit(BATTLE_EVENTS.closed, closed);
       presence.drop(battle.battleId);
       io.in(battleChannel(battle.battleId)).socketsLeave(battleChannel(battle.battleId));
@@ -118,18 +128,43 @@ export function registerBattleChannel(io: Server, app: FastifyInstance): void {
     return { ...intent, profileId: combatant.profileId } as Command;
   }
 
+  /** The running battle's combatant of `userId` that is still in it, if any. */
+  const combatantOf = (battleId: string, userId: string) => {
+    const battle = app.battles.get(battleId);
+    if (battle?.status !== 'running' || battle.state.result !== null) return undefined;
+    return battle.state.combatants.find((c) => c.userId === userId && !c.left);
+  };
+
+  /** The user's last socket left the channel: a drop, with the grace to come back (spec §7). */
+  const dropped = (battleId: string, userId: string) => {
+    const combatant = combatantOf(battleId, userId);
+    if (!combatant) return;
+    const { profileId } = combatant;
+    if (combatant.connected) {
+      app.battles.apply(battleId, { type: 'PlayerDisconnected', profileId });
+    }
+    app.grace.start(participantGraceKey(battleId, profileId), () => {
+      if (combatantOf(battleId, userId))
+        app.battles.apply(battleId, { type: 'PlayerLeft', profileId });
+    });
+  };
+
+  /** A socket of the user joined the channel: a dropped participant is back. */
+  const rejoined = (battleId: string, userId: string) => {
+    const combatant = combatantOf(battleId, userId);
+    if (!combatant) return;
+    app.grace.cancel(participantGraceKey(battleId, combatant.profileId));
+    if (!combatant.connected) {
+      app.battles.apply(battleId, { type: 'PlayerReconnected', profileId: combatant.profileId });
+    }
+  };
+
   const leave = (socket: BattleSocket, battleId: string) => {
     if (!socket.data.battleIds.delete(battleId)) return;
     const { userId } = socket.data;
     presence.remove(battleId, userId, socket.id);
     void socket.leave(battleChannel(battleId));
-    if (presence.has(battleId, userId)) return;
-
-    const battle = app.battles.get(battleId);
-    if (battle?.status !== 'running' || battle.state.result !== null) return;
-    const combatant = battle.state.combatants.find((c) => c.userId === userId && !c.left);
-    if (combatant)
-      app.battles.apply(battleId, { type: 'PlayerLeft', profileId: combatant.profileId });
+    if (!presence.has(battleId, userId)) dropped(battleId, userId);
   };
 
   io.on('connection', (raw) => {
@@ -149,6 +184,7 @@ export function registerBattleChannel(io: Server, app: FastifyInstance): void {
       socket.data.battleIds.add(battleId);
       presence.add(battleId, userId, socket.id);
       void socket.join(battleChannel(battleId));
+      rejoined(battleId, userId);
       reply({ ok: true, sync: syncOf(battle) });
     });
 
@@ -165,6 +201,8 @@ export function registerBattleChannel(io: Server, app: FastifyInstance): void {
 
     socket.on(BATTLE_EVENTS.command, async (payload: unknown, ack?: unknown) => {
       const reply = replier<BattleCommandAck>(ack);
+      if (!socket.data.commands.allow(Date.now()))
+        return reply({ ok: false, reason: 'rate_limited' });
       const parsed = BattleCommandMessageSchema.safeParse(payload);
       if (!parsed.success) return reply({ ok: false, reason: 'invalid_message' });
       const { battleId, intent } = parsed.data;

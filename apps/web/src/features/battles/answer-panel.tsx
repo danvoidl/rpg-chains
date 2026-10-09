@@ -31,7 +31,7 @@ export function AnswerPanel(props: TurnProps & { question: PublicQuestion; profi
           ))}
         </div>
       ) : answering ? (
-        <OpenAnswerForm view={view} act={act} pending={pending} />
+        <OpenAnswerForm view={view} act={act} pending={pending} battleId={props.battleId} />
       ) : null}
     </div>
   );

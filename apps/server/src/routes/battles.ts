@@ -1,7 +1,12 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { toPublicQuestion } from '@rpg-chains/battle-engine';
 import { checkNodeEntry } from '@rpg-chains/campaign-rules';
-import { BattleCreateInputSchema, type PublicQuestion } from '@rpg-chains/shared-types';
+import { CANCEL_REQUEST_TIMEOUT_MS } from '@rpg-chains/game-config';
+import {
+  BattleCreateInputSchema,
+  type CancelRequestResult,
+  type PublicQuestion,
+} from '@rpg-chains/shared-types';
 import { toBattleSummary } from '../mappers/battle.js';
 import {
   forming,
@@ -9,10 +14,13 @@ import {
   leaveFormation,
   mayCancel,
   openFormation,
+  requestCancel,
+  restartBattle,
   type Candidate,
   type Refusal,
 } from '../services/battle-formation.js';
 import { startBattle } from '../services/battle-start.js';
+import { participantGraceKey } from '../services/grace-timers.js';
 import { loadProgress } from '../services/room-progress.js';
 import { canView, findRoom } from '../services/room-query.js';
 import { syncRoomVersion } from '../services/room-version.js';
@@ -111,6 +119,18 @@ export default async function battlesRoutes(app: FastifyInstance): Promise<void>
       const userId = request.user!.id;
       const battle = app.battles.get(request.params.battleId);
       if (!battle) return reply.code(404).send({ error: 'battle_not_found' });
+      if (battle.status === 'running') {
+        // Leaving a running battle on purpose is for good, no grace (spec §7).
+        const me = battle.state.combatants.find((c) => c.userId === userId && !c.left);
+        if (!me) return reply.code(404).send({ error: 'not_a_participant' });
+        app.grace.cancel(participantGraceKey(battle.battleId, me.profileId));
+        const left = app.battles.apply(battle.battleId, {
+          type: 'PlayerLeft',
+          profileId: me.profileId,
+        });
+        if (!left.ok) return reply.code(409).send({ error: left.reason });
+        return reply.code(204).send();
+      }
       const open = forming(battle);
       if ('error' in open) return refuse(reply, open);
       const me = open.participants.find((p) => p.userId === userId);
@@ -136,7 +156,7 @@ export default async function battlesRoutes(app: FastifyInstance): Promise<void>
         prisma: app.prisma,
         registry: app.battles,
         seed: app.battleSeed,
-        masterOnline: (roomId, masterId) => app.lobbyPresence.has(roomId, masterId),
+        masterOnline: (roomId, masterId) => app.lobbyPresent(roomId, masterId),
       },
       open,
     );
@@ -188,4 +208,64 @@ export default async function battlesRoutes(app: FastifyInstance): Promise<void>
     app.roomEvents.changed(battle.roomId);
     return reply.code(204).send();
   });
+
+  /**
+   * The master restarts a running battle (spec §7, Fase 6 plan decision 7): it is discarded and a
+   * formation on the same node, with everyone who had not left, replaces it.
+   */
+  app.post<BattleParams>('/battles/:battleId/restart', { preHandler }, async (request, reply) => {
+    const userId = request.user!.id;
+    const { battleId } = request.params;
+    const found = app.battles.get(battleId);
+    if (!found) return reply.code(404).send({ error: 'battle_not_found' });
+    const room = await app.prisma.room.findUniqueOrThrow({
+      where: { id: found.roomId },
+      select: { masterId: true },
+    });
+    if (room.masterId !== userId) return reply.code(403).send({ error: 'not_master' });
+
+    const battle = app.battles.get(battleId);
+    if (battle?.status !== 'running') return reply.code(409).send({ error: 'battle_not_running' });
+    if (battle.state.result !== null) return reply.code(409).send({ error: 'battle_ended' });
+    const next = restartBattle(app.battles, battle);
+    app.roomEvents.changed(battle.roomId);
+    return toBattleSummary(next);
+  });
+
+  /**
+   * A participant asks to cancel a running battle while the master is away (Fase 6 plan decision
+   * 8); it is cancelled once every connected participant asked.
+   */
+  app.post<BattleParams>(
+    '/battles/:battleId/cancel-requests',
+    { preHandler },
+    async (request, reply) => {
+      const userId = request.user!.id;
+      const { battleId } = request.params;
+      const found = app.battles.get(battleId);
+      if (!found) return reply.code(404).send({ error: 'battle_not_found' });
+      const room = await app.prisma.room.findUniqueOrThrow({
+        where: { id: found.roomId },
+        select: { masterId: true },
+      });
+
+      const battle = app.battles.get(battleId);
+      if (battle?.status !== 'running')
+        return reply.code(409).send({ error: 'battle_not_running' });
+      if (battle.state.result !== null) return reply.code(409).send({ error: 'battle_ended' });
+      if (app.lobbyPresent(battle.roomId, room.masterId)) {
+        return reply.code(409).send({ error: 'master_present' });
+      }
+      const waitingFor = requestCancel(battle, userId, Date.now(), CANCEL_REQUEST_TIMEOUT_MS);
+      if (typeof waitingFor !== 'number') return refuse(reply, waitingFor);
+      if (waitingFor > 0) {
+        const result: CancelRequestResult = { status: 'requested', waitingFor };
+        return result;
+      }
+      app.battles.remove(battleId);
+      app.roomEvents.changed(battle.roomId);
+      const result: CancelRequestResult = { status: 'cancelled' };
+      return result;
+    },
+  );
 }

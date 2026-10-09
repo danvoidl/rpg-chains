@@ -162,10 +162,16 @@ with `checkNodeEntry` and record with the `record*` functions; never compute unl
 or the web. `progress-property.test.ts` is the guard, like the engine's `replay.test.ts`.
 
 **Runtime vs durable state boundary** (spec §3.7): combat-transient state (the active battle,
-its event log) lives **in memory** and is losable — a crash means the group restarts the
-battle. Progression state (level, XP, equipment, the "caído"/downed flag) is durable in
-Postgres. There is deliberately no active-battle table. The concurrency unit is the _battle_,
-keyed by `battleId` — not the room.
+its event log) lives **in memory**, which is the source of truth while the process runs.
+Progression state (level, XP, equipment, the "caído"/downed flag) is durable in Postgres. Since
+Fase 6 every accepted batch is also copied to the **battle journal** (`BattleJournal` +
+`BattleJournalEntry`, `services/battle-journal.ts`) — after `apply`, never inside it, queued per
+battle — only so a restart can bring the battle back (`services/battle-restore.ts`, on ready).
+The journal stores no content (it is re-cut from the immutable version) and no state (it is the
+fold); the write-back deletes it in its own transaction, so **a journal that exists is a battle not
+yet written back**. Pending trade offers follow the same pattern (memory index, mirrored to
+`TradeOffer` by `services/trade-offer-store.ts`, restored on ready). The concurrency unit is the
+_battle_, keyed by `battleId` — not the room.
 
 **Server structure = Fastify plugins + `buildApp()`.** `server.ts` is entrypoint only (build
 app, listen, graceful shutdown). `app.ts` exports `buildApp()` which registers everything —
@@ -190,9 +196,16 @@ ack. All battle state is in `services/battle-registry.ts` (memory only), whose `
 `decide` → append → `evolve` **with no `await` in between** — that is the per-battle lock; keep
 every registry check after a handler's last `await`. Timers, the channel broadcast and the profile
 write-back are registry listeners. The battles plugin must be registered **before** `realtime`: its
-`preClose` drops the battles first, so a shutdown is a crash (spec §3.7), not a mass `PlayerLeft`.
+`preClose` waits for the journal and drops the battles from memory first, so a shutdown leaves them
+journaled for the next boot instead of writing every player back as dropped.
 The master's **lobby** presence drives `MasterPresenceChanged` (`realtime/master-presence.ts`), so
 the web keeps the lobby socket in the `/rooms/[roomId]` layout, alive across room ↔ battle pages.
+**A dropped socket is a drop, not a departure** (Fase 6, spec §7): the last socket of a participant
+leaving the battle channel (disconnect, reload, `battle:leave`) is `PlayerDisconnected` plus a
+reconnection grace (`services/grace-timers.ts`, `RECONNECT_GRACE_MS`); joining again in time is
+`PlayerReconnected`, the grace running out is `PlayerLeft`. Leaving on purpose is REST (`DELETE
+/battles/:id/participants`). The master's lobby presence waits out the same grace
+(`app.lobbyPresent`), so connection state is a fact in the log, never a server-side guess.
 
 **Auth is Better Auth** (`apps/server/src/auth.ts`) backed by the Prisma adapter; its `User`
 table doubles as the domain user account. Lucia is deprecated — do not reintroduce it. The

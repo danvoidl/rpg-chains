@@ -262,6 +262,12 @@ export function evolve(state: BattleState, event: BattleEvent): BattleState {
     case 'PlayerLeft':
       return updateCombatant(state, event.profileId, (c) => ({ ...c, left: true }));
 
+    case 'PlayerDisconnected':
+      return updateCombatant(state, event.profileId, (c) => ({ ...c, connected: false }));
+
+    case 'PlayerReconnected':
+      return updateCombatant(state, event.profileId, (c) => ({ ...c, connected: true }));
+
     case 'MasterPresenceChanged':
       return { ...state, masterOnline: event.online };
 

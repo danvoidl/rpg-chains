@@ -17,7 +17,7 @@ import itemsRoutes from './routes/items.js';
 import classesRoutes from './routes/classes.js';
 import classKitRoutes from './routes/class-kit.js';
 import { randomInt } from 'node:crypto';
-import { BATTLE_TIMERS, TRADE_OFFER_TIMEOUT_MS } from '@rpg-chains/game-config';
+import { BATTLE_TIMERS, RECONNECT_GRACE_MS, TRADE_OFFER_TIMEOUT_MS } from '@rpg-chains/game-config';
 import battlesPlugin, { type BattlesPluginOptions } from './plugins/battles.js';
 import realtimePlugin from './plugins/realtime.js';
 import catalogRoutes from './routes/catalog.js';
@@ -36,9 +36,9 @@ import battlesRoutes from './routes/battles.js';
 
 export interface AppOptions {
   logger: boolean;
-  /** Overrides for tests: short turn timers, a fixed seed. */
+  /** Overrides for tests: short turn timers, a fixed seed, a short reconnection grace. */
   battles?: Partial<BattlesPluginOptions>;
-  /** Overrides for tests: a short trade offer timeout. */
+  /** Overrides for tests: a short trade offer timeout, no restore. */
   trades?: Partial<TradesPluginOptions>;
 }
 
@@ -63,10 +63,16 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   await app.register(battlesPlugin, {
     timers: BATTLE_TIMERS,
     seed: () => randomInt(2 ** 31),
+    reconnectGraceMs: RECONNECT_GRACE_MS,
+    restore: true,
     ...options.battles,
   });
   await app.register(realtimePlugin);
-  await app.register(tradesPlugin, { timeoutMs: TRADE_OFFER_TIMEOUT_MS, ...options.trades });
+  await app.register(tradesPlugin, {
+    timeoutMs: TRADE_OFFER_TIMEOUT_MS,
+    restore: true,
+    ...options.trades,
+  });
   await app.register(healthRoutes);
   await app.register(campaignsRoutes, { prefix: '/api/campaigns' });
   await app.register(villainsRoutes, { prefix: '/api/campaigns/:campaignId/villains' });
