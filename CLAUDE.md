@@ -349,3 +349,12 @@ not duplicate it here; drop notes made obsolete by the current setup.**
   `http://localhost:9000/...` URLs (`S3_PUBLIC_BASE_URL`) that phones cannot load. → For a LAN
   playtest point `S3_ENDPOINT`/`S3_PUBLIC_BASE_URL` at the LAN IP before uploading, and test the
   web over the LAN IP, not just localhost.
+
+### 2026-10-09 (deploy plan)
+
+- **`@aws-sdk/client-s3` ≥ 3.729 presigns a CRC32 of an empty body** (`x-amz-checksum-crc32=AAAAAA==`)
+  into PutObject URLs, so R2 rejects the browser's real upload. → Keep
+  `requestChecksumCalculation`/`responseChecksumValidation: 'WHEN_REQUIRED'` in `storage.ts`.
+- **Better Auth 1.7 drops a multi-hop `X-Forwarded-For`** unless `trustedProxies` is set, leaving the
+  rate limit keyless; Fastify `trustProxy` does not help (nothing reads `req.ip`). → On Render read
+  Cloudflare's single-value `cf-connecting-ip` first (`auth.ts`).

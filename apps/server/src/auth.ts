@@ -10,4 +10,10 @@ export const auth = betterAuth({
   secret: config.BETTER_AUTH_SECRET,
   baseURL: config.BETTER_AUTH_URL,
   trustedOrigins: [config.WEB_ORIGIN],
+  advanced: {
+    // Client IP for the rate limit. Behind Render (Cloudflare → Render → Caddy) X-Forwarded-For
+    // has several hops, which Better Auth refuses to trust; Cloudflare's CF-Connecting-IP is a
+    // single value it overwrites itself. Off Render it is absent and X-Forwarded-For applies.
+    ipAddress: { ipAddressHeaders: ['cf-connecting-ip', 'x-forwarded-for'] },
+  },
 });

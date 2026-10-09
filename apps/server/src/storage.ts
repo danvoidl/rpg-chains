@@ -10,4 +10,8 @@ export const s3 = new S3Client({
     secretAccessKey: config.S3_SECRET_ACCESS_KEY,
   },
   forcePathStyle: config.S3_FORCE_PATH_STYLE,
+  // The SDK adds CRC32 checksums by default (since 3.729). On a presigned PUT the checksum is
+  // computed over an empty body, so R2 rejects the browser's upload of the real file.
+  requestChecksumCalculation: 'WHEN_REQUIRED',
+  responseChecksumValidation: 'WHEN_REQUIRED',
 });

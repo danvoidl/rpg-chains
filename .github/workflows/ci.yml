@@ -1,0 +1,67 @@
+# Build, typecheck, lint and test on every push and PR to develop/main. Render deploys only after
+# this passes (autoDeployTrigger: checksPass in render.yaml). The e2e suite is not run here.
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: rpg
+          POSTGRES_PASSWORD: rpg
+          POSTGRES_DB: rpg_chains_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rpg"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # The server validates its whole env at import (env-schema.ts), so the tests need every value.
+    # None of them is a secret: storage is never contacted (presigning is local) and the tests run
+    # against TEST_DATABASE_URL only.
+    env:
+      DATABASE_URL: postgresql://rpg:rpg@localhost:5432/rpg_chains_test
+      TEST_DATABASE_URL: postgresql://rpg:rpg@localhost:5432/rpg_chains_test
+      BETTER_AUTH_SECRET: ci-only-secret
+      BETTER_AUTH_URL: http://localhost:3001
+      WEB_ORIGIN: http://localhost:3000
+      PORT: '3001'
+      S3_ENDPOINT: http://localhost:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: rpg-chains-media
+      S3_ACCESS_KEY_ID: ci
+      S3_SECRET_ACCESS_KEY: ci
+      S3_FORCE_PATH_STYLE: 'true'
+      S3_PUBLIC_BASE_URL: http://localhost:9000/rpg-chains-media
+      MEDIA_MAX_UPLOAD_BYTES: '5242880'
+      MEDIA_MAX_VIDEO_BYTES: '52428800'
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+
+    steps:
+      - uses: actions/checkout@v4
+      # Version from `packageManager` in package.json.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # `pnpm install` does not generate the Prisma Client.
+      - run: pnpm --filter @rpg-chains/server exec prisma generate
+      - run: pnpm turbo run build typecheck lint test
