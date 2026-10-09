@@ -18,12 +18,6 @@ services:
     preDeployCommand: pnpm --filter @rpg-chains/server exec prisma migrate deploy
     # Room for the API's preClose to finish writing the battle journal.
     maxShutdownDelaySeconds: 60
-    # Never read or written. A service with a disk deploys by stopping the old instance before
-    # starting the new one, so two processes never restore the same battle (deploy plan §3.2).
-    disk:
-      name: deploy-lock
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: MIGRATE_ON_BOOT
         value: 'false'
@@ -64,9 +58,7 @@ services:
       - key: MEDIA_MAX_VIDEO_BYTES
         value: '52428800'
 
-  # Free plan: sleeps after 15 min, and has no preDeployCommand nor disk — so it migrates on boot
-  # and its deploys overlap two processes. Deploy-with-a-battle-running (deploy plan §7, item 5)
-  # can only be checked here after moving it to `starter` with the same disk.
+  # Free plan: sleeps after 15 min and has no preDeployCommand, so it migrates on boot.
   - type: web
     name: rpg-chains-staging
     runtime: docker

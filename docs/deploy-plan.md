@@ -43,15 +43,15 @@ O que **não muda** em relação ao playtest, e por quê:
 
 O que **muda**:
 
-| Item         | Playtest (hoje)             | Produção (alvo)                                         |
-| ------------ | --------------------------- | ------------------------------------------------------- |
-| Plano Render | Free (hiberna em 15 min)    | Starter ou superior (sempre ligado, pre-deploy, discos) |
-| Endereço     | `*.onrender.com`            | `app.<domínio>` (DNS na Cloudflare)                     |
-| Mídia        | desligada (placeholders)    | R2, leitura em `media.<domínio>`                        |
-| Migrations   | no boot (`deploy/start.sh`) | `preDeployCommand` do Render (falha → deploy não sobe)  |
-| Deploy       | manual, só com sala parada  | automático após CI verde, sem sobreposição de processos |
-| Ambientes    | um                          | homologação (`develop`) + produção (`main`)             |
-| Banco        | um projeto Neon             | um projeto, branch `production` + branch `staging`      |
+| Item         | Playtest (hoje)             | Produção (alvo)                                        |
+| ------------ | --------------------------- | ------------------------------------------------------ |
+| Plano Render | Free (hiberna em 15 min)    | Starter ou superior (sempre ligado, pre-deploy)        |
+| Endereço     | `*.onrender.com`            | `app.<domínio>` (DNS na Cloudflare)                    |
+| Mídia        | desligada (placeholders)    | R2, leitura em `media.<domínio>`                       |
+| Migrations   | no boot (`deploy/start.sh`) | `preDeployCommand` do Render (falha → deploy não sobe) |
+| Deploy       | manual, só com sala parada  | automático após CI verde, fora do horário das sessões  |
+| Ambientes    | um                          | homologação (`develop`) + produção (`main`)            |
+| Banco        | um projeto Neon             | um projeto, branch `production` + branch `staging`     |
 
 ## 2. Pré-requisitos (contas e domínio) — responsabilidade do usuário
 
@@ -95,28 +95,28 @@ export const s3 = new S3Client({
 O RustFS do dev aceita os dois modos, então a mudança não quebra o ambiente local. Conferir na
 homologação: subir imagem e vídeo pelo editor e abrir a URL pública.
 
-### 3.2 Deploy sem sobreposição de processos (obrigatório)
+### 3.2 Deploy com batalha rodando (adiado)
 
-Risco registrado no M8 da Fase 6: o Render faz deploy **sem downtime** — sobe o processo novo e
-só derruba o antigo quando o novo responde ao health check. Nesse intervalo o novo restaura do
-diário uma batalha que o antigo ainda está jogando; os dois disputam o diário e o write-back pode
-acontecer duas vezes (XP/ouro em dobro ou perdido). Em produção, com deploy automático, isso
-**vai** acontecer. Duas saídas:
+**Decisão (2026-10-09): por enquanto não tratamos deploy com batalha rodando.** O Render faz deploy
+**sem downtime**: sobe o processo novo e só derruba o antigo quando o novo responde ao health
+check. Se houver batalha rodando nesse intervalo, o novo a restaura do diário enquanto o antigo
+ainda a joga; os dois disputam o diário e o write-back pode acontecer duas vezes (XP/ouro em dobro
+ou perdido). Risco aceito: deployar a produção fora do horário das sessões.
 
-- **A. Curto prazo — disco persistente (recomendada para começar).** O Render desliga o deploy
-  sem downtime em serviços com disco: para o antigo (SIGTERM → `preClose` grava o diário) e só
-  então sobe o novo, que restaura as batalhas pausadas. Custo: um disco de 1 GB (centavos/mês),
-  que nem precisa ser usado. Efeito colateral aceitável: ~30–60 s fora do ar por deploy; as
-  páginas já reconectam sozinhas (Fase 6) e as batalhas voltam pausadas.
-- **B. Definitiva — "dono" do diário no banco.** Uma linha de lease (`JournalLease`: `holderId`,
-  `expiresAt`) renovada por batimento; `battle-restore` só restaura quando o lease anterior
-  expirou ou foi solto no `preClose`, e o processo antigo para de aceitar comandos ao perder o
-  lease. Devolve o deploy sem downtime, mas é trabalho de fase (testes de restart em dobro no
-  estilo de `battle-restart.test.ts`).
+Quando isso passar a importar, há duas saídas:
 
-Recomendação: **A agora**, B quando o tempo fora do ar por deploy incomodar. Em qualquer caso,
-aumentar o tempo de desligamento gracioso (`maxShutdownDelaySeconds`, ver §6) para o journal
-terminar de gravar.
+- **Disco persistente.** O Render desliga o deploy sem downtime em serviços com disco: para o
+  antigo (SIGTERM → `preClose` grava o diário) e só então sobe o novo, que restaura as batalhas
+  pausadas. Custo: um disco de 1 GB que nem precisa ser usado, e ~30–60 s fora do ar por deploy.
+  É só acrescentar um bloco `disk` ao serviço no `render.yaml`.
+- **"Dono" do diário no banco.** Uma linha de lease (`holderId`, `expiresAt`) renovada por
+  batimento; `battle-restore` só restaura quando o lease anterior expirou ou foi solto no
+  `preClose`, e o processo antigo para de aceitar comandos ao perder o lease. Mantém o deploy sem
+  downtime, mas é trabalho de fase (testes de restart em dobro no estilo de
+  `battle-restart.test.ts`).
+
+O `maxShutdownDelaySeconds: 60` do `render.yaml` já dá tempo para o `preClose` gravar o diário
+num reinício comum.
 
 ### 3.3 Migrations fora do boot
 
@@ -266,7 +266,7 @@ write-back e cada rota faz várias idas ao banco.
 ### 6.1 Blueprint
 
 O [`render.yaml`](../render.yaml) define os dois serviços: `rpg-chains` (produção: Starter, branch
-`main`, `preDeployCommand` com as migrations, disco `deploy-lock`, `MIGRATE_ON_BOOT=false`) e
+`main`, `preDeployCommand` com as migrations, `MIGRATE_ON_BOOT=false`) e
 `rpg-chains-staging` (gratuito, branch `develop`, `MIGRATE_ON_BOOT=true`). Ambos com uma
 instância, `autoDeployTrigger: checksPass` e `maxShutdownDelaySeconds: 60`. Valores
 `sync: false` (URLs, `DATABASE_URL`, credenciais e endpoint do R2) são preenchidos no painel;
@@ -283,8 +283,6 @@ Observações:
 - `BETTER_AUTH_SECRET` gerado uma vez e nunca trocado sem querer (trocar desloga todo mundo).
   Nunca reaproveitar o da homologação.
 - `BATTLE_SEED` **não** existe em nenhum ambiente publicado (é só do e2e).
-- Conferir no painel que o disco realmente desativou o zero-downtime (o log do deploy mostra a
-  instância antiga parando antes da nova subir).
 
 ### 6.2 Domínio do app
 
@@ -321,20 +319,16 @@ de URL apontam para o domínio custom, porque o cookie e o CORS só aceitam uma 
 
 ### Etapa 3 — Checklist de homologação
 
-| #   | Verificação                                                              | Esperado                                                         |
-| --- | ------------------------------------------------------------------------ | ---------------------------------------------------------------- |
-| 1   | Criar conta e logar pelo celular (4G)                                    | cookie aceito, sessão mantida ao recarregar                      |
-| 2   | DevTools → aba Network → socket                                          | `wss://staging.<domínio>/socket.io/…`, 101                       |
-| 3   | Editor: subir imagem de vilão e vídeo de abertura                        | PUT 200 no R2; imagem abre em `media-staging`                    |
-| 4   | Publicar campanha, criar sala, entrar com 2 aparelhos, jogar uma batalha | fluxo completo, write-back de XP/ouro                            |
-| 5   | Push trivial em `develop` com batalha rodando                            | deploy espera CI; batalha volta pausada, sem XP duplicado (§3.2) |
-| 6   | Migration de teste (coluna nula) num push                                | aplicada antes do processo novo subir                            |
-| 7   | Migration que falha de propósito (numa branch descartável)               | deploy aborta, versão antiga continua no ar                      |
-| 8   | Login errado repetido de dois IPs diferentes                             | rate limit por IP, não global (§3.4)                             |
-| 9   | Restaurar backup do Neon numa branch e apontar a homologação             | dados íntegros                                                   |
-
-O item 5 é o que justifica a homologação: é o único jeito de ver o comportamento real do deploy
-do Render com batalha rodando.
+| #   | Verificação                                                              | Esperado                                      |
+| --- | ------------------------------------------------------------------------ | --------------------------------------------- |
+| 1   | Criar conta e logar pelo celular (4G)                                    | cookie aceito, sessão mantida ao recarregar   |
+| 2   | DevTools → aba Network → socket                                          | `wss://staging.<domínio>/socket.io/…`, 101    |
+| 3   | Editor: subir imagem de vilão e vídeo de abertura                        | PUT 200 no R2; imagem abre em `media-staging` |
+| 4   | Publicar campanha, criar sala, entrar com 2 aparelhos, jogar uma batalha | fluxo completo, write-back de XP/ouro         |
+| 5   | Migration de teste (coluna nula) num push                                | aplicada antes do processo novo subir         |
+| 6   | Migration que falha de propósito (numa branch descartável)               | deploy aborta, versão antiga continua no ar   |
+| 7   | Login errado repetido de dois IPs diferentes                             | rate limit por IP, não global (§3.4)          |
+| 8   | Restaurar backup do Neon numa branch e apontar a homologação             | dados íntegros                                |
 
 ### Etapa 4 — Produção
 
@@ -348,8 +342,8 @@ do Render com batalha rodando.
 ### 8.1 Fluxo de entrega
 
 `feature → develop` (homologação publica sozinha após CI) → teste manual → PR `develop → main`
-(produção publica após CI). Deploy de produção preferencialmente fora do horário de sessões; com
-a opção A (§3.2) cada deploy é ~1 min fora do ar com as batalhas voltando pausadas.
+(produção publica após CI). Merge na `main` só fora do horário das sessões: um deploy com batalha
+rodando pode duplicar ou perder recompensas (§3.2).
 
 ### 8.2 Rollback
 
@@ -380,7 +374,7 @@ a opção A (§3.2) cada deploy é ~1 min fora do ar com as batalhas voltando pa
 
 | Item                      | Início                                                         |
 | ------------------------- | -------------------------------------------------------------- |
-| Render produção (Starter) | ~US$ 7/mês + disco 1 GB (centavos)                             |
+| Render produção (Starter) | ~US$ 7/mês                                                     |
 | Render homologação        | gratuito (hiberna) ou Starter                                  |
 | Neon                      | gratuito no início; pago ao ter usuários (backups mais longos) |
 | Cloudflare R2             | 10 GB e egress gratuitos; acima disso, por GB armazenado       |
@@ -391,7 +385,7 @@ a opção A (§3.2) cada deploy é ~1 min fora do ar com as batalhas voltando pa
 1. [usuário] Domínio na Cloudflare, R2 habilitado, Render com cartão, Neon.
 2. [código] §3.1, §3.3, §3.4, §3.5 e o novo `render.yaml` em `develop`.
 3. [infra] Homologação: Neon `staging`, R2 staging, DNS, Blueprint.
-4. [teste] Checklist §7 Etapa 3 — principalmente deploy com batalha rodando.
+4. [teste] Checklist §7 Etapa 3.
 5. [infra] Produção: Neon `production`, R2, DNS, variáveis.
 6. [entrega] PR `develop → main`, checklist em produção.
-7. [depois] §3.2 opção B (lease do diário), imagem menor, limpeza de mídia órfã, backups externos.
+7. [depois] §3.2 (deploy com batalha rodando), imagem menor, limpeza de mídia órfã, backups externos.
