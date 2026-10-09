@@ -32,6 +32,7 @@ model User {
   campaigns Campaign[]
   rooms     Room[]
   profiles  CampaignProfile[]
+  uploads   MediaUpload[]
 
   @@map("user")
 }
@@ -406,4 +407,18 @@ model History {
   createdAt    DateTime @default(now())
 
   @@index([userId])
+}
+
+/// One presigned upload: the quota ledger (`services/media-quota.ts`). Counted when signed, not
+/// when the browser finishes the PUT — the signed size is the most it can store.
+model MediaUpload {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  key         String   @unique
+  contentType String
+  size        Int
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
 }

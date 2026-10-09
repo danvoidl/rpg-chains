@@ -2,6 +2,7 @@
 
 import { useId, useRef, useState } from 'react';
 import { uploadImage } from '@/features/media/upload-image';
+import { uploadErrorMessage } from '@/features/media/upload-error-message';
 
 interface ImageUploadProps {
   id: string;
@@ -26,8 +27,8 @@ export function ImageUpload({ id, label, value, onChange }: ImageUploadProps) {
     try {
       const publicUrl = await uploadImage(file);
       onChange(publicUrl);
-    } catch {
-      setError('Falha ao enviar imagem. Tente novamente.');
+    } catch (err) {
+      setError(uploadErrorMessage(err, 'image'));
     } finally {
       setIsUploading(false);
       // Reset so the same file can be re-selected after an error.

@@ -16,6 +16,9 @@ const valid = {
   S3_PUBLIC_BASE_URL: 'http://localhost:9000/rpg-chains-media',
   MEDIA_MAX_UPLOAD_BYTES: '5242880',
   MEDIA_MAX_VIDEO_BYTES: '52428800',
+  MEDIA_USER_QUOTA_BYTES: '1073741824',
+  MEDIA_USER_DAILY_UPLOADS: '100',
+  MEDIA_TOTAL_QUOTA_BYTES: '8589934592',
 };
 
 describe('EnvSchema', () => {

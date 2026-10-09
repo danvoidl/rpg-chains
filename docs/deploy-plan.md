@@ -218,14 +218,33 @@ Render; anotar o **Account ID** para o endpoint.
 | `S3_FORCE_PATH_STYLE`  | `true`                                          |
 | `S3_PUBLIC_BASE_URL`   | `https://media.<domínio>` (sem barra final)     |
 
-### 4.5 Pendências conhecidas da mídia (não bloqueiam)
+### 4.5 Cotas de upload
 
-- **Uploads órfãos**: uma imagem enviada e depois trocada no editor fica no bucket para sempre.
-  Mais tarde: varredura que compara chaves do bucket com as URLs referenciadas em rascunhos e
-  versões publicadas (as versões são imutáveis — **nunca** apagar mídia referenciada por uma
-  versão publicada).
-- O limite de tamanho já é imposto pela assinatura (`ContentLength` assinado,
-  `MEDIA_MAX_UPLOAD_BYTES` / `MEDIA_MAX_VIDEO_BYTES`).
+Só a API assina uploads, então é nela que o volume é contido. O tamanho de cada arquivo já vem
+fixo na assinatura (`ContentLength` assinado, `MEDIA_MAX_UPLOAD_BYTES` / `MEDIA_MAX_VIDEO_BYTES`).
+Antes de assinar, `services/media-quota.ts` confere três limites contra a tabela `MediaUpload`
+(uma linha por URL assinada) e responde `429 { error: 'upload_quota_exceeded', quota }` quando
+um deles estoura:
+
+| Variável                   | Valor | O que limita                                                            |
+| -------------------------- | ----- | ----------------------------------------------------------------------- |
+| `MEDIA_USER_DAILY_UPLOADS` | 100   | uploads por usuário em 24 h corridas (`quota: 'daily'`)                 |
+| `MEDIA_USER_QUOTA_BYTES`   | 1 GB  | bytes somados por usuário (`quota: 'user'`)                             |
+| `MEDIA_TOTAL_QUOTA_BYTES`  | 8 GB  | bytes de todos juntos (`quota: 'total'`), abaixo dos 10 GB grátis do R2 |
+
+O teto total é a garantia: criar muitas contas multiplica as cotas individuais, mas não passa dele
+— no pior caso os uploads param para todos até alguém olhar. As conferências rodam sob um advisory
+lock do Postgres, então pedidos simultâneos não furam os limites. A cota conta o que foi
+**assinado**, não o que o navegador terminou de enviar (conservador).
+
+### 4.6 Pendências conhecidas da mídia (não bloqueiam)
+
+- **Uploads órfãos**: uma imagem enviada e depois trocada no editor fica no bucket para sempre e
+  continua contando na cota. Mais tarde: varredura que compara chaves do bucket com as URLs
+  referenciadas em rascunhos e versões publicadas (as versões são imutáveis — **nunca** apagar
+  mídia referenciada por uma versão publicada), apagando também a linha de `MediaUpload`.
+- **Contas em massa**: o cadastro não confirma e-mail; o teto total contém o custo, a
+  confirmação de e-mail seria a próxima camada.
 
 ## 5. Neon
 

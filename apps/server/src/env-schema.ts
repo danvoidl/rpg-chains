@@ -22,6 +22,11 @@ export const EnvSchema = z.object({
   MEDIA_MAX_UPLOAD_BYTES: z.coerce.number().int().positive(),
   /** Ceiling of a video upload (chapter openings and narratives, Fase 5). */
   MEDIA_MAX_VIDEO_BYTES: z.coerce.number().int().positive(),
+  /** Upload quotas (`services/media-quota.ts`): bytes per user, uploads per user per 24 h, and
+   * the bytes of every user together — the ceiling that bounds the bucket's cost. */
+  MEDIA_USER_QUOTA_BYTES: z.coerce.number().int().positive(),
+  MEDIA_USER_DAILY_UPLOADS: z.coerce.number().int().positive(),
+  MEDIA_TOTAL_QUOTA_BYTES: z.coerce.number().int().positive(),
   /**
    * Test-only (the e2e stack): every battle uses this seed, so a run replays the same rolls.
    * Unset everywhere else, where each battle draws its own.

@@ -12,6 +12,7 @@ import questionsRoutes from './routes/questions.js';
 import chaptersRoutes from './routes/chapters.js';
 import campaignDraftRoutes from './routes/campaign-draft.js';
 import mediaRoutes from './routes/media.js';
+import type { MediaQuotas } from './services/media-quota.js';
 import campaignVersionRoutes from './routes/campaign-versions.js';
 import itemsRoutes from './routes/items.js';
 import classesRoutes from './routes/classes.js';
@@ -40,6 +41,8 @@ export interface AppOptions {
   battles?: Partial<BattlesPluginOptions>;
   /** Overrides for tests: a short trade offer timeout, no restore. */
   trades?: Partial<TradesPluginOptions>;
+  /** Overrides for tests: small upload quotas. */
+  media?: Partial<MediaQuotas>;
 }
 
 /**
@@ -83,7 +86,13 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   await app.register(classKitRoutes, { prefix: '/api/campaigns/:campaignId/classes' });
   await app.register(campaignDraftRoutes, { prefix: '/api/campaigns/:campaignId/draft' });
   await app.register(campaignVersionRoutes, { prefix: '/api/campaigns/:campaignId' });
-  await app.register(mediaRoutes, { prefix: '/api/media' });
+  await app.register(mediaRoutes, {
+    prefix: '/api/media',
+    userBytes: config.MEDIA_USER_QUOTA_BYTES,
+    userDailyUploads: config.MEDIA_USER_DAILY_UPLOADS,
+    totalBytes: config.MEDIA_TOTAL_QUOTA_BYTES,
+    ...options.media,
+  });
   await app.register(catalogRoutes, { prefix: '/api/catalog' });
   await app.register(roomsRoutes, { prefix: '/api/rooms' });
   await app.register(roomProfileRoutes, { prefix: '/api/rooms/:roomId' });

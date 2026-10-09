@@ -5,6 +5,7 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { config } from '../config.js';
 import { s3 } from '../storage.js';
+import { reserveUpload, type MediaQuotas } from '../services/media-quota.js';
 
 const EXTENSION_BY_CONTENT_TYPE = {
   'image/png': 'png',
@@ -39,11 +40,22 @@ const PresignBodySchema = z
     { message: 'File too large', path: ['size'] },
   );
 
-/** Media routes: presigned URLs for direct browser-to-S3 image and video uploads. */
-export default async function mediaRoutes(app: FastifyInstance): Promise<void> {
-  app.post('/presign', { preHandler: [app.authenticate] }, async (request) => {
+/**
+ * Media routes: presigned URLs for direct browser-to-S3 image and video uploads. Signing is the
+ * only way into the bucket, so every signature first passes the upload quotas (429 otherwise).
+ */
+export default async function mediaRoutes(
+  app: FastifyInstance,
+  quotas: MediaQuotas,
+): Promise<void> {
+  app.post('/presign', { preHandler: [app.authenticate] }, async (request, reply) => {
     const { contentType, size } = PresignBodySchema.parse(request.body);
-    const key = `users/${request.user!.id}/${randomUUID()}.${EXTENSION_BY_CONTENT_TYPE[contentType]}`;
+    const userId = request.user!.id;
+    const key = `users/${userId}/${randomUUID()}.${EXTENSION_BY_CONTENT_TYPE[contentType]}`;
+    const exceeded = await app.prisma.$transaction((tx) =>
+      reserveUpload(tx, { userId, key, contentType, size }, quotas, new Date()),
+    );
+    if (exceeded) return reply.code(429).send({ error: 'upload_quota_exceeded', quota: exceeded });
     const uploadUrl = await getSignedUrl(
       s3,
       new PutObjectCommand({

@@ -10,7 +10,7 @@
         "WEB_ORIGIN",
         "PORT",
         "S3_*",
-        "MEDIA_MAX_*",
+        "MEDIA_*",
         "BATTLE_SEED"
       ]
     }

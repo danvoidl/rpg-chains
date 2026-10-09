@@ -1,21 +1,14 @@
 'use client';
 
 import { useId, useRef, useState } from 'react';
-import { ApiError } from '@/lib/api';
 import { uploadMedia } from '@/features/media/upload-image';
+import { uploadErrorMessage } from '@/features/media/upload-error-message';
 
 interface VideoUploadProps {
   id: string;
   label: string;
   value: string | null;
   onChange: (url: string | null) => void;
-}
-
-function uploadErrorMessage(error: unknown): string {
-  if (error instanceof ApiError && (error.status === 400 || error.status === 413)) {
-    return 'O vídeo passa do tamanho máximo.';
-  }
-  return 'Falha ao enviar vídeo. Tente novamente.';
 }
 
 /** Controlled video field: file picker (presign + PUT) or a pasted URL, with a preview and remove. */
@@ -34,7 +27,7 @@ export function VideoUpload({ id, label, value, onChange }: VideoUploadProps) {
     try {
       onChange(await uploadMedia(file));
     } catch (err) {
-      setError(uploadErrorMessage(err));
+      setError(uploadErrorMessage(err, 'video'));
     } finally {
       setIsUploading(false);
       if (inputRef.current) inputRef.current.value = '';

@@ -57,6 +57,14 @@ services:
         value: '5242880'
       - key: MEDIA_MAX_VIDEO_BYTES
         value: '52428800'
+      # Upload quotas: 1 GB per user, 100 uploads per user per 24 h, 8 GB in all (R2's free tier
+      # is 10 GB). The total is the ceiling no number of accounts gets past.
+      - key: MEDIA_USER_QUOTA_BYTES
+        value: '1073741824'
+      - key: MEDIA_USER_DAILY_UPLOADS
+        value: '100'
+      - key: MEDIA_TOTAL_QUOTA_BYTES
+        value: '8589934592'
 
   # Free plan: sleeps after 15 min and has no preDeployCommand, so it migrates on boot.
   - type: web
@@ -106,3 +114,11 @@ services:
         value: '5242880'
       - key: MEDIA_MAX_VIDEO_BYTES
         value: '52428800'
+      # Upload quotas: 1 GB per user, 100 uploads per user per 24 h, 8 GB in all (R2's free tier
+      # is 10 GB). The total is the ceiling no number of accounts gets past.
+      - key: MEDIA_USER_QUOTA_BYTES
+        value: '1073741824'
+      - key: MEDIA_USER_DAILY_UPLOADS
+        value: '100'
+      - key: MEDIA_TOTAL_QUOTA_BYTES
+        value: '8589934592'
