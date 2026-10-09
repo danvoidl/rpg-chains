@@ -362,3 +362,6 @@ not duplicate it here; drop notes made obsolete by the current setup.**
   Locally `dotenv` reads `.env` and hides it; the first CI run failed with "TEST_DATABASE_URL is
   required". → A task that reads new env vars needs them in `passThroughEnv`/`env`
   (`apps/server/turbo.json`); reproduce CI in a worktree with no `.env`.
+- **Test suites racing each other on the 2-core CI runner ran ~10× slower** than locally (16 cores)
+  and hit vitest's 5 s timeout in property tests. → CI builds first, then runs
+  `turbo run test --concurrency=1`; don't chase it by raising timeouts test by test.

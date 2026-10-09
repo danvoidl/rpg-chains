@@ -64,4 +64,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # `pnpm install` does not generate the Prisma Client.
       - run: pnpm --filter @rpg-chains/server exec prisma generate
-      - run: pnpm turbo run build typecheck lint test
+      - run: pnpm turbo run build typecheck lint
+      # One package's suite at a time (each vitest still uses every core): on a 2-core runner,
+      # suites sharing the CPU with each other ran ~10x slower than locally and hit vitest's 5 s
+      # default timeout.
+      - run: pnpm turbo run test --concurrency=1
