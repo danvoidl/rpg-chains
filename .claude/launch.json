@@ -27,7 +27,31 @@
       "name": "web-localhost",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@rpg-chains/web", "dev"],
-      "env": { "NEXT_PUBLIC_API_URL": "http://localhost:3001" },
+      "env": {
+        "NEXT_PUBLIC_API_URL": "http://localhost:3001"
+      },
+      "port": 3000
+    },
+    {
+      "name": "server-turnstile",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@rpg-chains/server", "dev"],
+      "env": {
+        "BETTER_AUTH_URL": "http://localhost:3001",
+        "WEB_ORIGIN": "http://localhost:3000",
+        "CAPTCHA_PROVIDER": "turnstile",
+        "TURNSTILE_SECRET_KEY": "1x0000000000000000000000000000000AA"
+      },
+      "port": 3001
+    },
+    {
+      "name": "web-turnstile",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@rpg-chains/web", "dev"],
+      "env": {
+        "NEXT_PUBLIC_API_URL": "http://localhost:3001",
+        "NEXT_PUBLIC_TURNSTILE_SITE_KEY": "1x00000000000000000000AA"
+      },
       "port": 3000
     }
   ]

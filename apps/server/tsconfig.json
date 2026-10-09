@@ -4,7 +4,11 @@
     "rootDir": "src",
     "outDir": "dist",
     "tsBuildInfoFile": "dist/.tsbuildinfo",
-    "composite": false
+    "composite": false,
+    // An app, not a library: nothing imports its types. Emitting them breaks on Better Auth's
+    // plugin types, which name zod internals (TS2742).
+    "declaration": false,
+    "declarationMap": false
   },
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "node_modules", "**/*.test.ts"]

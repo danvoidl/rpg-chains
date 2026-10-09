@@ -55,6 +55,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
           <div className="flex items-center space-x-4">
             <span className="text-sm font-medium text-gray-700">{session.user.name}</span>
+            <Link
+              href="/account/security"
+              className="text-sm font-medium text-gray-700 hover:text-blue-600"
+            >
+              Segurança
+            </Link>
             <button
               type="button"
               onClick={handleSignOut}

@@ -54,6 +54,10 @@ jobs:
       MEDIA_USER_QUOTA_BYTES: '1073741824'
       MEDIA_USER_DAILY_UPLOADS: '100'
       MEDIA_TOTAL_QUOTA_BYTES: '8589934592'
+      EMAIL_TRANSPORT: log
+      EMAIL_FROM: rpg-chains <ci@test.local>
+      CAPTCHA_PROVIDER: 'off'
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 'off'
       NEXT_PUBLIC_API_URL: http://localhost:3001
 
     steps:

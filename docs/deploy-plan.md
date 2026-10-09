@@ -61,6 +61,8 @@ O que **muda**:
 3. **Render**: conta ligada ao GitHub, com cartão (planos pagos).
 4. **Neon**: conta e projeto (o plano gratuito serve no início; ver §5.4).
 5. **GitHub**: repositório `rpg-chains` com `main` e `develop`.
+6. **Resend**: conta, com o domínio verificado (§10.1).
+7. **Cloudflare Turnstile**: um widget com os hostnames do app (§10.2).
 
 Nomes sugeridos (usados no resto do documento):
 
@@ -333,27 +335,32 @@ de URL apontam para o domínio custom, porque o cookie e o CORS só aceitam uma 
 1. Neon: branch `staging`, role, connection string.
 2. R2: bucket staging, domínio `media-staging`, CORS, token.
 3. Cloudflare DNS: `staging` CNAME para o serviço de homologação.
-4. Render: aplicar o Blueprint (cria os dois serviços); preencher os `sync: false` da homologação.
-5. Esperar o build; `GET https://staging.<domínio>/health` → `{"status":"ok"}`.
+4. Resend e Turnstile: domínio verificado, chave de API, widget com `staging.<domínio>` (§10).
+5. Render: aplicar o Blueprint (cria os dois serviços); preencher os `sync: false` da homologação.
+6. Esperar o build; `GET https://staging.<domínio>/health` → `{"status":"ok"}`.
 
 ### Etapa 3 — Checklist de homologação
 
-| #   | Verificação                                                              | Esperado                                      |
-| --- | ------------------------------------------------------------------------ | --------------------------------------------- |
-| 1   | Criar conta e logar pelo celular (4G)                                    | cookie aceito, sessão mantida ao recarregar   |
-| 2   | DevTools → aba Network → socket                                          | `wss://staging.<domínio>/socket.io/…`, 101    |
-| 3   | Editor: subir imagem de vilão e vídeo de abertura                        | PUT 200 no R2; imagem abre em `media-staging` |
-| 4   | Publicar campanha, criar sala, entrar com 2 aparelhos, jogar uma batalha | fluxo completo, write-back de XP/ouro         |
-| 5   | Migration de teste (coluna nula) num push                                | aplicada antes do processo novo subir         |
-| 6   | Migration que falha de propósito (numa branch descartável)               | deploy aborta, versão antiga continua no ar   |
-| 7   | Login errado repetido de dois IPs diferentes                             | rate limit por IP, não global (§3.4)          |
-| 8   | Restaurar backup do Neon numa branch e apontar a homologação             | dados íntegros                                |
+| #   | Verificação                                                              | Esperado                                                 |
+| --- | ------------------------------------------------------------------------ | -------------------------------------------------------- |
+| 1   | Criar conta e logar pelo celular (4G)                                    | cookie aceito, sessão mantida ao recarregar              |
+| 2   | DevTools → aba Network → socket                                          | `wss://staging.<domínio>/socket.io/…`, 101               |
+| 3   | Editor: subir imagem de vilão e vídeo de abertura                        | PUT 200 no R2; imagem abre em `media-staging`            |
+| 4   | Publicar campanha, criar sala, entrar com 2 aparelhos, jogar uma batalha | fluxo completo, write-back de XP/ouro                    |
+| 5   | Migration de teste (coluna nula) num push                                | aplicada antes do processo novo subir                    |
+| 6   | Migration que falha de propósito (numa branch descartável)               | deploy aborta, versão antiga continua no ar              |
+| 7   | Login errado repetido de dois IPs diferentes                             | rate limit por IP, não global (§3.4)                     |
+| 8   | Restaurar backup do Neon numa branch e apontar a homologação             | dados íntegros                                           |
+| 9   | Criar conta com um e-mail real; tentar entrar antes de confirmar         | login recusado; e-mail chega (não no spam)               |
+| 10  | "Esqueci minha senha" → link → senha nova                                | outros aparelhos desconectados                           |
+| 11  | Ativar o app autenticador em Segurança; sair e entrar                    | login pede o código; código de recuperação entra uma vez |
+| 12  | Cadastro e login com o widget Turnstile                                  | invisível na maioria das vezes; sem token → 400          |
 
 ### Etapa 4 — Produção
 
 1. Neon `production`, R2 produção, DNS `app` e `media`, variáveis do serviço `rpg-chains`.
 2. Merge `develop → main` (PR). CI verde → Render faz build, pre-deploy (migrations) e sobe.
-3. Repetir os itens 1–4 do checklist em produção com uma conta de teste.
+3. Repetir os itens 1–4 e 9 do checklist em produção com uma conta de teste.
 4. Se o banco do playtest foi reaproveitado, conferir as contas e salas antigas.
 
 ## 8. Operação
@@ -401,10 +408,54 @@ rodando pode duplicar ou perder recompensas (§3.2).
 
 ## 9. Ordem resumida
 
-1. [usuário] Domínio na Cloudflare, R2 habilitado, Render com cartão, Neon.
+1. [usuário] Domínio na Cloudflare, R2 habilitado, Render com cartão, Neon, Resend, Turnstile.
 2. [código] §3.1, §3.3, §3.4, §3.5 e o novo `render.yaml` em `develop`.
 3. [infra] Homologação: Neon `staging`, R2 staging, DNS, Blueprint.
 4. [teste] Checklist §7 Etapa 3.
 5. [infra] Produção: Neon `production`, R2, DNS, variáveis.
 6. [entrega] PR `develop → main`, checklist em produção.
 7. [depois] §3.2 (deploy com batalha rodando), imagem menor, limpeza de mídia órfã, backups externos.
+
+## 10. E-mail (Resend) e anti-robô (Turnstile)
+
+Confirmação de e-mail, recuperação de senha e o segundo fator ficam no Better Auth
+(`apps/server/src/auth.ts`): o login exige e-mail confirmado; o app autenticador (TOTP, com
+códigos de recuperação) é opcional, ativado em **Segurança**; cadastro, login e pedido de nova
+senha passam pelo Turnstile. As contas criadas antes disso foram marcadas como confirmadas pela
+migration `auth_email_two_factor`, para ninguém ficar trancado do lado de fora no deploy.
+
+O que cada camada cobre: o **MFA** protege contra roubo de conta (senha vazada ou capturada por
+phishing); não impede um agente usando a conta do próprio dono, nem é à prova de phishing em
+tempo real (passkeys seriam). Contra automação e contas em massa, quem atua são o **Turnstile**,
+a **confirmação de e-mail**, o rate limit por IP (§3.4) e as cotas de upload (§4.5).
+
+### 10.1 Resend
+
+1. Crie a conta em resend.com e, em **Domains → Add Domain**, adicione o domínio (ou um
+   subdomínio só para envio, como `mail.<domínio>`, que isola a reputação de envio).
+2. O Resend mostra os registros DNS (SPF, DKIM e o MX de retorno). Com o DNS na Cloudflare, a
+   opção de configuração automática cria todos; senão, copie-os em **DNS → Records** (nuvem
+   cinza). Acrescente um registro DMARC (`_dmarc`, `v=DMARC1; p=none;` para começar).
+3. Espere o domínio ficar **Verified**. Em **API Keys**, crie uma chave com permissão **Sending
+   access** restrita ao domínio — uma por ambiente.
+4. Variáveis no Render (os dois serviços): `RESEND_API_KEY` e `EMAIL_FROM`, por exemplo
+   `rpg-chains <nao-responda@<domínio>>` (o endereço precisa ser do domínio verificado).
+   `EMAIL_TRANSPORT=resend` já vem do `render.yaml`.
+
+Em dev, `EMAIL_TRANSPORT=log` escreve o e-mail (com o link) no log do servidor; os testes usam
+`outbox`. Uma falha do Resend devolve erro na hora do cadastro ou do pedido de senha — aparece
+no log do Render.
+
+### 10.2 Turnstile
+
+1. Painel Cloudflare → **Turnstile → Add widget**: modo **Managed**, hostnames
+   `app.<domínio>` e `staging.<domínio>` (um widget serve os dois ambientes).
+2. Copie a **Site Key** (pública) e a **Secret Key**.
+3. Variáveis no Render: `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (entra no bundle **no build**: trocar
+   exige novo deploy) e `TURNSTILE_SECRET_KEY`. `CAPTCHA_PROVIDER=turnstile` já vem do
+   `render.yaml`.
+
+Para testar localmente com o widget de verdade, use as configurações `server-turnstile` e
+`web-turnstile` do `.claude/launch.json`, que usam as chaves de teste da Cloudflare (sempre
+aprovam; o widget mostra uma faixa de "somente teste"). Em dev normal e nos testes,
+`CAPTCHA_PROVIDER=off` e `NEXT_PUBLIC_TURNSTILE_SITE_KEY=off`.

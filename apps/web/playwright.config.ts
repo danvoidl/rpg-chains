@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config as loadEnv } from 'dotenv';
 import { defineConfig, devices } from '@playwright/test';
+import { E2E_OUTBOX_FILE } from './e2e/outbox';
 
 // E2E topology: a dedicated server + web pair on their own ports, against a dedicated database
 // (E2E_DATABASE_URL), so a running dev stack and the contract-test database are never touched.
@@ -44,6 +45,10 @@ export default defineConfig({
         WEB_ORIGIN: webUrl,
         // Same rolls every run: initiative, enemy targets and the question order are fixed.
         BATTLE_SEED: '1',
+        // Auth emails land in a file the specs read the links from; no captcha to solve.
+        EMAIL_TRANSPORT: 'outbox',
+        EMAIL_OUTBOX_FILE: E2E_OUTBOX_FILE,
+        CAPTCHA_PROVIDER: 'off',
       },
     },
     {
@@ -52,7 +57,7 @@ export default defineConfig({
       url: webUrl,
       reuseExistingServer: false,
       timeout: 180_000,
-      env: { NEXT_PUBLIC_API_URL: apiUrl },
+      env: { NEXT_PUBLIC_API_URL: apiUrl, NEXT_PUBLIC_TURNSTILE_SITE_KEY: 'off' },
     },
   ],
 });

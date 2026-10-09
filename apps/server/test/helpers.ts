@@ -37,24 +37,56 @@ export interface TestUser {
 
 let userCounter = 0;
 
-/** Signs a fresh user up through the real Better Auth route and returns its session cookie. */
-export async function signUp(app: FastifyInstance, name = 'Author'): Promise<TestUser> {
+export const TEST_PASSWORD = 'password1234';
+
+/** `Cookie` header value from a response's Set-Cookie headers. */
+export function cookieFrom(res: LightMyRequestResponse): string {
+  const setCookie = res.headers['set-cookie'];
+  const cookies = Array.isArray(setCookie) ? setCookie : setCookie ? [setCookie] : [];
+  return cookies.map((c) => c.split(';')[0]).join('; ');
+}
+
+/** Signs in through the real Better Auth route. */
+export function signIn(
+  app: FastifyInstance,
+  email: string,
+  password = TEST_PASSWORD,
+): Promise<LightMyRequestResponse> {
+  return app.inject({
+    method: 'POST',
+    url: '/api/auth/sign-in/email',
+    headers: { origin: config.WEB_ORIGIN },
+    payload: { email, password },
+  });
+}
+
+/** Creates an account through the real sign-up route, without confirming its email. */
+export async function signUpUnverified(
+  app: FastifyInstance,
+  name = 'Author',
+): Promise<{ id: string; email: string }> {
   userCounter += 1;
+  const email = `user${userCounter}-${Date.now()}@test.local`;
   const res = await app.inject({
     method: 'POST',
     url: '/api/auth/sign-up/email',
     headers: { origin: config.WEB_ORIGIN },
-    payload: {
-      name,
-      email: `user${userCounter}-${Date.now()}@test.local`,
-      password: 'password1234',
-    },
+    payload: { name, email, password: TEST_PASSWORD },
   });
   if (res.statusCode !== 200) throw new Error(`sign-up failed: ${res.statusCode} ${res.body}`);
-  const setCookie = res.headers['set-cookie'];
-  const cookies = Array.isArray(setCookie) ? setCookie : setCookie ? [setCookie] : [];
-  const cookie = cookies.map((c) => c.split(';')[0]).join('; ');
-  return { id: res.json<{ user: { id: string } }>().user.id, cookie };
+  return { id: res.json<{ user: { id: string } }>().user.id, email };
+}
+
+/**
+ * A fresh, signed-in user: signs up, confirms the email (sign-in requires it; `auth.test.ts`
+ * covers the real link) and signs in, returning the session cookie.
+ */
+export async function signUp(app: FastifyInstance, name = 'Author'): Promise<TestUser> {
+  const { id, email } = await signUpUnverified(app, name);
+  await app.prisma.user.update({ where: { id }, data: { emailVerified: true } });
+  const res = await signIn(app, email);
+  if (res.statusCode !== 200) throw new Error(`sign-in failed: ${res.statusCode} ${res.body}`);
+  return { id, cookie: cookieFrom(res) };
 }
 
 /** `app.inject` as a given user (or anonymous when `user` is null). */

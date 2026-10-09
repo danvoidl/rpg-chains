@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EnvSchema } from './env-schema.js';
+import { EnvSchema, ServerEnvSchema } from './env-schema.js';
 
 const valid = {
   DATABASE_URL: 'postgresql://rpg:rpg@localhost:5433/rpg_chains',
@@ -19,6 +19,9 @@ const valid = {
   MEDIA_USER_QUOTA_BYTES: '1073741824',
   MEDIA_USER_DAILY_UPLOADS: '100',
   MEDIA_TOTAL_QUOTA_BYTES: '8589934592',
+  EMAIL_TRANSPORT: 'log',
+  EMAIL_FROM: 'rpg-chains <nao-responda@example.com>',
+  CAPTCHA_PROVIDER: 'off',
 };
 
 describe('EnvSchema', () => {
@@ -52,5 +55,25 @@ describe('EnvSchema', () => {
     expect(EnvSchema.parse(valid).BATTLE_SEED).toBeUndefined();
     expect(EnvSchema.parse({ ...valid, BATTLE_SEED: '42' }).BATTLE_SEED).toBe(42);
     expect(() => EnvSchema.parse({ ...valid, BATTLE_SEED: '4.2' })).toThrow();
+  });
+
+  it("requires each email transport's and the captcha's own settings once chosen", () => {
+    expect(ServerEnvSchema.safeParse(valid).success).toBe(true);
+    expect(ServerEnvSchema.safeParse({ ...valid, EMAIL_TRANSPORT: 'resend' }).success).toBe(false);
+    expect(
+      ServerEnvSchema.safeParse({ ...valid, EMAIL_TRANSPORT: 'resend', RESEND_API_KEY: 're_x' })
+        .success,
+    ).toBe(true);
+    expect(ServerEnvSchema.safeParse({ ...valid, EMAIL_TRANSPORT: 'outbox' }).success).toBe(false);
+    expect(ServerEnvSchema.safeParse({ ...valid, CAPTCHA_PROVIDER: 'turnstile' }).success).toBe(
+      false,
+    );
+    expect(
+      ServerEnvSchema.safeParse({
+        ...valid,
+        CAPTCHA_PROVIDER: 'turnstile',
+        TURNSTILE_SECRET_KEY: 'secret',
+      }).success,
+    ).toBe(true);
   });
 });

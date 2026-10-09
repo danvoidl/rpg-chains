@@ -17,6 +17,9 @@ COPY . .
 # Inlined into the browser bundle at build time: the public URL of the app itself.
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# Cloudflare Turnstile site key (public), also inlined at build time.
+ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY
+ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=$NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 RUN pnpm install --frozen-lockfile
 # prisma.config.ts insists on a URL; generating the client never connects.

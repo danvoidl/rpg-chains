@@ -32,6 +32,30 @@ export const EnvSchema = z.object({
    * Unset everywhere else, where each battle draws its own.
    */
   BATTLE_SEED: z.coerce.number().int().optional(),
+  /**
+   * How auth emails (verification, password reset) leave (`email/transports.ts`): `resend` in
+   * production, `log` in dev (the link lands in the server log), `outbox` for the tests (one
+   * JSON line per email appended to EMAIL_OUTBOX_FILE).
+   */
+  EMAIL_TRANSPORT: z.enum(['resend', 'log', 'outbox']),
+  EMAIL_FROM: z.string().min(1),
+  RESEND_API_KEY: z.string().min(1).optional(),
+  EMAIL_OUTBOX_FILE: z.string().min(1).optional(),
+  /** Bot challenge on sign-up, sign-in and password reset: Cloudflare Turnstile, or off. */
+  CAPTCHA_PROVIDER: z.enum(['turnstile', 'off']),
+  TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
+});
+
+/** The env, with each choice's own settings required once that choice is made. */
+export const ServerEnvSchema = EnvSchema.superRefine((env, ctx) => {
+  const requireWhen = (when: boolean, key: keyof typeof env) => {
+    if (when && !env[key]) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: `${key} is required` });
+    }
+  };
+  requireWhen(env.EMAIL_TRANSPORT === 'resend', 'RESEND_API_KEY');
+  requireWhen(env.EMAIL_TRANSPORT === 'outbox', 'EMAIL_OUTBOX_FILE');
+  requireWhen(env.CAPTCHA_PROVIDER === 'turnstile', 'TURNSTILE_SECRET_KEY');
 });
 
 export type Env = z.infer<typeof EnvSchema>;

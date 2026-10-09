@@ -11,6 +11,10 @@
         "PORT",
         "S3_*",
         "MEDIA_*",
+        "EMAIL_*",
+        "RESEND_API_KEY",
+        "CAPTCHA_PROVIDER",
+        "TURNSTILE_SECRET_KEY",
         "BATTLE_SEED"
       ]
     }

@@ -19,22 +19,41 @@ datasource db {
 // The auth User doubles as the domain "user" account (spec §2.1).
 
 model User {
-  id            String   @id
-  name          String
-  email         String   @unique
-  emailVerified Boolean  @default(false)
-  image         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String   @id
+  name             String
+  email            String   @unique
+  emailVerified    Boolean  @default(false)
+  image            String?
+  /// Better Auth `twoFactor` plugin: an authenticator app is required at sign-in.
+  twoFactorEnabled Boolean? @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  sessions  Session[]
-  accounts  Account[]
-  campaigns Campaign[]
-  rooms     Room[]
-  profiles  CampaignProfile[]
-  uploads   MediaUpload[]
+  sessions   Session[]
+  accounts   Account[]
+  campaigns  Campaign[]
+  rooms      Room[]
+  profiles   CampaignProfile[]
+  uploads    MediaUpload[]
+  twoFactors TwoFactor[]
 
   @@map("user")
+}
+
+/// Better Auth `twoFactor` plugin: the TOTP secret and the hashed backup codes of one user.
+model TwoFactor {
+  id                      String    @id
+  secret                  String
+  backupCodes             String
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0)
+  lockedUntil             DateTime?
+
+  @@index([secret])
+  @@index([userId])
+  @@map("twoFactor")
 }
 
 model Session {
@@ -255,27 +274,27 @@ model Item {
  */
 
 model Room {
-  id                String            @id @default(cuid())
+  id                String             @id @default(cuid())
   name              String
   campaignId        String
-  campaign          Campaign          @relation(fields: [campaignId], references: [id])
+  campaign          Campaign           @relation(fields: [campaignId], references: [id])
   /// Current applied version; advances to newer compatible versions at safe points (decision 5).
   campaignVersionId String
-  campaignVersion   CampaignVersion   @relation(fields: [campaignVersionId], references: [id])
-  isPublic          Boolean           @default(true)
-  accessCode        String?           @unique
+  campaignVersion   CampaignVersion    @relation(fields: [campaignVersionId], references: [id])
+  isPublic          Boolean            @default(true)
+  accessCode        String?            @unique
   masterId          String
-  master            User              @relation(fields: [masterId], references: [id])
-  status            String            @default("open")
+  master            User               @relation(fields: [masterId], references: [id])
+  status            String             @default("open")
   /// The master's turn timer adjustments (RoomTurnTimersSchema); `{}` = platform defaults.
-  turnTimers        Json              @default("{}")
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  turnTimers        Json               @default("{}")
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
   closedAt          DateTime?
   /// When the room beat the last chapter's boss (spec §7); cleared again if a new chapter arrives.
   completedAt       DateTime?
   /// Last sequence number of the room's progress facts; orders "after the campfire" (Fase 5).
-  progressSeq       Int               @default(0)
+  progressSeq       Int                @default(0)
   profiles          CampaignProfile[]
   history           History[]
   nodeClears        RoomNodeClear[]
@@ -351,9 +370,9 @@ model RoomChapterState {
 /// the fold of the entries. Deleted in the write-back transaction, so a journal that exists is a
 /// battle not yet written back.
 model BattleJournal {
-  battleId          String                @id
+  battleId          String               @id
   roomId            String
-  room              Room                  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room              Room                 @relation(fields: [roomId], references: [id], onDelete: Cascade)
   campaignVersionId String
   /// `BattleNode`: id, title, type and participant limit.
   node              Json
@@ -363,7 +382,7 @@ model BattleJournal {
   participants      Json
   /// The room's turn timer adjustments when the battle started.
   turnTimers        Json
-  createdAt         DateTime              @default(now())
+  createdAt         DateTime             @default(now())
   entries           BattleJournalEntry[]
 
   @@index([roomId])

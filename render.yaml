@@ -65,6 +65,22 @@ services:
         value: '100'
       - key: MEDIA_TOTAL_QUOTA_BYTES
         value: '8589934592'
+      # Auth emails through Resend; EMAIL_FROM on the domain verified there, e.g.
+      # "rpg-chains <nao-responda@<domain>>".
+      - key: EMAIL_TRANSPORT
+        value: resend
+      - key: EMAIL_FROM
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      # Cloudflare Turnstile on sign-up, sign-in and password reset. The site key is public and
+      # inlined into the web bundle at build time; the secret stays on the server.
+      - key: CAPTCHA_PROVIDER
+        value: turnstile
+      - key: NEXT_PUBLIC_TURNSTILE_SITE_KEY
+        sync: false
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
 
   # Free plan: sleeps after 15 min and has no preDeployCommand, so it migrates on boot.
   - type: web
@@ -122,3 +138,19 @@ services:
         value: '100'
       - key: MEDIA_TOTAL_QUOTA_BYTES
         value: '8589934592'
+      # Auth emails through Resend; EMAIL_FROM on the domain verified there, e.g.
+      # "rpg-chains <nao-responda@<domain>>".
+      - key: EMAIL_TRANSPORT
+        value: resend
+      - key: EMAIL_FROM
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      # Cloudflare Turnstile on sign-up, sign-in and password reset. The site key is public and
+      # inlined into the web bundle at build time; the secret stays on the server.
+      - key: CAPTCHA_PROVIDER
+        value: turnstile
+      - key: NEXT_PUBLIC_TURNSTILE_SITE_KEY
+        sync: false
+      - key: TURNSTILE_SECRET_KEY
+        sync: false

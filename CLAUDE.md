@@ -210,7 +210,12 @@ reconnection grace (`services/grace-timers.ts`, `RECONNECT_GRACE_MS`); joining a
 **Auth is Better Auth** (`apps/server/src/auth.ts`) backed by the Prisma adapter; its `User`
 table doubles as the domain user account. Lucia is deprecated — do not reintroduce it. The
 handler is mounted at `/api/auth/*` in `plugins/auth.ts` by bridging Fastify ⇄ the Web Fetch
-API; protected routes use `{ preHandler: [app.authenticate] }`.
+API; protected routes use `{ preHandler: [app.authenticate] }`. Sign-in requires a confirmed
+email; the second factor (TOTP + backup codes, `twoFactor` plugin) is optional per user; sign-up,
+sign-in and password reset pass a Turnstile check (`captcha` plugin) unless `CAPTCHA_PROVIDER=off`.
+Auth emails leave through `email/transports.ts` (`EMAIL_TRANSPORT`: `resend`, `log` in dev,
+`outbox` in the tests and e2e, which read the links back from the file). Test users are created
+by `signUp` in `test/helpers.ts`, which confirms the email before signing in.
 
 **Prisma connection lives outside the schema** (Prisma 7). The `datasource` block has only
 `provider`; the URL is in `prisma.config.ts` (for Migrate/Studio) and the **runtime client
