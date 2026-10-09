@@ -141,5 +141,7 @@ describe('progress rules: property over random plays', () => {
     // The generator really exercises defeats and finishes campaigns.
     expect(rollbacks).toBeGreaterThan(SEEDS / 2);
     expect(completions).toBeGreaterThan(0);
-  });
+    // ~1 s locally, but over 10 s on a 2-core CI runner shared with the other packages' builds
+    // and suites: the default 5 s timeout would fail it there.
+  }, 60_000);
 });
