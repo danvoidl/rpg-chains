@@ -1,0 +1,18 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "passThroughEnv": [
+        "TEST_DATABASE_URL",
+        "DATABASE_URL",
+        "BETTER_AUTH_*",
+        "WEB_ORIGIN",
+        "PORT",
+        "S3_*",
+        "MEDIA_MAX_*",
+        "BATTLE_SEED"
+      ]
+    }
+  }
+}

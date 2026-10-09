@@ -358,3 +358,7 @@ not duplicate it here; drop notes made obsolete by the current setup.**
 - **Better Auth 1.7 drops a multi-hop `X-Forwarded-For`** unless `trustedProxies` is set, leaving the
   rate limit keyless; Fastify `trustProxy` does not help (nothing reads `req.ip`). → On Render read
   Cloudflare's single-value `cf-connecting-ip` first (`auth.ts`).
+- **Turbo 2 runs tasks in strict env mode**: only variables declared in a `turbo.json` reach them.
+  Locally `dotenv` reads `.env` and hides it; the first CI run failed with "TEST_DATABASE_URL is
+  required". → A task that reads new env vars needs them in `passThroughEnv`/`env`
+  (`apps/server/turbo.json`); reproduce CI in a worktree with no `.env`.
